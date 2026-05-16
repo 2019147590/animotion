@@ -43,7 +43,7 @@
     drawSourcePanel(view, cutscene, Number(els.backgroundOpacity.value));
     if (state.nextImage && !cutscene.active) {
       const bridge = Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge);
-      Animotion.cutsceneEffects.drawPanelImage(previewCtx, state.nextImage, view, 0.18, {
+      Animotion.cutsceneEffects.drawPanelImage(previewCtx, impactPanelImage(), view, 0.18, {
         x: bridge.impactX,
         y: bridge.impactY,
         scale: bridge.impactScale,
@@ -81,6 +81,11 @@
   }
 
   function sourcePanelImage() {
+    if (Animotion.panelEditor) {
+      const plate = Animotion.panelEditor.createPanelCanvas("source", { removeCharacter: state.separateCharacter });
+      if (state.separateCharacter && !Animotion.panelEditor.characterMask("source")) erasePartsFromPanel(plate);
+      return plate;
+    }
     if (!state.separateCharacter || state.parts.length === 0) return state.image;
     const plate = document.createElement("canvas");
     plate.width = state.image.naturalWidth;
@@ -93,6 +98,21 @@
     }
     ctx.globalCompositeOperation = "source-over";
     return plate;
+  }
+
+  function erasePartsFromPanel(plate) {
+    if (!plate || !state.parts.length) return;
+    const crop = Animotion.panelEditor.setupFor("source").crop || { x: 0, y: 0 };
+    const ctx = plate.getContext("2d");
+    ctx.globalCompositeOperation = "destination-out";
+    for (const part of state.parts) {
+      if (!part.hidden) ctx.fill(pathFromShape(geometry.absoluteShapeFromPart(part), -crop.x, -crop.y));
+    }
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  function impactPanelImage() {
+    return Animotion.panelEditor?.createPanelCanvas("impact") || state.nextImage;
   }
 
   function drawParts(view, now) {
@@ -191,7 +211,7 @@
   function drawImpactLayers(view, w, h, cutscene) {
     if (!cutscene.active) return;
     const size = { w, h };
-    Animotion.cutsceneEffects.drawImpactPanel(previewCtx, state.nextImage, view, cutscene.values.impactAlpha, impactTransition(cutscene));
+    Animotion.cutsceneEffects.drawImpactPanel(previewCtx, impactPanelImage(), view, cutscene.values.impactAlpha, impactTransition(cutscene));
     Animotion.cutsceneEffects.drawFlash(previewCtx, size, cutscene.values.flashAlpha);
     Animotion.cutsceneEffects.drawPanelMask(previewCtx, size);
   }

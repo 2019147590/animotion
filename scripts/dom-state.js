@@ -37,6 +37,11 @@
     currentFrame: 1,
     cutsceneBridge: null,
     lookismPreset: null,
+    panelEditTarget: "source",
+    panelSetup: {
+      source: { crop: null, characterMask: null },
+      impact: { crop: null, characterMask: null },
+    },
     separateCharacter: false,
     exporting: false,
     sourceView: null,
@@ -47,6 +52,7 @@
   };
 
   Animotion.imageBounds = function imageBounds() {
+    if (Animotion.panelEditor) return Animotion.panelEditor.imageBounds();
     const image = Animotion.state.image;
     return image ? { width: image.naturalWidth, height: image.naturalHeight } : { width: 1, height: 1 };
   };

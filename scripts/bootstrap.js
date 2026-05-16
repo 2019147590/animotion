@@ -5,6 +5,7 @@
     "dom-state",
     "view",
     "path",
+    "panel-editor",
     "rigging",
     "motion-model",
     "joint-coordinates",

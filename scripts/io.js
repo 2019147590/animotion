@@ -20,6 +20,7 @@
     if (!file) return;
     try {
       state.nextImage = await loadImageFromFile(file);
+      state.panelSetup.impact = Animotion.panelEditor.normalizePanel();
       Animotion.ui.refreshUi();
     } catch (error) {
       alert(error.message);
@@ -27,6 +28,7 @@
   }
 
   function createGuideParts() {
+    if (Animotion.panelEditor?.canEditRig() === false) return;
     if (!state.image) return;
     const w = state.image.naturalWidth;
     const h = state.image.naturalHeight;
@@ -63,6 +65,7 @@
       canvas: state.image ? { width: state.image.naturalWidth, height: state.image.naturalHeight } : null,
       separateCharacter: state.separateCharacter,
       cutsceneBridge: state.cutsceneBridge ? Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge) : null,
+      panelSetup: Animotion.panelEditor?.ensureSetup?.() || null,
       parts: state.parts.map(({ canvas, ...part }) => part),
     };
   }
@@ -96,6 +99,7 @@
       const payload = JSON.parse(await file.text());
       state.parts = rigPartsFromPayload(payload).map(deserializeRigPart);
       state.separateCharacter = Boolean(payload.separateCharacter);
+      restorePanelSetup(payload.panelSetup);
       state.cutsceneBridge = payload.cutsceneBridge ? Animotion.cutsceneModel.normalizeBridge(payload.cutsceneBridge) : null;
       state.selectedPartId = state.parts[0]?.id || null;
       Animotion.ui.refreshUi();
@@ -119,6 +123,14 @@
       type: normalizePartType(part.type),
       mask: inlineMask(part.mask, part.rect),
       customMotion: Animotion.motionModel.defaultCustomMotion(),
+    };
+  }
+
+  function restorePanelSetup(panelSetup) {
+    if (!Animotion.panelEditor) return;
+    state.panelSetup = {
+      source: Animotion.panelEditor.normalizePanel(panelSetup?.source),
+      impact: Animotion.panelEditor.normalizePanel(panelSetup?.impact),
     };
   }
 

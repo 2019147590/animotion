@@ -30,7 +30,8 @@
     sourceCtx.save();
     sourceCtx.scale(dpr, dpr);
     sourceCtx.clearRect(0, 0, w, h);
-    if (!state.image) {
+    const image = Animotion.panelEditor?.imageFor() || state.image;
+    if (!image) {
       sourceCtx.restore();
       drawEmpty(sourceCtx, sourceCanvas, "웹툰 컷을 업로드하세요");
       return;
@@ -39,22 +40,33 @@
     state.sourceView = view;
     sourceCtx.fillStyle = "#f7f0df";
     sourceCtx.fillRect(0, 0, w, h);
-    sourceCtx.drawImage(state.image, view.x, view.y, view.w, view.h);
+    sourceCtx.drawImage(image, view.x, view.y, view.w, view.h);
     drawSourceOverlays(view);
     sourceCtx.restore();
   }
 
   function drawSourceOverlays(view) {
-    for (const part of state.parts) {
-      const selected = part.id === state.selectedPartId;
-      const showHandles = selected && els.selectionTool.value === Animotion.tool.edit;
-      drawShapeOverlay(sourceCtx, view, geometry.absoluteShapeFromPart(part), selected, part.name, false, showHandles);
-      drawPivot(sourceCtx, view, part.rect.x + part.pivot.x, part.rect.y + part.pivot.y, selected, "anchor");
-      drawPivot(sourceCtx, view, part.rect.x + part.joint.x, part.rect.y + part.joint.y, selected, "joint");
+    drawPanelEditorOverlays(view);
+    if (Animotion.panelEditor?.canEditRig() !== false) {
+      for (const part of state.parts) {
+        const selected = part.id === state.selectedPartId;
+        const showHandles = selected && els.selectionTool.value === Animotion.tool.edit;
+        drawShapeOverlay(sourceCtx, view, geometry.absoluteShapeFromPart(part), selected, part.name, false, showHandles);
+        drawPivot(sourceCtx, view, part.rect.x + part.pivot.x, part.rect.y + part.pivot.y, selected, "anchor");
+        drawPivot(sourceCtx, view, part.rect.x + part.joint.x, part.rect.y + part.joint.y, selected, "joint");
+      }
     }
     if (state.selection) {
       drawShapeOverlay(sourceCtx, view, state.selection, true, "new part", !state.selection.closed, true);
     }
+  }
+
+  function drawPanelEditorOverlays(view) {
+    if (!Animotion.panelEditor) return;
+    const crop = Animotion.panelEditor.cropShape();
+    const mask = Animotion.panelEditor.characterMask();
+    if (crop) drawShapeOverlay(sourceCtx, view, crop, false, "crop", true, false);
+    if (mask) drawShapeOverlay(sourceCtx, view, mask, true, "character", false, false);
   }
 
   function drawShapeOverlay(ctx, view, shape, selected, label, dashed = false, handles = false) {

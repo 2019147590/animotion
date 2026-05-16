@@ -21,7 +21,7 @@
   }
 
   function onSourcePointerDown(event) {
-    if (!state.image || !state.sourceView) return;
+    if (!(Animotion.panelEditor?.imageFor() || state.image) || !state.sourceView) return;
     if (event.button === 1 || state.spaceDown) return beginPan(event);
     const point = Animotion.view.canvasPoint(event, sourceCanvas, state.sourceView);
     if (!point) return;
@@ -41,7 +41,10 @@
   function handleToolPointerDown(event, point) {
     const tool = els.selectionTool.value;
     if (tool === Animotion.tool.edit) {
-      if (Animotion.editor.beginShapeEdit(point)) sourceCanvas.setPointerCapture(event.pointerId);
+      const editing = Animotion.panelEditor?.canEditRig() === false
+        ? Animotion.editor.beginSelectionEditOnly(point)
+        : Animotion.editor.beginShapeEdit(point);
+      if (editing) sourceCanvas.setPointerCapture(event.pointerId);
       return;
     }
     if (tool === Animotion.tool.polygon) return addPolygonPoint(point);
@@ -80,7 +83,7 @@
   }
 
   function onSourcePointerMove(event) {
-    if (!state.drag || !state.image || !state.sourceView) return;
+    if (!state.drag || !(Animotion.panelEditor?.imageFor() || state.image) || !state.sourceView) return;
     if (state.drag.kind === Animotion.dragKind.panSource) return updatePan(event);
     const point = Animotion.view.canvasPoint(event, sourceCanvas, state.sourceView);
     if (!point) return;
@@ -164,6 +167,7 @@
   }
 
   function capturePart() {
+    if (Animotion.panelEditor?.canEditRig() === false) return;
     const ready = geometry.shapeIsReady(state.selection, Animotion.imageBounds(), Animotion.config.minShapeSize);
     if (!ready) return;
     Animotion.parts.createPartFromShape(els.partType.value, state.selection, els.partName.value.trim());
@@ -172,6 +176,7 @@
   }
 
   function applyOutline() {
+    if (Animotion.panelEditor?.canEditRig() === false) return;
     const part = Animotion.parts.selectedPart();
     const ready = geometry.shapeIsReady(state.selection, Animotion.imageBounds(), Animotion.config.minShapeSize);
     if (!part || !ready) return;

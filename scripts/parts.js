@@ -106,6 +106,11 @@
     state.startTime = performance.now();
     state.cutsceneBridge = null;
     state.lookismPreset = null;
+    state.panelEditTarget = "source";
+    state.panelSetup = {
+      source: Animotion.panelEditor?.normalizePanel?.() || { crop: null, characterMask: null },
+      impact: Animotion.panelEditor?.normalizePanel?.() || { crop: null, characterMask: null },
+    };
   }
 
   Animotion.parts = { createPartFromShape, createPart, applyShapeToPart, selectedPart, resetForNewImage, updatePartCanvas };

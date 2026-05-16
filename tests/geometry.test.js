@@ -1,5 +1,7 @@
 const assert = require("node:assert/strict");
 const geometry = require("../scripts/geometry.js");
+globalThis.Animotion.state = { panelSetup: {}, panelEditTarget: "source" };
+const panelEditor = require("../scripts/panel-editor.js");
 const rigging = require("../scripts/rigging.js");
 const motionModel = require("../scripts/motion-model.js");
 const jointCoordinates = require("../scripts/joint-coordinates.js");
@@ -50,6 +52,16 @@ test("shapeToMask converts image points into part-local points", () => {
   const mask = geometry.shapeToMask(shape, { x: 10, y: 12, w: 20, h: 10 });
   assert.deepEqual(mask.points[0], { x: 0, y: 0 });
   assert.deepEqual(mask.points[2], { x: 20, y: 10 });
+});
+
+test("panel editor normalizes saved crop and character mask data", () => {
+  const panel = panelEditor.normalizePanel({
+    crop: { x: "3.4", y: 2, w: "40.6", h: 20 },
+    characterMask: { kind: "polygon", points: [{ x: "1", y: 2 }, { x: 4, y: "5" }] },
+  });
+  assert.deepEqual(panel.crop, { x: 3, y: 2, w: 41, h: 20 });
+  assert.equal(panel.characterMask.closed, true);
+  assert.deepEqual(panel.characterMask.points[1], { x: 4, y: 5 });
 });
 
 test("arm pivot moves to the shoulder side closest to the body", () => {

@@ -56,12 +56,18 @@
     const dx = transform.x ?? 0;
     const dy = transform.y ?? 0;
     const rotation = transform.rotation ?? 0;
+    const rect = fittedPanelRect(image, view, scale);
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.translate(view.x + view.w * 0.5 + dx, view.y + view.h * 0.5 + dy);
     ctx.rotate(rotation);
-    ctx.drawImage(image, -view.w * scale * 0.5, -view.h * scale * 0.5, view.w * scale, view.h * scale);
+    ctx.drawImage(image, -rect.w * 0.5, -rect.h * 0.5, rect.w, rect.h);
     ctx.restore();
+  }
+
+  function fittedPanelRect(image, view, scale) {
+    const fit = Math.min(view.w / image.width, view.h / image.height);
+    return { w: image.width * fit * scale, h: image.height * fit * scale };
   }
 
   function drawImpactPanel(ctx, image, view, alpha, transform = {}) {

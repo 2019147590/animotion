@@ -7,14 +7,15 @@
 
   function refreshUi() {
     const ready = geometry.shapeIsReady(state.selection, Animotion.imageBounds(), Animotion.config.minShapeSize);
-    els.capturePart.disabled = !state.image || !ready;
-    els.applyOutline.disabled = !state.image || !Animotion.parts.selectedPart() || !ready;
+    const rigEdit = Animotion.panelEditor?.canEditRig() !== false;
+    els.capturePart.disabled = !state.image || !ready || !rigEdit;
+    els.applyOutline.disabled = !state.image || !Animotion.parts.selectedPart() || !ready || !rigEdit;
     els.finishSelection.disabled = !state.selection || state.selection.closed || state.selection.points.length < 3;
     els.clearSelection.disabled = !state.selection;
-    els.guideParts.disabled = !state.image;
+    els.guideParts.disabled = !state.image || !rigEdit;
     els.exportWebm.disabled = !state.image || state.parts.length === 0;
     els.saveRig.disabled = !state.image || state.parts.length === 0;
-    els.sourceStatus.textContent = state.image ? `${state.image.naturalWidth} x ${state.image.naturalHeight}` : "이미지 없음";
+    els.sourceStatus.textContent = sourceStatusText();
     els.previewStatus.textContent = previewStatusText();
     els.currentFrame.max = String(currentFrameLimit());
     state.currentFrame = geometry.clamp(state.currentFrame, 1, currentFrameLimit());
@@ -23,6 +24,7 @@
     els.sourceZoom.value = String(state.sourceZoom);
     els.zoomReset.textContent = `${Math.round(state.sourceZoom * 100)}%`;
     els.separateCharacter.checked = state.separateCharacter;
+    Animotion.panelEditor?.refreshControls?.();
     renderLookismPresetStatus();
     renderPanelScaleControls();
     renderKeyframeStatus();
@@ -140,6 +142,13 @@
     if (state.lookismPreset?.active && els.motionTemplate.value === "cutscene") return "Lookism preset + impact";
     const suffix = state.nextImage && els.motionTemplate.value === "cutscene" ? " + impact" : "";
     return `${state.parts.length} parts${suffix}`;
+  }
+
+  function sourceStatusText() {
+    const image = Animotion.panelEditor?.imageFor() || state.image;
+    if (!image) return "이미지 없음";
+    const prefix = Animotion.panelEditor?.activeTarget() === "impact" ? "B컷" : "A컷";
+    return `${prefix} ${image.naturalWidth} x ${image.naturalHeight}`;
   }
 
   function renderLookismPresetStatus() {

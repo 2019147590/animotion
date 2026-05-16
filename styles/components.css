@@ -118,3 +118,10 @@
   font-size: 13px;
   font-weight: 700;
 }
+
+.panel-editor-tools {
+  display: grid;
+  gap: 10px;
+  border-top: 2px solid var(--line);
+  padding-top: 12px;
+}

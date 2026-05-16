@@ -43,6 +43,11 @@
     return beginPartEdit(point, tolerance);
   }
 
+  function beginSelectionEditOnly(point) {
+    const tolerance = Animotion.config.hitTolerancePx / (state.sourceView?.scale || 1);
+    return Boolean(state.selection && beginSelectionEdit(point, tolerance));
+  }
+
   function beginSelectionEdit(point, tolerance) {
     const hit = hitShape(state.selection, point, tolerance);
     if (!hit) return false;
@@ -126,5 +131,5 @@
     }));
   }
 
-  Animotion.editor = { beginShapeEdit, applyDragEdit, hitShape };
+  Animotion.editor = { beginShapeEdit, beginSelectionEditOnly, applyDragEdit, hitShape };
 }
