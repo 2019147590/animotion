@@ -1,0 +1,311 @@
+﻿{
+    "source":  "standing.png",
+    "generatedAt":  "2026-05-15T15:19:33",
+    "note":  "Rough manual masks from the flattened standing reference. Refine polygons before production use.",
+    "parts":  [
+                  {
+                      "name":  "head",
+                      "file":  "parts/head.png",
+                      "polygon":  [
+                                      54,
+                                      0,
+                                      132,
+                                      3,
+                                      145,
+                                      38,
+                                      127,
+                                      70,
+                                      82,
+                                      80,
+                                      50,
+                                      52
+                                  ],
+                      "bounds":  {
+                                     "y":  0,
+                                     "width":  96,
+                                     "height":  81,
+                                     "x":  50
+                                 },
+                      "pivot":  {
+                                    "y":  62,
+                                    "x":  95
+                                }
+                  },
+                  {
+                      "name":  "torso",
+                      "file":  "parts/torso.png",
+                      "polygon":  [
+                                      63,
+                                      58,
+                                      140,
+                                      50,
+                                      174,
+                                      91,
+                                      164,
+                                      153,
+                                      139,
+                                      188,
+                                      77,
+                                      174,
+                                      35,
+                                      111
+                                  ],
+                      "bounds":  {
+                                     "y":  50,
+                                     "width":  140,
+                                     "height":  139,
+                                     "x":  35
+                                 },
+                      "pivot":  {
+                                    "y":  88,
+                                    "x":  112
+                                }
+                  },
+                  {
+                      "name":  "pelvis",
+                      "file":  "parts/pelvis.png",
+                      "polygon":  [
+                                      70,
+                                      130,
+                                      154,
+                                      129,
+                                      169,
+                                      162,
+                                      132,
+                                      190,
+                                      71,
+                                      174,
+                                      51,
+                                      148
+                                  ],
+                      "bounds":  {
+                                     "y":  129,
+                                     "width":  119,
+                                     "height":  62,
+                                     "x":  51
+                                 },
+                      "pivot":  {
+                                    "y":  154,
+                                    "x":  112
+                                }
+                  },
+                  {
+                      "name":  "back_upper_arm",
+                      "file":  "parts/back_upper_arm.png",
+                      "polygon":  [
+                                      0,
+                                      1,
+                                      62,
+                                      17,
+                                      78,
+                                      43,
+                                      58,
+                                      61,
+                                      18,
+                                      53,
+                                      0,
+                                      38
+                                  ],
+                      "bounds":  {
+                                     "y":  1,
+                                     "width":  79,
+                                     "height":  61,
+                                     "x":  0
+                                 },
+                      "pivot":  {
+                                    "y":  62,
+                                    "x":  66
+                                }
+                  },
+                  {
+                      "name":  "back_forearm",
+                      "file":  "parts/back_forearm.png",
+                      "polygon":  [
+                                      48,
+                                      42,
+                                      83,
+                                      45,
+                                      92,
+                                      60,
+                                      76,
+                                      78,
+                                      35,
+                                      72,
+                                      19,
+                                      57
+                                  ],
+                      "bounds":  {
+                                     "y":  42,
+                                     "width":  74,
+                                     "height":  37,
+                                     "x":  19
+                                 },
+                      "pivot":  {
+                                    "y":  54,
+                                    "x":  56
+                                }
+                  },
+                  {
+                      "name":  "front_upper_arm",
+                      "file":  "parts/front_upper_arm.png",
+                      "polygon":  [
+                                      132,
+                                      66,
+                                      170,
+                                      79,
+                                      192,
+                                      128,
+                                      174,
+                                      150,
+                                      150,
+                                      116,
+                                      136,
+                                      96
+                                  ],
+                      "bounds":  {
+                                     "y":  66,
+                                     "width":  61,
+                                     "height":  85,
+                                     "x":  132
+                                 },
+                      "pivot":  {
+                                    "y":  82,
+                                    "x":  145
+                                }
+                  },
+                  {
+                      "name":  "front_forearm",
+                      "file":  "parts/front_forearm.png",
+                      "polygon":  [
+                                      174,
+                                      126,
+                                      204,
+                                      150,
+                                      216,
+                                      166,
+                                      189,
+                                      199,
+                                      157,
+                                      150
+                                  ],
+                      "bounds":  {
+                                     "y":  126,
+                                     "width":  60,
+                                     "height":  74,
+                                     "x":  157
+                                 },
+                      "pivot":  {
+                                    "y":  142,
+                                    "x":  177
+                                }
+                  },
+                  {
+                      "name":  "left_thigh",
+                      "file":  "parts/left_thigh.png",
+                      "polygon":  [
+                                      44,
+                                      142,
+                                      102,
+                                      130,
+                                      107,
+                                      186,
+                                      58,
+                                      202,
+                                      20,
+                                      194,
+                                      0,
+                                      175
+                                  ],
+                      "bounds":  {
+                                     "y":  130,
+                                     "width":  108,
+                                     "height":  73,
+                                     "x":  0
+                                 },
+                      "pivot":  {
+                                    "y":  148,
+                                    "x":  76
+                                }
+                  },
+                  {
+                      "name":  "left_shin",
+                      "file":  "parts/left_shin.png",
+                      "polygon":  [
+                                      22,
+                                      188,
+                                      77,
+                                      190,
+                                      69,
+                                      241,
+                                      0,
+                                      253,
+                                      0,
+                                      220
+                                  ],
+                      "bounds":  {
+                                     "y":  188,
+                                     "width":  78,
+                                     "height":  66,
+                                     "x":  0
+                                 },
+                      "pivot":  {
+                                    "y":  198,
+                                    "x":  58
+                                }
+                  },
+                  {
+                      "name":  "right_thigh",
+                      "file":  "parts/right_thigh.png",
+                      "polygon":  [
+                                      109,
+                                      136,
+                                      158,
+                                      143,
+                                      177,
+                                      187,
+                                      128,
+                                      202,
+                                      92,
+                                      178,
+                                      100,
+                                      150
+                                  ],
+                      "bounds":  {
+                                     "y":  136,
+                                     "width":  86,
+                                     "height":  67,
+                                     "x":  92
+                                 },
+                      "pivot":  {
+                                    "y":  151,
+                                    "x":  138
+                                }
+                  },
+                  {
+                      "name":  "right_shin",
+                      "file":  "parts/right_shin.png",
+                      "polygon":  [
+                                      126,
+                                      187,
+                                      176,
+                                      181,
+                                      217,
+                                      253,
+                                      104,
+                                      253,
+                                      92,
+                                      218
+                                  ],
+                      "bounds":  {
+                                     "y":  181,
+                                     "width":  126,
+                                     "height":  73,
+                                     "x":  92
+                                 },
+                      "pivot":  {
+                                    "y":  197,
+                                    "x":  132
+                                }
+                  }
+              ]
+}

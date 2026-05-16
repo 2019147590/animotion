@@ -1,0 +1,32 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs and temp files
+*.log
+*.tmp
+*.bak
+
+# Dependencies / package managers
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# AI/model artifacts
+workspace/
+models/
+checkpoints/
+*.ckpt
+*.safetensors
+*.pth
+*.pt
+*.onnx
+
+# Generated media
+*.webm
+*.mp4
+*.psd
+

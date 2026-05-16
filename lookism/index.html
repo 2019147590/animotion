@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>1.0s Kick Cutscene Prototype</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="stage-shell" aria-label="cutscene preview">
+        <canvas id="stage" width="1280" height="720"></canvas>
+        <div class="frame-readout">
+          <span id="timeLabel">0.00s</span>
+          <span id="beatLabel">STANCE</span>
+          <span>END 1.00s</span>
+        </div>
+      </section>
+
+      <aside class="control-panel">
+        <div>
+          <p class="eyebrow">1.0 SECOND CUTSCENE</p>
+          <h1>Impact Frame Director</h1>
+        </div>
+        <p class="notes">
+          두 컷을 이미지 전환이 아니라 발차기 행동으로 해석해서, 중간 자세를 액션 문법으로 합성합니다.
+        </p>
+        <div class="controls">
+          <button id="playButton" type="button">Play</button>
+          <button id="resetButton" type="button">Reset</button>
+        </div>
+        <div class="timeline" aria-hidden="true">
+          <div id="progress"></div>
+        </div>
+        <dl class="cue-list">
+          <div>
+            <dt>0.00</dt>
+            <dd>stance</dd>
+          </div>
+          <div>
+            <dt>0.10</dt>
+            <dd>compress</dd>
+          </div>
+          <div>
+            <dt>0.22</dt>
+            <dd>takeoff</dd>
+          </div>
+          <div>
+            <dt>0.34</dt>
+            <dd>chamber</dd>
+          </div>
+          <div>
+            <dt>0.43</dt>
+            <dd>extend</dd>
+          </div>
+          <div>
+            <dt>0.50</dt>
+            <dd>impact</dd>
+          </div>
+          <div>
+            <dt>0.68</dt>
+            <dd>follow</dd>
+          </div>
+          <div>
+            <dt>1.00</dt>
+            <dd>end motion</dd>
+          </div>
+        </dl>
+      </aside>
+    </main>
+
+    <script type="module" src="app.mjs"></script>
+  </body>
+</html>

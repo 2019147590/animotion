@@ -1,0 +1,130 @@
+{
+  const global = window;
+  const Animotion = global.Animotion;
+  const state = Animotion.state;
+  const geometry = Animotion.geometry;
+  const dragKind = Animotion.dragKind;
+  const shapeKind = Animotion.shapeKind;
+
+  function hitShape(shape, point, tolerance) {
+    const vertex = hitVertex(shape.points, point, tolerance);
+    if (vertex !== -1) return { mode: "vertex", index: vertex };
+    const edge = hitEdge(shape, point, tolerance);
+    if (edge !== -1) return { mode: "edge", index: edge };
+    if (pointInShape(shape, point)) return { mode: "move", index: -1 };
+    return null;
+  }
+
+  function hitVertex(points, point, tolerance) {
+    for (let i = 0; i < points.length; i += 1) {
+      if (geometry.distance(points[i], point) <= tolerance) return i;
+    }
+    return -1;
+  }
+
+  function hitEdge(shape, point, tolerance) {
+    const limit = shape.closed ? shape.points.length : shape.points.length - 1;
+    for (let i = 0; i < limit; i += 1) {
+      const a = shape.points[i];
+      const b = shape.points[(i + 1) % shape.points.length];
+      if (geometry.distanceToSegment(point, a, b) <= tolerance) return i;
+    }
+    return -1;
+  }
+
+  function pointInShape(shape, point) {
+    const path = Animotion.path.pathFromShape(shape);
+    return Animotion.dom.sourceCtx.isPointInPath(path, point.x, point.y);
+  }
+
+  function beginShapeEdit(point) {
+    const tolerance = Animotion.config.hitTolerancePx / (state.sourceView?.scale || 1);
+    if (state.selection && beginSelectionEdit(point, tolerance)) return true;
+    return beginPartEdit(point, tolerance);
+  }
+
+  function beginSelectionEdit(point, tolerance) {
+    const hit = hitShape(state.selection, point, tolerance);
+    if (!hit) return false;
+    const index = insertPointForEdge(state.selection.points, hit, point);
+    state.drag = {
+      kind: dragKind.editSelection,
+      mode: hit.mode === "edge" ? "vertex" : hit.mode,
+      index,
+      start: point,
+      originalPoints: geometry.clonePoints(state.selection.points),
+    };
+    return true;
+  }
+
+  function beginPartEdit(point, tolerance) {
+    for (const part of [...state.parts].sort((a, b) => b.order - a.order)) {
+      const shape = geometry.absoluteShapeFromPart(part);
+      const hit = hitShape(shape, point, tolerance);
+      if (!hit) continue;
+      state.selectedPartId = part.id;
+      const index = insertPointForEdge(shape.points, hit, point);
+      if (hit.mode === "edge") Animotion.parts.applyShapeToPart(part, shape);
+      state.drag = editPartDrag(part, point, hit, index);
+      Animotion.ui.refreshUi();
+      return true;
+    }
+    return false;
+  }
+
+  function insertPointForEdge(points, hit, point) {
+    if (hit.mode !== "edge") return hit.index;
+    points.splice(hit.index + 1, 0, point);
+    return hit.index + 1;
+  }
+
+  function editPartDrag(part, point, hit, index) {
+    return {
+      kind: dragKind.editPart,
+      partId: part.id,
+      mode: hit.mode === "edge" ? "vertex" : hit.mode,
+      index,
+      start: point,
+      originalPoints: geometry.clonePoints(geometry.absoluteShapeFromPart(part).points),
+      shapeKind: part.mask?.kind || shapeKind.rect,
+    };
+  }
+
+  function applyDragEdit(point) {
+    if (!state.drag) return;
+    const points = editedPoints(point);
+    if (state.drag.kind === dragKind.editSelection) {
+      state.selection.points = points;
+      state.selection = geometry.normalizeShape(state.selection, Animotion.imageBounds());
+    }
+    if (state.drag.kind === dragKind.editPart) {
+      const part = state.parts.find((candidate) => candidate.id === state.drag.partId);
+      if (part) Animotion.parts.applyShapeToPart(part, { kind: state.drag.shapeKind, closed: true, points });
+    }
+    Animotion.ui.refreshUi();
+  }
+
+  function editedPoints(point) {
+    if (state.drag.mode === "vertex") return replaceDraggedVertex(point);
+    if (state.drag.mode === "move") return moveDraggedPoints(point);
+    return geometry.clonePoints(state.drag.originalPoints);
+  }
+
+  function replaceDraggedVertex(point) {
+    const points = geometry.clonePoints(state.drag.originalPoints);
+    points[state.drag.index] = point;
+    return points;
+  }
+
+  function moveDraggedPoints(point) {
+    const bounds = Animotion.imageBounds();
+    const dx = point.x - state.drag.start.x;
+    const dy = point.y - state.drag.start.y;
+    return state.drag.originalPoints.map((candidate) => ({
+      x: geometry.clamp(candidate.x + dx, 0, bounds.width),
+      y: geometry.clamp(candidate.y + dy, 0, bounds.height),
+    }));
+  }
+
+  Animotion.editor = { beginShapeEdit, applyDragEdit, hitShape };
+}

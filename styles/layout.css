@@ -1,0 +1,104 @@
+.app-shell {
+  display: grid;
+  grid-template-columns: 300px minmax(420px, 1fr) 310px;
+  gap: 14px;
+  min-height: 100vh;
+  padding: 14px;
+}
+
+.panel,
+.stage-card {
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 250, 240, 0.96);
+  box-shadow: var(--shadow);
+}
+
+.panel {
+  overflow: auto;
+  padding: 16px;
+}
+
+.brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding-bottom: 18px;
+  border-bottom: 2px solid var(--line);
+}
+
+.mark {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 2px solid var(--line);
+  border-radius: 50%;
+  background: var(--accent-3);
+  font-family: Georgia, serif;
+  font-size: 28px;
+  font-weight: 700;
+  box-shadow: 3px 3px 0 var(--line);
+}
+
+.control-group {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.workspace {
+  display: grid;
+  grid-template-rows: minmax(260px, 42vh) minmax(330px, 1fr);
+  gap: 14px;
+  min-width: 0;
+}
+
+.stage-card {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.stage-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 2px solid var(--line);
+  background: #fffdf5;
+}
+
+.stage-card header span {
+  flex: 0 0 auto;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: var(--accent-3);
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background:
+    linear-gradient(45deg, #ddd 25%, transparent 25%),
+    linear-gradient(-45deg, #ddd 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ddd 75%),
+    linear-gradient(-45deg, transparent 75%, #ddd 75%);
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  background-size: 20px 20px;
+}
+
+@media (max-width: 1080px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace {
+    grid-template-rows: 360px 460px;
+  }
+}

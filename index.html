@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Animotion MVP</title>
+    <link rel="stylesheet" href="styles/base.css" />
+    <link rel="stylesheet" href="styles/layout.css" />
+    <link rel="stylesheet" href="styles/components.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="panel left-panel">
+        <div class="brand">
+          <span class="mark">A</span>
+          <div>
+            <h1>Animotion</h1>
+            <p>2D motion comic rig MVP</p>
+          </div>
+        </div>
+
+        <section class="control-group">
+          <h2>컷 입력</h2>
+          <label class="file-drop">
+            <input id="imageInput" type="file" accept="image/*" />
+            <span>웹툰 컷 업로드</span>
+            <small>PNG, JPG, WebP</small>
+          </label>
+          <label class="file-drop secondary">
+            <input id="nextImageInput" type="file" accept="image/*" />
+            <span>두 번째 컷 선택</span>
+            <small>선택 사항: 비교용 고스트</small>
+          </label>
+          <button id="loadLookismPreset" type="button" class="preset-button">Lookism 컷신 프리셋 불러오기</button>
+          <p id="lookismPresetStatus" class="hint">lookism 폴더의 PNG 2개와 파츠를 사용해 0.5초 컷신을 즉시 재현합니다.</p>
+        </section>
+
+        <section class="control-group">
+          <h2>파츠 생성</h2>
+          <label>
+            선택 도구
+            <select id="selectionTool">
+              <option value="edit">영역선 편집</option>
+              <option value="rect">사각 선택</option>
+              <option value="ellipse">타원 선택</option>
+              <option value="lasso">자유 라쏘</option>
+              <option value="polygon">폴리곤 선택</option>
+            </select>
+          </label>
+          <label>
+            파츠 타입
+            <select id="partType">
+              <option value="head">머리</option>
+              <option value="body">몸통</option>
+              <option value="spine">스파인</option>
+              <option value="arm">팔</option>
+              <option value="leg">다리</option>
+              <option value="hair">머리카락</option>
+              <option value="eye">눈</option>
+              <option value="mouth">입</option>
+              <option value="prop">소품</option>
+            </select>
+          </label>
+          <label>
+            파츠 이름
+            <input id="partName" type="text" placeholder="예: head_01" />
+          </label>
+          <button id="capturePart" class="primary" disabled>선택 영역을 파츠로 추가</button>
+          <button id="applyOutline" disabled>선택 파츠에 영역선 적용</button>
+          <div class="button-row">
+            <button id="finishSelection" disabled>영역선 닫기</button>
+            <button id="clearSelection" disabled>영역선 지우기</button>
+          </div>
+          <label>
+            원본 컷 확대
+            <input id="sourceZoom" type="range" min="0.5" max="6" step="0.05" value="1" />
+          </label>
+          <div class="zoom-row">
+            <button id="zoomOut" type="button">-</button>
+            <button id="zoomReset" type="button">100%</button>
+            <button id="zoomIn" type="button">+</button>
+          </div>
+          <button id="guideParts" disabled>기본 가이드 박스 만들기</button>
+          <p class="hint">사각/타원은 드래그, 자유 라쏘는 그리기, 폴리곤은 클릭으로 점을 찍습니다. 휠로 확대/축소하고 Space 또는 마우스 가운데 버튼 드래그로 원본 컷을 이동합니다.</p>
+        </section>
+
+        <section class="control-group">
+          <h2>모션</h2>
+          <label>
+            템플릿
+            <select id="motionTemplate">
+              <option value="breathe">호흡</option>
+              <option value="nod">고개 끄덕임</option>
+              <option value="talk">말하기</option>
+              <option value="look">시선 이동</option>
+              <option value="panel-drift">컷 안 카메라 드리프트</option>
+              <option value="custom">직접 만든 모션</option>
+              <option value="keyframes">키프레임 모션</option>
+              <option value="cutscene">웹툰 컷신</option>
+            </select>
+          </label>
+          <label>
+            프레임 <span id="frameLabel">1</span>
+            <input id="currentFrame" type="range" min="1" max="120" step="1" value="1" />
+          </label>
+          <div class="button-row">
+            <button id="insertKeyframe" disabled>키프레임 삽입</button>
+            <button id="deleteKeyframe" disabled>키프레임 삭제</button>
+          </div>
+          <button id="autoAnticipation" type="button" disabled>선택 파츠 기준 컷신 초안 생성</button>
+          <p id="keyframeStatus" class="hint">선택 파츠의 키프레임이 여기에 표시됩니다.</p>
+          <label>
+            강도
+            <input id="motionStrength" type="range" min="0" max="2" step="0.05" value="1" />
+          </label>
+          <label>
+            배경 불투명도
+            <input id="backgroundOpacity" type="range" min="0" max="1" step="0.05" value="0.45" />
+          </label>
+          <label class="check-row">
+            <input id="separateCharacter" type="checkbox" />
+            캐릭터/배경 분리
+          </label>
+          <label>
+            A컷 크기
+            <input id="sourcePanelScale" type="range" min="0.5" max="1.8" step="0.01" value="1" />
+          </label>
+          <label>
+            A컷 X
+            <input id="sourcePanelX" type="range" min="-400" max="400" step="1" value="0" />
+          </label>
+          <label>
+            A컷 Y
+            <input id="sourcePanelY" type="range" min="-400" max="400" step="1" value="0" />
+          </label>
+          <label>
+            B컷 크기
+            <input id="impactPanelScale" type="range" min="0.5" max="1.8" step="0.01" value="1" />
+          </label>
+          <label>
+            B컷 X
+            <input id="impactPanelX" type="range" min="-400" max="400" step="1" value="0" />
+          </label>
+          <label>
+            B컷 Y
+            <input id="impactPanelY" type="range" min="-400" max="400" step="1" value="0" />
+          </label>
+          <div class="button-row">
+            <button id="playPause">일시정지</button>
+            <button id="exportWebm" disabled>WebM 내보내기</button>
+          </div>
+        </section>
+      </aside>
+
+      <section class="workspace">
+        <div class="stage-card source-stage">
+          <header>
+            <div>
+              <h2>원본 컷</h2>
+              <p>파츠로 떼어낼 영역을 드래그</p>
+            </div>
+            <span id="sourceStatus">이미지 없음</span>
+          </header>
+          <canvas id="sourceCanvas"></canvas>
+        </div>
+
+        <div class="stage-card preview-stage">
+          <header>
+            <div>
+              <h2>리깅 미리보기</h2>
+              <p>선택 파츠의 피벗과 관절을 드래그</p>
+            </div>
+            <span id="previewStatus">0 parts</span>
+          </header>
+          <canvas id="previewCanvas"></canvas>
+        </div>
+      </section>
+
+      <aside class="panel inspector">
+        <section class="control-group">
+          <h2>파츠 목록</h2>
+          <div id="partsList" class="parts-list empty">아직 파츠가 없습니다.</div>
+        </section>
+
+        <section class="control-group">
+          <h2>리깅 속성</h2>
+          <div id="emptyInspector" class="empty-state">파츠를 선택하면 피벗, 부모, 레이어를 편집할 수 있습니다.</div>
+          <div id="partInspector" class="inspector-form hidden">
+            <label>
+              이름
+              <input id="editName" type="text" />
+            </label>
+            <label>
+              타입
+              <select id="editType">
+                <option value="head">머리</option>
+                <option value="body">몸통</option>
+                <option value="spine">스파인</option>
+                <option value="arm">팔</option>
+                <option value="leg">다리</option>
+                <option value="hair">머리카락</option>
+                <option value="eye">눈</option>
+                <option value="mouth">입</option>
+                <option value="prop">소품</option>
+              </select>
+            </label>
+            <label>
+              부모 파츠
+              <select id="editParent"></select>
+            </label>
+            <label>
+              미리보기 클릭 대상
+              <select id="pivotEditTarget">
+                <option value="anchor">몸 고정 피벗</option>
+                <option value="joint">관절 피벗</option>
+              </select>
+            </label>
+            <label>
+              피벗 X
+              <input id="pivotX" type="range" min="0" max="1" step="0.01" />
+            </label>
+            <label>
+              피벗 Y
+              <input id="pivotY" type="range" min="0" max="1" step="0.01" />
+            </label>
+            <label>
+              관절 X
+              <input id="jointX" type="range" min="0" max="1" step="0.01" />
+            </label>
+            <label>
+              관절 Y
+              <input id="jointY" type="range" min="0" max="1" step="0.01" />
+            </label>
+            <label>
+              레이어
+              <input id="editOrder" type="number" step="1" />
+            </label>
+            <label>
+              불투명도
+              <input id="editAlpha" type="range" min="0" max="1" step="0.05" />
+            </label>
+            <label class="check-row">
+              <input id="editHidden" type="checkbox" />
+              숨기기
+            </label>
+            <h2>직접 만든 모션</h2>
+            <label>
+              좌우 이동
+              <input id="motionX" type="range" min="-40" max="40" step="1" />
+            </label>
+            <label>
+              상하 이동
+              <input id="motionY" type="range" min="-40" max="40" step="1" />
+            </label>
+            <label>
+              회전
+              <input id="motionRotate" type="range" min="-30" max="30" step="0.5" />
+            </label>
+            <label>
+              세로 스케일
+              <input id="motionScaleY" type="range" min="-0.4" max="0.4" step="0.01" />
+            </label>
+            <label>
+              관절 이동 X
+              <input id="motionJointX" type="range" min="-80" max="80" step="1" />
+            </label>
+            <label>
+              관절 이동 Y
+              <input id="motionJointY" type="range" min="-80" max="80" step="1" />
+            </label>
+            <label>
+              타이밍
+              <input id="motionPhase" type="range" min="0" max="1" step="0.01" />
+            </label>
+            <button id="resetPartMotion" type="button">선택 파츠 모션 초기화</button>
+            <button id="deletePart" class="danger">선택 파츠 삭제</button>
+          </div>
+        </section>
+
+        <section class="control-group">
+          <h2>프로젝트</h2>
+          <div class="button-row">
+            <button id="saveRig" disabled>JSON 저장</button>
+            <label class="import-rig">
+              <input id="loadRig" type="file" accept="application/json" />
+              JSON 불러오기
+            </label>
+          </div>
+          <p class="hint">리그 JSON은 파츠 좌표와 피벗만 저장합니다. 같은 원본 이미지를 먼저 업로드한 뒤 불러오세요.</p>
+        </section>
+      </aside>
+    </main>
+
+    <script src="scripts/bootstrap.js"></script>
+  </body>
+</html>
