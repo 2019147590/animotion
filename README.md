@@ -43,6 +43,7 @@ node tests/geometry.test.js
 
 ## 개발 메모
 
+현재 기획/진행상황/다음 작업 인계 문서는 [HANDOFF.md](HANDOFF.md)에 정리되어 있습니다.
 리팩토링 기준과 다음 정리 방향은 [REFACTORING.md](REFACTORING.md)에 정리되어 있습니다.
 두 웹툰 컷을 반자동 컷신으로 연결하는 방향은 [CUTSCENE_BRIDGE_PLAN.md](CUTSCENE_BRIDGE_PLAN.md)에 정리되어 있습니다.
 
