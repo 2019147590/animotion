@@ -1,0 +1,22 @@
+[project]
+name = "ai-rig-server"
+version = "0.1.0"
+description = "AI-assisted webtoon character rig generation backend for Animotion."
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+api = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+]
+dev = [
+  "pytest>=8",
+]
+
+[tool.uv]
+package = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+

@@ -94,7 +94,7 @@
     if (!file || !state.image) return;
     try {
       const payload = JSON.parse(await file.text());
-      state.parts = payload.parts.map(deserializeRigPart);
+      state.parts = rigPartsFromPayload(payload).map(deserializeRigPart);
       state.separateCharacter = Boolean(payload.separateCharacter);
       state.cutsceneBridge = payload.cutsceneBridge ? Animotion.cutsceneModel.normalizeBridge(payload.cutsceneBridge) : null;
       state.selectedPartId = state.parts[0]?.id || null;
@@ -102,6 +102,33 @@
     } catch (error) {
       alert(`리그 JSON을 불러오지 못했습니다: ${error.message}`);
     }
+  }
+
+  function rigPartsFromPayload(payload) {
+    if (Array.isArray(payload.parts)) return payload.parts;
+    if (Number(payload.version) === 3) {
+      const parts = payload.characters?.[0]?.parts;
+      if (Array.isArray(parts)) return parts.map(normalizeAiRigPart);
+    }
+    throw new Error("지원하지 않는 리그 JSON 형식입니다.");
+  }
+
+  function normalizeAiRigPart(part) {
+    return {
+      ...part,
+      type: normalizePartType(part.type),
+      mask: inlineMask(part.mask, part.rect),
+      customMotion: Animotion.motionModel.defaultCustomMotion(),
+    };
+  }
+
+  function normalizePartType(type) {
+    return Animotion.partTypeLabels[type] ? type : "prop";
+  }
+
+  function inlineMask(mask, rect) {
+    if (mask?.points) return mask;
+    return Animotion.geometry.shapeToMask(Animotion.geometry.rectShape(rect), rect);
   }
 
   function downloadUrl(url, filename) {
@@ -114,5 +141,5 @@
     setTimeout(() => URL.revokeObjectURL(url), 500);
   }
 
-  Animotion.io = { handleImageUpload, handleNextImageUpload, createGuideParts, saveRig, loadRig, downloadUrl };
+  Animotion.io = { handleImageUpload, handleNextImageUpload, createGuideParts, saveRig, loadRig, rigPartsFromPayload, downloadUrl };
 }
