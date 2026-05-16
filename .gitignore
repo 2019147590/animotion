@@ -7,6 +7,9 @@ desktop.ini
 *.log
 *.tmp
 *.bak
+.env
+.env.*
+!.env.example
 
 # Dependencies / package managers
 node_modules/
@@ -29,4 +32,3 @@ checkpoints/
 *.webm
 *.mp4
 *.psd
-
