@@ -66,6 +66,7 @@
       separateCharacter: state.separateCharacter,
       cutsceneBridge: state.cutsceneBridge ? Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge) : null,
       panelSetup: Animotion.panelEditor?.ensureSetup?.() || null,
+      motionPlan: Animotion.motionPlanner?.normalizePlan?.(state.motionPlan) || null,
       parts: state.parts.map(({ canvas, ...part }) => part),
     };
   }
@@ -100,6 +101,7 @@
       state.parts = rigPartsFromPayload(payload).map(deserializeRigPart);
       state.separateCharacter = Boolean(payload.separateCharacter);
       restorePanelSetup(payload.panelSetup);
+      state.motionPlan = Animotion.motionPlanner?.normalizePlan?.(payload.motionPlan) || state.motionPlan;
       state.cutsceneBridge = payload.cutsceneBridge ? Animotion.cutsceneModel.normalizeBridge(payload.cutsceneBridge) : null;
       state.selectedPartId = state.parts[0]?.id || null;
       Animotion.ui.refreshUi();

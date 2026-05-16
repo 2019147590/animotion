@@ -125,3 +125,16 @@
   border-top: 2px solid var(--line);
   padding-top: 12px;
 }
+
+.motion-planner-tools {
+  display: grid;
+  gap: 10px;
+  border: 2px solid var(--line);
+  border-radius: 7px;
+  background: #fff8df;
+  padding: 10px;
+}
+
+button.active {
+  background: var(--accent-3);
+}

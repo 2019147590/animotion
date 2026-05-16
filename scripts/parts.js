@@ -111,6 +111,7 @@
       source: Animotion.panelEditor?.normalizePanel?.() || { crop: null, characterMask: null },
       impact: Animotion.panelEditor?.normalizePanel?.() || { crop: null, characterMask: null },
     };
+    state.motionPlan = Animotion.motionPlanner?.normalizePlan?.() || { template: "kick", target: null, targetMode: false };
   }
 
   Animotion.parts = { createPartFromShape, createPart, applyShapeToPart, selectedPart, resetForNewImage, updatePartCanvas };

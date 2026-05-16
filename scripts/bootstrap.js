@@ -10,6 +10,7 @@
     "motion-model",
     "joint-coordinates",
     "cutscene-model",
+    "motion-planner",
     "pose-assist",
     "timeline",
     "parts",

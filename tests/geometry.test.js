@@ -8,6 +8,7 @@ const jointCoordinates = require("../scripts/joint-coordinates.js");
 const cutsceneModel = require("../scripts/cutscene-model.js");
 const poseAssist = require("../scripts/pose-assist.js");
 const timeline = require("../scripts/timeline.js");
+const motionPlanner = require("../scripts/motion-planner.js");
 
 function test(name, fn) {
   try {
@@ -193,4 +194,18 @@ test("cutscene bridge stores generated joint action beats", () => {
   const bridge = cutsceneModel.createBridge(parts, "leg");
   assert.equal(bridge.jointAction.source, "part-pivots-v1");
   assert.equal(bridge.jointAction.beats.some((beat) => beat.pose.rFoot), true);
+});
+
+test("motion planner creates target-driven beat poses and active part tracks", () => {
+  const parts = [
+    { id: "body", type: "body", rect: { x: 40, y: 20, w: 20, h: 50 }, pivot: { x: 10, y: 25 }, joint: { x: 10, y: 40 } },
+    { id: "leg", type: "leg", rect: { x: 67, y: 60, w: 18, h: 45 }, pivot: { x: 2, y: 6 }, joint: { x: 16, y: 40 } },
+  ];
+  const bridge = cutsceneModel.normalizeBridge({ impactFrame: 15 });
+  const plan = motionPlanner.createPlan(parts, "leg", bridge, { template: "kick", target: { x: 140, y: 40 } });
+  const impact = plan.jointAction.beats.find((beat) => beat.id === "impact");
+  const legTrack = plan.partTracks.find((track) => track.partId === "leg");
+  assert.equal(plan.jointAction.focusKey, "rFoot");
+  assert.deepEqual(impact.pose.rFoot, [140, 40]);
+  assert.equal(legTrack.keyframes.some((keyframe) => keyframe.pose.jointX !== 0), true);
 });

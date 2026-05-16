@@ -202,6 +202,7 @@
     Animotion.cutsceneEffects.drawSpeedLines(previewCtx, size, cutscene.bridge.effectDirection, cutscene.values.speedPower);
     Animotion.cutsceneEffects.drawInkField(previewCtx, size, cutscene.bridge.effectDirection, cutscene.values.speedPower);
     Animotion.cutsceneEffects.drawTrajectory(previewCtx, trajectoryPoints(cutscene), view, cutscene.values.n, sourceTransition(cutscene));
+    Animotion.motionPlanner?.drawOverlay?.(previewCtx, view, cutscene);
   }
 
   function trajectoryPoints(cutscene) {

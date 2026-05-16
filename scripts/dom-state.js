@@ -42,6 +42,7 @@
       source: { crop: null, characterMask: null },
       impact: { crop: null, characterMask: null },
     },
+    motionPlan: { template: "kick", target: null, targetMode: false },
     separateCharacter: false,
     exporting: false,
     sourceView: null,

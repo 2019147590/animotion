@@ -25,6 +25,7 @@
     els.zoomReset.textContent = `${Math.round(state.sourceZoom * 100)}%`;
     els.separateCharacter.checked = state.separateCharacter;
     Animotion.panelEditor?.refreshControls?.();
+    Animotion.motionPlanner?.refreshControls?.();
     renderLookismPresetStatus();
     renderPanelScaleControls();
     renderKeyframeStatus();
