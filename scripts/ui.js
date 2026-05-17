@@ -26,6 +26,7 @@
     els.separateCharacter.checked = state.separateCharacter;
     Animotion.panelEditor?.refreshControls?.();
     Animotion.motionPlanner?.refreshControls?.();
+    Animotion.motionAnchorPicker?.refreshControls?.();
     Animotion.cutsceneOptions?.refreshControls?.();
     renderLookismPresetStatus();
     renderPanelScaleControls();

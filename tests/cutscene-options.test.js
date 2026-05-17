@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 
 require("../scripts/motion-model.js");
 require("../scripts/pose-assist.js");
@@ -7,6 +8,7 @@ require("../scripts/motion-anchors.js");
 const cutsceneModel = require("../scripts/cutscene-model.js");
 const motionPlanner = require("../scripts/motion-planner.js");
 const trajectoryEditor = require("../scripts/motion-trajectory-editor.js");
+const anchorPicker = require("../scripts/motion-anchor-picker.js");
 
 function test(name, fn) {
   try {
@@ -90,4 +92,20 @@ test("edited action anchors regenerate beat poses", () => {
     anchors: plan.jointAction.anchors,
   });
   assert.deepEqual(regenerated.jointAction.beats.find((beat) => beat.id === "impact").pose.chest, [82, 24]);
+});
+
+test("anchor picker updates a selected anchor as a locked user point", () => {
+  const updated = anchorPicker.updateAnchorPoint([
+    { key: "rFoot", role: "primary", point: { x: 90, y: 70 }, locked: true },
+    { key: "chest", role: "balance", point: { x: 52, y: 29 }, locked: false },
+  ], "chest", { x: 84.4, y: 24.2 });
+  assert.deepEqual(updated.find((anchor) => anchor.key === "chest").point, { x: 84, y: 24 });
+  assert.equal(updated.find((anchor) => anchor.key === "chest").locked, true);
+  assert.deepEqual(updated.find((anchor) => anchor.key === "rFoot").point, { x: 90, y: 70 });
+});
+
+test("anchor picker is loaded after planner before trajectory editor", () => {
+  const bootstrap = fs.readFileSync("scripts/bootstrap.js", "utf8");
+  assert.equal(bootstrap.indexOf('"motion-planner"') < bootstrap.indexOf('"motion-anchor-picker"'), true);
+  assert.equal(bootstrap.indexOf('"motion-anchor-picker"') < bootstrap.indexOf('"motion-trajectory-editor"'), true);
 });

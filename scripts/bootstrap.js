@@ -12,6 +12,7 @@
     "cutscene-model",
     "motion-anchors",
     "motion-planner",
+    "motion-anchor-picker",
     "motion-trajectory-editor",
     "pose-assist",
     "timeline",
