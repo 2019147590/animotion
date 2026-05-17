@@ -3,42 +3,17 @@
   const Animotion = global.Animotion || (global.Animotion = {});
 
   const TEMPLATES = {
-    kick: {
-      label: "킥",
-      beats: [
-        ["ready", 0, 0, 0, 0],
-        ["compress", 0.24, -0.16, 0.08, 0.2],
-        ["chamber", 0.56, 0.1, -0.12, 0.48],
-        ["extend", 0.82, 0.58, -0.04, 0.82],
-        ["impact", 1, 0, 0, 1],
-      ],
-    },
-    punch: {
-      label: "펀치",
-      beats: [
-        ["guard", 0, 0, 0, 0],
-        ["windup", 0.25, -0.2, 0.04, 0.15],
-        ["drive", 0.58, 0.24, -0.02, 0.58],
-        ["extension", 0.84, 0.75, 0, 0.86],
-        ["impact", 1, 0, 0, 1],
-      ],
-    },
-    dash: {
-      label: "돌진",
-      beats: [
-        ["ready", 0, 0, 0, 0],
-        ["lean", 0.28, -0.08, 0.04, 0.2],
-        ["launch", 0.62, 0.45, -0.08, 0.58],
-        ["snap", 0.86, 0.82, -0.02, 0.86],
-        ["arrive", 1, 0, 0, 1],
-      ],
-    },
+    kick: { label: "킥", beats: [["ready", 0, 0, 0, 0], ["compress", 0.24, -0.16, 0.08, 0.2], ["chamber", 0.56, 0.1, -0.12, 0.48], ["extend", 0.82, 0.58, -0.04, 0.82], ["impact", 1, 0, 0, 1]] },
+    punch: { label: "펀치", beats: [["guard", 0, 0, 0, 0], ["windup", 0.25, -0.2, 0.04, 0.15], ["drive", 0.58, 0.24, -0.02, 0.58], ["extension", 0.84, 0.75, 0, 0.86], ["impact", 1, 0, 0, 1]] },
+    dash: { label: "돌진", beats: [["ready", 0, 0, 0, 0], ["lean", 0.28, -0.08, 0.04, 0.2], ["launch", 0.62, 0.45, -0.08, 0.58], ["snap", 0.86, 0.82, -0.02, 0.86], ["arrive", 1, 0, 0, 1]] },
   };
   function normalizePlan(plan = {}) {
     return {
       template: TEMPLATES[plan.template] ? plan.template : "kick",
       target: normalizeTarget(plan.target),
+      anchors: Animotion.motionAnchors?.normalizeAnchors?.(plan.anchors) || [],
       targetMode: Boolean(plan.targetMode),
+      selectedBeatId: plan.selectedBeatId ? String(plan.selectedBeatId) : null,
     };
   }
   function normalizeTarget(target) {
@@ -95,17 +70,22 @@
   function toggleTargetMode() {
     const plan = currentPlan();
     plan.targetMode = !plan.targetMode;
+    if (plan.targetMode && Animotion.state.running) {
+      Object.assign(Animotion.state, { pausedTime: (performance.now() - Animotion.state.startTime) / 1000, running: false });
+      Animotion.dom.els.playPause.textContent = "재생";
+    }
     refresh();
   }
   function onPreviewPointerDown(event) {
     const plan = currentPlan();
     if (!plan.targetMode || !Animotion.state.previewView || !Animotion.state.image) return;
-    const rect = Animotion.dom.previewCanvas.getBoundingClientRect();
-    const view = Animotion.state.previewView;
+    const point = previewPoint(event);
+    const bounds = Animotion.panelEditor?.imageBounds?.("source") || Animotion.imageBounds();
     plan.target = {
-      x: Math.round((event.clientX - rect.left - view.x) / view.scale),
-      y: Math.round((event.clientY - rect.top - view.y) / view.scale),
+      x: Math.round(Animotion.geometry.clamp(point.x, 0, bounds.width)),
+      y: Math.round(Animotion.geometry.clamp(point.y, 0, bounds.height)),
     };
+    plan.anchors = [];
     plan.targetMode = false;
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -122,6 +102,7 @@
     const result = createPlan(Animotion.state.parts, part.id, bridge, currentPlan());
     bridge.jointAction = result.jointAction;
     Animotion.state.cutsceneBridge = bridge;
+    Animotion.state.motionPlan = { ...currentPlan(), target: result.target, anchors: result.anchors };
     applyPartTracks(result);
     Animotion.dom.els.motionTemplate.value = "cutscene";
     Animotion.timelineControls.setCurrentFrame(bridge.impactFrame);
@@ -132,19 +113,22 @@
     const primary = parts.find((part) => part.id === primaryId) || parts[0];
     const active = activeKeys(primary, parts);
     const direction = Animotion.cutsceneModel.inferEffectDirection(parts, primaryId);
-    const target = plan.target || autoTarget(base[active.end], direction, primary);
-    const beats = templateBeats(plan.template, bridge).map((spec) => poseBeat(spec, base, active, target, direction));
+    const target = plan.target || Animotion.motionAnchors?.anchorPoint?.(plan.anchors, active.end) || autoTarget(base[active.end], direction, primary);
+    const anchors = Animotion.motionAnchors?.anchorsFromPlan?.(plan, parts, primary, base, active, direction, target) || [];
+    const beats = templateBeats(plan.template, bridge).map((spec) => poseBeat(spec, base, active, target, direction, anchors));
     return {
       target,
+      anchors,
       active,
-      jointAction: { source: `motion-planner-${plan.template}-v1`, focusKey: active.end, beats },
-      partTracks: tracksForParts(parts, primary, beats, base, active),
+      jointAction: { source: `motion-planner-${plan.template}-anchors-v1`, focusKey: active.end, anchors, beats },
+      partTracks: tracksForParts(parts, primary, beats, base, active, bridge),
     };
   }
   function activeKeys(primary, parts) {
     const side = Animotion.poseAssist?.actionSide?.(primary, parts) < 0 ? "l" : "r";
     if (primary?.type === "arm") return { root: `${side}Shoulder`, mid: `${side}Elbow`, end: `${side}Hand` };
     if (primary?.type === "leg") return { root: "hip", mid: `${side}Knee`, end: `${side}Foot` };
+    if (isBodyPrimary(primary)) return { root: "hip", mid: "chest", end: "chest", motion: "translate" };
     return { root: "chest", mid: "head", end: "head" };
   }
   function templateBeats(template, bridge) {
@@ -157,15 +141,20 @@
       reach,
     }));
   }
-  function poseBeat(spec, base, active, target, direction) {
-    const rootShift = { x: direction.x * spec.reach * 18, y: direction.y * spec.reach * 16 + spec.lift * 80 };
-    const pose = shiftBody(base, rootShift, spec.recoil, direction);
+  function poseBeat(spec, base, active, target, direction, anchors) {
+    const pose = shiftBody(base, { x: 0, y: 0 }, spec.recoil, direction);
+    applyAnchorPose(pose, base, anchors, spec.reach, [active.end, active.mid]);
     const root = pointFromArray(pose[active.root] || pose.hip);
     const startEnd = pointFromArray(base[active.end] || base.head);
-    const end = lerpPoint(startEnd, target, spec.reach);
+    const end = lerpPoint(startEnd, Animotion.motionAnchors?.anchorPoint?.(anchors, active.end) || target, spec.reach);
     end.x += direction.x * spec.recoil * 80;
     end.y += spec.lift * 40;
-    const mid = solveMid(root, end, base, active, spec.reach);
+    if (active.motion === "translate") {
+      pose[active.end] = rounded(end);
+      return { id: spec.id, at: spec.at, pose };
+    }
+    const midTarget = Animotion.motionAnchors?.anchorPoint?.(anchors, active.mid);
+    const mid = midTarget ? lerpPoint(pointFromArray(base[active.mid]), midTarget, spec.reach) : solveMid(root, end, base, active, spec.reach);
     pose[active.mid] = rounded(mid);
     pose[active.end] = rounded(end);
     return { id: spec.id, at: spec.at, pose };
@@ -178,7 +167,12 @@
     }
     return pose;
   }
-
+  function applyAnchorPose(pose, base, anchors, reach, excludedKeys = []) {
+    for (const anchor of anchors || []) {
+      if (excludedKeys.includes(anchor.key) || !base[anchor.key]) continue;
+      pose[anchor.key] = rounded(lerpPoint(pointFromArray(base[anchor.key]), anchor.point, reach));
+    }
+  }
   function solveMid(root, end, base, active, bendScale) {
     const baseRoot = pointFromArray(base[active.root] || base.hip);
     const baseMid = pointFromArray(base[active.mid] || base.head);
@@ -192,21 +186,35 @@
     return { x: root.x + (end.x - root.x) * along + normal.x * height, y: root.y + (end.y - root.y) * along + normal.y * height };
   }
 
-  function tracksForParts(parts, primary, beats, base, active) {
-    return parts.map((part) => ({ partId: part.id, keyframes: beats.map((beat) => trackKeyframe(part, primary, beat, base, active)) }));
+  function tracksForParts(parts, primary, beats, base, active, bridge) {
+    return parts.map((part) => ({ partId: part.id, keyframes: beats.map((beat) => trackKeyframe(part, primary, beat, base, active, bridge)) }));
   }
 
-  function trackKeyframe(part, primary, beat, base, active) {
+  function tracksForJointAction(parts, primaryId, action) {
+    const base = Animotion.jointCoordinates.inferJointPose(parts);
+    const primary = parts.find((part) => part.id === primaryId) || parts[0];
+    const active = activeKeys(primary, parts);
+    const bridge = action?.jointAction ? action : { jointAction: action, bodyAssistEnabled: true };
+    return tracksForParts(parts, primary, bridge.jointAction?.beats || [], base, active, bridge);
+  }
+
+  function trackKeyframe(part, primary, beat, base, active, bridge) {
     const pose = Animotion.motionModel.defaultCustomMotion();
     if (part.id === primary.id) {
-      pose.jointX = beat.pose[active.end][0] - base[active.end][0];
-      pose.jointY = beat.pose[active.end][1] - base[active.end][1];
+      if (active.motion === "translate") {
+        pose.x = beat.pose[active.end][0] - base[active.end][0];
+        pose.y = beat.pose[active.end][1] - base[active.end][1];
+      } else {
+        pose.jointX = beat.pose[active.end][0] - base[active.end][0];
+        pose.jointY = beat.pose[active.end][1] - base[active.end][1];
+      }
+      return { frame: beat.at, pose };
     }
-    if (part.type === "body" || part.type === "spine") {
+    if (bridge.bodyAssistEnabled !== false && !isBodyPrimary(primary) && (part.type === "body" || part.type === "spine")) {
       pose.x = beat.pose.hip[0] - base.hip[0];
       pose.y = beat.pose.hip[1] - base.hip[1];
     }
-    if (part.type === "head") {
+    if (bridge.bodyAssistEnabled !== false && !isBodyPrimary(primary) && part.type === "head") {
       pose.x = (beat.pose.head[0] - base.head[0]) * 0.7;
       pose.y = (beat.pose.head[1] - base.head[1]) * 0.7;
     }
@@ -220,39 +228,21 @@
     }
   }
 
-  function drawOverlay(ctx, view, cutscene) {
-    const action = cutscene.bridge?.jointAction;
-    const key = action?.focusKey || "hip";
-    const points = (action?.beats || []).map((beat) => beat.pose[key]).filter(Boolean);
-    if (points.length < 2) return;
-    Animotion.cutsceneEffects.drawTrajectory(ctx, points, view, cutscene.values.n, { x: cutscene.values.sourceX, y: cutscene.values.sourceY });
-    drawTarget(ctx, view);
-  }
-
-  function drawTarget(ctx, view) {
-    const target = currentPlan().target;
-    if (!target) return;
-    ctx.save();
-    ctx.strokeStyle = "#e1462e";
-    ctx.fillStyle = "#fffaf0";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(view.x + target.x * view.scale, view.y + target.y * view.scale, 8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-  }
-
   function statusText(plan, part) {
     if (!part) return "파츠를 선택하면 목표점 기반 궤적을 만들 수 있습니다.";
     const target = plan.target ? `목표 ${plan.target.x}, ${plan.target.y}` : "목표점 없음";
-    return `${TEMPLATES[plan.template].label} · ${target}`;
+    const selected = plan.selectedBeatId ? ` · beat ${plan.selectedBeatId}` : "";
+    return `${TEMPLATES[plan.template].label} · ${target}${plan.anchors.length ? ` · anchors ${plan.anchors.length}` : ""}${selected}`;
   }
 
   function autoTarget(start, direction, primary) {
     const p = pointFromArray(start || [0, 0]);
     const distance = primary?.type === "leg" ? 170 : 120;
     return { x: Math.round(p.x + direction.x * distance), y: Math.round(p.y + direction.y * distance) };
+  }
+
+  function isBodyPrimary(part) {
+    return part?.type === "body" || part?.type === "spine";
   }
 
   function bendNormal(baseRoot, baseMid, baseEnd, root, end) {
@@ -270,6 +260,18 @@
       generate: document.querySelector("#generateMotionPlan"),
       status: document.querySelector("#motionPlanStatus"),
     };
+  }
+
+  function previewPoint(event) {
+    const canvas = Animotion.dom.previewCanvas;
+    const rect = canvas.getBoundingClientRect();
+    const screen = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    return Animotion.previewTransform?.screenPointToImage?.(
+      screen,
+      Animotion.state.previewView,
+      Animotion.state.previewSourceFrame,
+      Animotion.state.previewSourceTransform
+    ) || screen;
   }
 
   function pointFromArray(point) {
@@ -292,7 +294,7 @@
     Animotion.ui?.refreshUi?.();
   }
 
-  Animotion.motionPlanner = { normalizePlan, createPlan, installControls, refreshControls, drawOverlay };
+  Animotion.motionPlanner = { normalizePlan, createPlan, installControls, refreshControls, tracksForJointAction };
   installControls();
 
   if (typeof module !== "undefined") module.exports = Animotion.motionPlanner;

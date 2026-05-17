@@ -26,6 +26,7 @@
     els.separateCharacter.checked = state.separateCharacter;
     Animotion.panelEditor?.refreshControls?.();
     Animotion.motionPlanner?.refreshControls?.();
+    Animotion.cutsceneOptions?.refreshControls?.();
     renderLookismPresetStatus();
     renderPanelScaleControls();
     renderKeyframeStatus();
@@ -180,6 +181,7 @@
     els.impactPanelX.disabled = !state.nextImage;
     els.impactPanelY.disabled = !state.nextImage;
     els.impactPanelScale.disabled = !state.nextImage;
+    els.impactReferenceOpacity.disabled = !state.nextImage;
   }
 
   function currentFrameLimit() {

@@ -27,6 +27,8 @@
     const view = geometry.fitRect(state.image.naturalWidth, state.image.naturalHeight, w, h);
     state.previewView = view;
     const cutscene = cutsceneValues(now);
+    state.previewSourceFrame = Animotion.previewTransform.sourceFrame();
+    state.previewSourceTransform = sourceTransformFor(cutscene);
     previewCtx.translate(cutscene.shake, -cutscene.shake * 0.28);
     drawBackground(view, w, h, cutscene);
     drawCutsceneEffects(view, w, h, cutscene);
@@ -34,6 +36,7 @@
     const matrixCache = drawParts(view, now, cutscene);
     drawImpactLayers(view, w, h, cutscene);
     drawSelectedRigPoints(view, now, matrixCache, drawPivot);
+    Animotion.motionPlanner?.drawOverlay?.(previewCtx, view, cutscene);
     previewCtx.restore();
   }
 
@@ -41,9 +44,9 @@
     previewCtx.fillStyle = "#f7f0df";
     previewCtx.fillRect(0, 0, w, h);
     drawSourcePanel(view, cutscene, Number(els.backgroundOpacity.value));
-    if (state.nextImage && !cutscene.active) {
+    if (state.nextImage && editingLayerVisible()) {
       const bridge = Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge);
-      Animotion.cutsceneEffects.drawPanelImage(previewCtx, impactPanelImage(), view, 0.18, {
+      Animotion.cutsceneEffects.drawPanelImage(previewCtx, impactPanelImage(), view, Number(els.impactReferenceOpacity.value), {
         x: bridge.impactX,
         y: bridge.impactY,
         scale: bridge.impactScale,
@@ -53,13 +56,10 @@
   }
 
   function drawSourcePanel(view, cutscene, baseAlpha) {
-    const bridge = Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge);
-    const transform = cutscene.active
-      ? sourceTransition(cutscene)
-      : { x: bridge.sourceX, y: bridge.sourceY, scale: bridge.sourceScale };
-    const alpha = baseAlpha * (cutscene.active ? cutscene.values.sourceAlpha : 1);
+    const transform = sourceTransformFor(cutscene);
+    const alpha = baseAlpha * (cutscene.active && cutscene.bridge.sourceMotionEnabled ? cutscene.values.sourceAlpha : 1);
     const image = sourcePanelImage();
-    if (cutscene.active) drawSourcePanelGhosts(image, view, cutscene, baseAlpha);
+    if (cutscene.active && cutscene.bridge.sourceMotionEnabled) drawSourcePanelGhosts(image, view, cutscene, baseAlpha);
     Animotion.cutsceneEffects.drawPanelImage(previewCtx, image, view, alpha, transform);
   }
 
@@ -120,8 +120,7 @@
     syncTimelineFrame(t);
     const matrixCache = new Map();
     previewCtx.save();
-    previewCtx.translate(view.x, view.y);
-    previewCtx.scale(view.scale, view.scale);
+    Animotion.previewTransform.applySourceFrame(previewCtx, view, state.previewSourceFrame, state.previewSourceTransform);
     for (const part of [...state.parts].sort((a, b) => a.order - b.order)) {
       if (!part.hidden) drawPart(part, t, matrixCache, view);
     }
@@ -133,8 +132,7 @@
     if (!cutscene.active || cutscene.values.ghostAlpha <= 0.01) return;
     const t = state.running ? (now - state.startTime) / 1000 : state.pausedTime;
     previewCtx.save();
-    previewCtx.translate(view.x, view.y);
-    previewCtx.scale(view.scale, view.scale);
+    Animotion.previewTransform.applySourceFrame(previewCtx, view, state.previewSourceFrame, state.previewSourceTransform);
     for (const delay of [0.12, 0.07]) drawGhostPass(t - delay, cutscene.values.ghostAlpha);
     previewCtx.restore();
   }
@@ -160,8 +158,8 @@
     applyMatrix(previewCtx, matrix);
     previewCtx.globalAlpha = part.alpha * alpha;
     previewCtx.drawImage(part.canvas, part.rect.x, part.rect.y, part.rect.w, part.rect.h);
-    if (alpha === 1 && !state.exporting && part.id === state.selectedPartId) {
-      previewCtx.lineWidth = 2 / view.scale;
+    if (alpha === 1 && editingLayerVisible() && part.id === state.selectedPartId) {
+      previewCtx.lineWidth = 2 / sourceScale(view);
       previewCtx.strokeStyle = "#e1462e";
       previewCtx.stroke(pathFromShape(geometry.absoluteShapeFromPart(part)));
     }
@@ -170,7 +168,7 @@
 
   function drawSelectedRigPoints(view, now, matrixCache, drawPivot) {
     const part = Animotion.parts.selectedPart();
-    if (state.exporting || !part) return;
+    if (!editingLayerVisible() || !part) return;
     const t = state.running ? (now - state.startTime) / 1000 : state.pausedTime;
     const matrix = worldMatrix(part, t, matrixCache);
     drawRigPoint(part, part.pivot, matrix, view, drawPivot, "anchor");
@@ -201,12 +199,6 @@
     const size = { w, h };
     Animotion.cutsceneEffects.drawSpeedLines(previewCtx, size, cutscene.bridge.effectDirection, cutscene.values.speedPower);
     Animotion.cutsceneEffects.drawInkField(previewCtx, size, cutscene.bridge.effectDirection, cutscene.values.speedPower);
-    Animotion.cutsceneEffects.drawTrajectory(previewCtx, trajectoryPoints(cutscene), view, cutscene.values.n, sourceTransition(cutscene));
-    Animotion.motionPlanner?.drawOverlay?.(previewCtx, view, cutscene);
-  }
-
-  function trajectoryPoints(cutscene) {
-    return (cutscene.bridge.jointAction?.beats || []).map((beat) => beat.pose.hip).filter(Boolean);
   }
 
   function drawImpactLayers(view, w, h, cutscene) {
@@ -217,6 +209,10 @@
     Animotion.cutsceneEffects.drawPanelMask(previewCtx, size);
   }
 
+  function editingLayerVisible() {
+    return !state.running && !state.exporting;
+  }
+
   function sourceTransition(cutscene) {
     const values = cutscene.values;
     return {
@@ -225,6 +221,12 @@
       scale: values.sourceScale,
       rotation: values.sourceRotation,
     };
+  }
+
+  function sourceTransformFor(cutscene) {
+    if (cutscene.active && cutscene.bridge.sourceMotionEnabled) return sourceTransition(cutscene);
+    const bridge = Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge);
+    return { x: bridge.sourceX, y: bridge.sourceY, scale: bridge.sourceScale };
   }
 
   function impactTransition(cutscene) {
@@ -251,7 +253,12 @@
 
   function drawRigPoint(part, localPoint, matrix, view, drawPivot, role) {
     const point = new DOMPoint(part.rect.x + localPoint.x, part.rect.y + localPoint.y).matrixTransform(matrix);
-    drawPivot(previewCtx, view, point.x, point.y, true, role);
+    const screen = Animotion.previewTransform.imagePointToScreen(point, view, state.previewSourceFrame, state.previewSourceTransform);
+    drawPivot(previewCtx, { x: 0, y: 0, scale: 1 }, screen.x, screen.y, true, role);
+  }
+
+  function sourceScale(view) {
+    return Animotion.previewTransform.sourceScale(view, state.previewSourceFrame, state.previewSourceTransform);
   }
 
   function applyMatrix(ctx, matrix) {

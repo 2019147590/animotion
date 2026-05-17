@@ -14,7 +14,10 @@
     impactX: 0,
     impactY: 0,
     impactScale: 1,
+    sourceMotionEnabled: false,
+    bodyAssistEnabled: true,
   };
+  const PANEL_KEYS = ["sourceX", "sourceY", "sourceScale", "impactX", "impactY", "impactScale"];
 
   function createBridge(parts = [], primaryPartId = null) {
     const primary = primaryPartId || parts[0]?.id || null;
@@ -41,8 +44,20 @@
       impactX: clampNumber(bridge.impactX, -400, 400, DEFAULT_BRIDGE.impactX),
       impactY: clampNumber(bridge.impactY, -400, 400, DEFAULT_BRIDGE.impactY),
       impactScale: clampNumber(bridge.impactScale, 0.5, 1.8, DEFAULT_BRIDGE.impactScale),
+      sourceMotionEnabled: bridge.sourceMotionEnabled === true,
+      bodyAssistEnabled: bridge.bodyAssistEnabled !== false,
       jointAction: normalizeJointAction(bridge.jointAction),
     };
+  }
+
+  function mergePanelTransform(baseBridge, overrideBridge) {
+    const base = baseBridge ? normalizeBridge(baseBridge) : null;
+    const override = overrideBridge ? normalizeBridge(overrideBridge) : null;
+    if (!override || !hasPanelTransform(override)) return base;
+    return normalizeBridge({
+      ...(base || {}),
+      ...panelTransform(override),
+    });
   }
 
   function bridgeFrameFromTime(t, bridge, fps) {
@@ -106,10 +121,20 @@
     return part.rect.x + part.rect.w * 0.5;
   }
 
+  function hasPanelTransform(bridge) {
+    return PANEL_KEYS.some((key) => Math.abs(Number(bridge[key]) - DEFAULT_BRIDGE[key]) > 0.001);
+  }
+
+  function panelTransform(bridge) {
+    return Object.fromEntries(PANEL_KEYS.map((key) => [key, bridge[key]]));
+  }
+
   function normalizeJointAction(action) {
     if (!action?.beats?.length) return null;
     return {
       source: String(action.source || "part-pivots-v1"),
+      focusKey: action.focusKey ? String(action.focusKey) : null,
+      anchors: Animotion.motionAnchors?.normalizeAnchors?.(action.anchors) || [],
       beats: action.beats.map(normalizeBeat).filter(Boolean),
     };
   }
@@ -160,7 +185,14 @@
     return Math.round(clampNumber(value, min, max, fallback));
   }
 
-  Animotion.cutsceneModel = { createBridge, normalizeBridge, bridgeFrameFromTime, bridgeValues, inferEffectDirection };
+  Animotion.cutsceneModel = {
+    createBridge,
+    normalizeBridge,
+    mergePanelTransform,
+    bridgeFrameFromTime,
+    bridgeValues,
+    inferEffectDirection,
+  };
 
   if (typeof module !== "undefined") module.exports = Animotion.cutsceneModel;
 }

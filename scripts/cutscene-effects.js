@@ -1,6 +1,6 @@
 {
-  const global = window;
-  const Animotion = global.Animotion;
+  const global = typeof window !== "undefined" ? window : globalThis;
+  const Animotion = global.Animotion || (global.Animotion = {});
 
   function drawSpeedLines(ctx, canvasSize, direction, power) {
     if (power <= 0.01) return;
@@ -66,7 +66,10 @@
   }
 
   function fittedPanelRect(image, view, scale) {
-    const fit = Math.min(view.w / image.width, view.h / image.height);
+    const source = image.animotionPanel;
+    const sourceWidth = source?.sourceWidth || image.width;
+    const sourceHeight = source?.sourceHeight || image.height;
+    const fit = Math.min(view.w / sourceWidth, view.h / sourceHeight);
     return { w: image.width * fit * scale, h: image.height * fit * scale };
   }
 
@@ -119,5 +122,16 @@
     ctx.fill();
   }
 
-  Animotion.cutsceneEffects = { drawSpeedLines, drawInkField, drawTrajectory, drawPanelImage, drawImpactPanel, drawFlash, drawPanelMask };
+  Animotion.cutsceneEffects = {
+    drawSpeedLines,
+    drawInkField,
+    drawTrajectory,
+    drawPanelImage,
+    drawImpactPanel,
+    drawFlash,
+    drawPanelMask,
+    fittedPanelRect,
+  };
+
+  if (typeof module !== "undefined") module.exports = Animotion.cutsceneEffects;
 }

@@ -15,7 +15,7 @@
   function onPreviewPointerDown(event) {
     const part = Animotion.parts.selectedPart();
     if (!part || !state.previewView) return;
-    const point = Animotion.view.canvasPoint(event, previewCanvas, state.previewView);
+    const point = previewPoint(event);
     if (!point) return;
     const role = hitRigRole(part, point) || selectedRole();
     const mode = dragMode(role);
@@ -32,7 +32,7 @@
   function onPreviewPointerMove(event) {
     if (!state.previewDrag || !state.previewView) return;
     const part = state.parts.find((candidate) => candidate.id === state.previewDrag.partId);
-    const point = Animotion.view.canvasPoint(event, previewCanvas, state.previewView);
+    const point = previewPoint(event);
     if (!part || !point) return;
     if (state.previewDrag.mode === "pose") updateControlPose(part.id, dragDelta(point));
     else moveRigPoint(part, point, state.previewDrag.role);
@@ -80,7 +80,7 @@
   function hitRigRole(part, point) {
     const t = state.running ? (performance.now() - state.startTime) / 1000 : state.pausedTime;
     const matrix = Animotion.preview.worldMatrix(part, t, new Map());
-    const tolerance = Animotion.config.hitTolerancePx / state.previewView.scale;
+    const tolerance = Animotion.config.hitTolerancePx / sourceScale();
     const hits = ["joint", "anchor"]
       .map((role) => ({ role, distance: geometry.distance(point, rigPoint(part, role, matrix)) }))
       .filter((hit) => hit.distance <= tolerance)
@@ -110,6 +110,27 @@
       x: point.x - state.previewDrag.startPoint.x,
       y: point.y - state.previewDrag.startPoint.y,
     };
+  }
+
+  function previewPoint(event) {
+    const rect = previewCanvas.getBoundingClientRect();
+    const screen = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    const point = Animotion.previewTransform.screenPointToImage(
+      screen,
+      state.previewView,
+      state.previewSourceFrame,
+      state.previewSourceTransform
+    );
+    if (!point) return null;
+    const bounds = Animotion.panelEditor?.imageBounds?.("source") || Animotion.imageBounds();
+    return {
+      x: geometry.clamp(point.x, 0, bounds.width),
+      y: geometry.clamp(point.y, 0, bounds.height),
+    };
+  }
+
+  function sourceScale() {
+    return Animotion.previewTransform.sourceScale(state.previewView, state.previewSourceFrame, state.previewSourceTransform);
   }
 
   function snapshotPoses() {

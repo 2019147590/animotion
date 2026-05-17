@@ -31,6 +31,8 @@
       impactX: previous.impactX,
       impactY: previous.impactY,
       impactScale: previous.impactScale,
+      sourceMotionEnabled: previous.sourceMotionEnabled,
+      bodyAssistEnabled: previous.bodyAssistEnabled,
     };
   }
 

@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 const geometry = require("../scripts/geometry.js");
 globalThis.Animotion.state = { panelSetup: {}, panelEditTarget: "source" };
 const panelEditor = require("../scripts/panel-editor.js");
@@ -9,6 +10,9 @@ const cutsceneModel = require("../scripts/cutscene-model.js");
 const poseAssist = require("../scripts/pose-assist.js");
 const timeline = require("../scripts/timeline.js");
 const motionPlanner = require("../scripts/motion-planner.js");
+const trajectoryEditor = require("../scripts/motion-trajectory-editor.js");
+const cutsceneEffects = require("../scripts/cutscene-effects.js");
+const previewTransform = require("../scripts/preview-transform.js");
 
 function test(name, fn) {
   try {
@@ -21,6 +25,21 @@ function test(name, fn) {
 }
 
 const imageBounds = { width: 100, height: 80 };
+
+test("B cut reference opacity control is wired into the app shell", () => {
+  const html = fs.readFileSync("index.html", "utf8");
+  const config = fs.readFileSync("scripts/config.js", "utf8");
+  assert.equal(html.includes('id="impactReferenceOpacity"'), true);
+  assert.equal(config.includes('impactReferenceOpacity: "#impactReferenceOpacity"'), true);
+});
+
+test("editing reference layers are hidden during playback and export", () => {
+  const preview = fs.readFileSync("scripts/preview.js", "utf8");
+  const trajectory = fs.readFileSync("scripts/motion-trajectory-editor.js", "utf8");
+  assert.equal(preview.includes("state.nextImage && editingLayerVisible()"), true);
+  assert.equal(preview.includes("return !state.running && !state.exporting"), true);
+  assert.equal(trajectory.includes("if (!editingLayerVisible()) return"), true);
+});
 
 test("rectShape creates four closed corner points", () => {
   const shape = geometry.rectShape({ x: 10, y: 20, w: 30, h: 40 });
@@ -63,6 +82,22 @@ test("panel editor normalizes saved crop and character mask data", () => {
   assert.deepEqual(panel.crop, { x: 3, y: 2, w: 41, h: 20 });
   assert.equal(panel.characterMask.closed, true);
   assert.deepEqual(panel.characterMask.points[1], { x: 4, y: 5 });
+});
+
+test("panel renderer keeps cropped panels scaled relative to the source image", () => {
+  const image = {
+    width: 40,
+    height: 20,
+    animotionPanel: { sourceWidth: 100, sourceHeight: 80 },
+  };
+  const rect = cutsceneEffects.fittedPanelRect(image, { w: 200, h: 160 }, 0.5);
+  assert.deepEqual(rect, { w: 40, h: 20 });
+});
+
+test("preview source transform applies panel scale to rig coordinates", () => {
+  const frame = { x: 10, y: 5, w: 40, h: 20, sourceWidth: 100, sourceHeight: 80 };
+  const scale = previewTransform.sourceScale({ w: 200, h: 160 }, frame, { scale: 0.5 });
+  assert.equal(scale, 1);
 });
 
 test("arm pivot moves to the shoulder side closest to the body", () => {
@@ -175,6 +210,24 @@ test("cutscene values move source toward the positioned impact panel", () => {
   assert.equal(Math.round(late.impactX), 120);
 });
 
+test("cutscene bridge keeps pre-load panel scale when it was changed", () => {
+  const loaded = { primaryPartId: "leg", sourceScale: 1, impactFrame: 12 };
+  const current = { sourceScale: 0.5, sourceX: -40 };
+  const bridge = cutsceneModel.mergePanelTransform(loaded, current);
+  assert.equal(bridge.primaryPartId, "leg");
+  assert.equal(bridge.impactFrame, 12);
+  assert.equal(bridge.sourceScale, 0.5);
+  assert.equal(bridge.sourceX, -40);
+});
+
+test("cutscene bridge keeps loaded panel scale when pre-load controls are default", () => {
+  const loaded = { sourceScale: 0.65, sourceX: -30 };
+  const current = { sourceScale: 1, sourceX: 0 };
+  const bridge = cutsceneModel.mergePanelTransform(loaded, current);
+  assert.equal(bridge.sourceScale, 0.65);
+  assert.equal(bridge.sourceX, -30);
+});
+
 test("joint coordinates hard-code lookism-style pose keys from pivots", () => {
   const parts = [
     { id: "body", type: "body", rect: { x: 40, y: 20, w: 20, h: 50 }, pivot: { x: 10, y: 25 }, joint: { x: 10, y: 40 } },
@@ -208,4 +261,31 @@ test("motion planner creates target-driven beat poses and active part tracks", (
   assert.equal(plan.jointAction.focusKey, "rFoot");
   assert.deepEqual(impact.pose.rFoot, [140, 40]);
   assert.equal(legTrack.keyframes.some((keyframe) => keyframe.pose.jointX !== 0), true);
+});
+
+test("cutscene bridge preserves the editable motion focus key", () => {
+  const bridge = cutsceneModel.normalizeBridge({
+    jointAction: {
+      source: "motion-planner-kick-v1",
+      focusKey: "rFoot",
+      beats: [{ id: "impact", at: 15, pose: { rFoot: [140, 40] } }],
+    },
+  });
+  assert.equal(bridge.jointAction.focusKey, "rFoot");
+});
+
+test("trajectory edits update a beat point and regenerate primary part keyframes", () => {
+  const parts = [
+    { id: "body", type: "body", rect: { x: 40, y: 20, w: 20, h: 50 }, pivot: { x: 10, y: 25 }, joint: { x: 10, y: 40 } },
+    { id: "leg", type: "leg", rect: { x: 67, y: 60, w: 18, h: 45 }, pivot: { x: 2, y: 6 }, joint: { x: 16, y: 40 } },
+  ];
+  const bridge = cutsceneModel.normalizeBridge({ impactFrame: 15 });
+  const plan = motionPlanner.createPlan(parts, "leg", bridge, { template: "kick", target: { x: 140, y: 40 } });
+  const impactIndex = plan.jointAction.beats.findIndex((beat) => beat.id === "impact");
+  const edited = trajectoryEditor.editBeatPoint(plan.jointAction, impactIndex, "rFoot", { x: 164, y: 52 });
+  const track = motionPlanner.tracksForJointAction(parts, "leg", plan.jointAction).find((candidate) => candidate.partId === "leg");
+  const impactKeyframe = track.keyframes.find((keyframe) => keyframe.frame === 15);
+  assert.equal(edited, true);
+  assert.deepEqual(plan.jointAction.beats[impactIndex].pose.rFoot, [164, 52]);
+  assert.deepEqual({ x: impactKeyframe.pose.jointX, y: impactKeyframe.pose.jointY }, { x: 81, y: -48 });
 });

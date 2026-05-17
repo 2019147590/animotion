@@ -113,6 +113,11 @@
     const ctx = canvas.getContext("2d");
     ctx.drawImage(image, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
     applyMask(ctx, setup.characterMask, crop, options);
+    canvas.animotionPanel = {
+      sourceWidth: image.naturalWidth,
+      sourceHeight: image.naturalHeight,
+      crop: { ...crop },
+    };
     return canvas;
   }
 

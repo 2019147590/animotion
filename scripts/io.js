@@ -97,12 +97,13 @@
     const file = event.target.files?.[0];
     if (!file || !state.image) return;
     try {
+      const currentBridge = state.cutsceneBridge ? Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge) : null;
       const payload = JSON.parse(await file.text());
       state.parts = rigPartsFromPayload(payload).map(deserializeRigPart);
       state.separateCharacter = Boolean(payload.separateCharacter);
       restorePanelSetup(payload.panelSetup);
       state.motionPlan = Animotion.motionPlanner?.normalizePlan?.(payload.motionPlan) || state.motionPlan;
-      state.cutsceneBridge = payload.cutsceneBridge ? Animotion.cutsceneModel.normalizeBridge(payload.cutsceneBridge) : null;
+      state.cutsceneBridge = Animotion.cutsceneModel.mergePanelTransform(payload.cutsceneBridge, currentBridge);
       state.selectedPartId = state.parts[0]?.id || null;
       Animotion.ui.refreshUi();
     } catch (error) {

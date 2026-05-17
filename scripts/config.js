@@ -32,6 +32,7 @@
     autoAnticipation: "#autoAnticipation",
     motionStrength: "#motionStrength",
     backgroundOpacity: "#backgroundOpacity",
+    impactReferenceOpacity: "#impactReferenceOpacity",
     sourcePanelX: "#sourcePanelX",
     sourcePanelY: "#sourcePanelY",
     sourcePanelScale: "#sourcePanelScale",
