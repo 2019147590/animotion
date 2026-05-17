@@ -12,9 +12,9 @@ The intended MVP flow is:
 A cut / B cut upload
 -> manual panel crop, placement, and character mask setup
 -> manual A cut rig parts and joint handles
--> motion type and target point selection
--> automatic beat and joint trajectory draft
--> user edits trajectory / joints / keyframes
+-> motion type, target point, and action-anchor selection
+-> automatic beat, joint trajectory, and multi-anchor draft
+-> user edits trajectory / anchors / joints / keyframes
 -> LOOKISM-style Canvas playback
 -> export or save JSON
 ```
@@ -61,28 +61,43 @@ Recent commit:
 979274e Add manual panel crop and mask editor
 ```
 
-### Motion Planning Draft
+### Motion Planning And Anchor Draft
 
-Implemented in `scripts/motion-planner.js` and `scripts/motion-trajectory-editor.js`.
+Implemented in `scripts/motion-planner.js`, `scripts/motion-anchors.js`, `scripts/motion-anchor-picker.js`, and `scripts/motion-trajectory-editor.js`.
 
 - Motion templates: kick, punch, dash.
 - Target point picking on the preview canvas.
 - Template-based beat generation.
 - Joint trajectory draft from current A rig plus target.
-- Generated `cutsceneBridge.jointAction` with focus joint and beats.
+- Generated action anchors from the selected part and target.
+- Generated `cutsceneBridge.jointAction` with focus joint, anchors, and beats.
 - Generated part keyframes for the selected active part and body/head support.
-- Preview target marker, trajectory line, and beat handles.
+- Preview target marker, trajectory line, beat handles, and action-anchor markers.
 - Beat handle selection and dragging updates `cutsceneBridge.jointAction`.
 - Dragging a beat regenerates the selected primary part keyframes.
+- Dragging an action anchor regenerates the full action plan and part keyframes.
+- The user can choose a generated anchor from the anchor picker and place it directly on the preview canvas.
 - Target picking freezes playback so the editing reference stays visible.
-- Target point and beat handles are editing references only; they are hidden during playback/export.
+- Target point, beat handles, anchors, selected outlines, and rig handles are editing references only; they are hidden during playback/export.
 - Motion plan saved/restored through rig JSON as `motionPlan`.
 
 Important behavior:
 
-- The target point is the end position of the selected part's focus joint.
+- The target point is the end position of the selected part's primary focus joint.
 - For a leg this focus joint is the inferred foot point, not the whole leg rectangle.
+- For a body/spine primary action, the focus joint is the inferred chest point and the generated primary motion uses translation (`x/y`) rather than `jointX/jointY`; this avoids accidental 180-degree body rotation.
+- A leg action generates `foot`, `knee`, `hip`, `chest`, and `head` anchors. A body action generates `chest`, `hip`, and `head` anchors.
+- Far leg targets move body anchors more; near leg targets keep body movement small so the leg can move locally.
+- Anchor direct-picking is now implemented for generated anchors. A separate full anchor-management UI is still future work.
 - Current generation still requires selecting a part and then generating beats; simply placing a target does not create motion until `beat/trajectory generation` is clicked.
+
+Recent commits:
+
+```text
+ff72e63 Add multi-anchor motion planner drafts
+5044e0e Allow dragging generated motion anchors
+5064c57 Add direct motion anchor picking
+```
 
 ### Cutscene Preview Options
 
@@ -100,7 +115,7 @@ Implemented in `scripts/cutscene-options.js`, `scripts/preview.js`, and `scripts
 Recent commit:
 
 ```text
-c537a36 Add target-driven motion planner
+5064c57 Add direct motion anchor picking
 ```
 
 ## Current Limits
@@ -108,10 +123,11 @@ c537a36 Add target-driven motion planner
 - No AI model is connected locally.
 - No DWPose, See-through, SAM, or VLM runner is implemented in the browser.
 - A/B body-part correspondence is not implemented.
+- B cut impact anchors / A-to-B part correspondence are not implemented.
 - Hidden limb estimation is not implemented.
 - Time-varying z-order / z-swap editing is not implemented.
 - The motion planner is template/rule based, not image-understanding based.
-- The generated motion is a draft; user correction UI still needs more detail.
+- The generated motion is a draft; anchor editing exists, but detailed anchor/keyframe graph tooling is still limited.
 - Target point placement alone does not generate a trajectory; generation is still an explicit user action.
 - Natural connection into B cut is limited because A/B body-part correspondence and B cut impact anchors are not implemented.
 
@@ -119,7 +135,9 @@ c537a36 Add target-driven motion planner
 
 - `index.html`: static app shell and existing controls.
 - `scripts/panel-editor.js`: A/B crop and character mask setup.
+- `scripts/motion-anchors.js`: action-anchor generation and normalization.
 - `scripts/motion-planner.js`: target-driven beat and trajectory draft generation.
+- `scripts/motion-anchor-picker.js`: choose and directly place generated action anchors.
 - `scripts/motion-trajectory-editor.js`: editable beat handles and trajectory overlay.
 - `scripts/cutscene-options.js`: A cut source-motion and body-assist option controls.
 - `scripts/preview-transform.js`: coordinate conversion for A cut panel scale/position.
@@ -163,24 +181,24 @@ $env:PYTHONPATH='src'; python -m unittest discover -s tests
 
 ## Suggested Next Work Unit
 
-Implement manual B cut impact anchoring / correspondence, not a new AI feature.
+Implement manual B cut impact anchoring / A-to-B correspondence, not a new AI feature.
 
 Smallest next scope:
 
 ```text
 Let the user choose the active A part
 -> show B cut reference with adjustable opacity
--> allow placing a matching B cut impact anchor for that part
--> store the anchor in project JSON
--> use that anchor as the generated trajectory target
--> keep the result editable through existing beat handles
+-> allow placing a matching B cut impact anchor for that A part or action anchor
+-> store the B cut impact anchor in project JSON
+-> use that impact anchor as the generated primary action target
+-> keep the result editable through existing target, beat, and action-anchor handles
 -> save/load through existing JSON
 ```
 
 Why this is next:
 
 - It attacks the current main naturalness problem directly.
-- A cut selected-part trajectory already exists, but it does not know where the matching B cut body point is.
+- A cut selected-part trajectory and multi-anchor action editing now exist, but they do not know where the matching B cut body point should land.
 - Manual anchors keep the MVP manual-first and avoid depending on AI correspondence too early.
 
 Do not jump straight to AI matching. First make the manual correspondence data model and editor usable; later AI can propose those anchors as editable drafts.
@@ -202,12 +220,14 @@ master
 Latest known commit at handoff time:
 
 ```text
-c537a36 Add target-driven motion planner
+5064c57 Add direct motion anchor picking
 ```
 
 ## Current Working Tree Notes
 
-As of the latest handoff update, local uncommitted work includes:
+As of this handoff update, implementation work is pushed to `master`; no code changes are pending.
+
+Recently completed and pushed:
 
 - B cut reference opacity.
 - A/B panel scale preservation and JSON load behavior.
@@ -216,4 +236,7 @@ As of the latest handoff update, local uncommitted work includes:
 - Editing-reference vs playback/export layer separation.
 - Optional A cut move/zoom.
 - Optional body assist for generated/regenerated trajectory tracks.
+- Multi-anchor motion drafts from a single target.
+- Generated anchor dragging and regeneration.
+- Direct per-anchor picking for generated action anchors.
 - Regression test `tests/cutscene-options.test.js`.
