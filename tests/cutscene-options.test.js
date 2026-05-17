@@ -6,6 +6,7 @@ require("../scripts/joint-coordinates.js");
 require("../scripts/motion-anchors.js");
 const cutsceneModel = require("../scripts/cutscene-model.js");
 const motionPlanner = require("../scripts/motion-planner.js");
+const trajectoryEditor = require("../scripts/motion-trajectory-editor.js");
 
 function test(name, fn) {
   try {
@@ -77,4 +78,16 @@ test("motion planner stores multi-anchor action drafts", () => {
   assert.equal(plan.jointAction.anchors.length, 5);
   assert.deepEqual(plan.jointAction.beats.find((beat) => beat.id === "impact").pose.rKnee, [88, 77]);
   assert.equal(cutsceneModel.normalizeBridge({ jointAction: plan.jointAction }).jointAction.anchors.length, 5);
+});
+
+test("edited action anchors regenerate beat poses", () => {
+  const bridge = cutsceneModel.normalizeBridge({ impactFrame: 15 });
+  const plan = motionPlanner.createPlan(sampleParts(), "leg", bridge, { template: "kick", target: { x: 150, y: 70 } });
+  assert.equal(trajectoryEditor.editAnchorPoint(plan.jointAction, "chest", { x: 82, y: 24 }), true);
+  const regenerated = motionPlanner.createPlan(sampleParts(), "leg", bridge, {
+    template: "kick",
+    target: plan.target,
+    anchors: plan.jointAction.anchors,
+  });
+  assert.deepEqual(regenerated.jointAction.beats.find((beat) => beat.id === "impact").pose.chest, [82, 24]);
 });

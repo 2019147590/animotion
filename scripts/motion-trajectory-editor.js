@@ -14,6 +14,8 @@
   }
 
   function onPointerDown(event) {
+    const anchorHit = hitAnchor(event);
+    if (anchorHit) return beginAnchorDrag(event, anchorHit);
     const hit = hitBeat(event);
     if (!hit) return;
     freezePlayback();
@@ -31,7 +33,8 @@
     if (!drag || !Animotion.state.previewView) return;
     const point = previewPoint(event);
     if (!point) return;
-    if (editBeatPoint(currentAction(), drag.beatIndex, drag.focusKey, point)) regeneratePrimaryTrack();
+    if (drag.anchorKey && editAnchorPoint(currentAction(), drag.anchorKey, point)) regenerateActionFromAnchors();
+    else if (editBeatPoint(currentAction(), drag.beatIndex, drag.focusKey, point)) regeneratePrimaryTrack();
     event.preventDefault();
     refresh();
   }
@@ -55,13 +58,23 @@
     drawTarget(ctx, view);
   }
 
+  function beginAnchorDrag(event, hit) {
+    freezePlayback();
+    currentPlan().selectedBeatId = null;
+    Animotion.state.trajectoryDrag = { anchorKey: hit.anchor.key };
+    Animotion.dom.previewCanvas.setPointerCapture(event.pointerId);
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    refresh();
+  }
+
   function drawBeatHandles(ctx, view, action, focusKey) {
     if (!action?.beats?.length || Animotion.state.exporting) return;
     const selectedId = currentPlan().selectedBeatId;
     ctx.save();
     ctx.lineWidth = 2;
     for (const beat of action.beats) {
-      const point = pointFromArray(beat.pose?.[focusKey]);
+      const point = pointFrom(beat.pose?.[focusKey]);
       if (!point) continue;
       const selected = beat.id === selectedId;
       const screen = imagePointToScreen(point, view);
@@ -95,7 +108,7 @@
     ctx.save();
     ctx.lineWidth = 2;
     for (const anchor of action.anchors) {
-      const point = pointFromObject(anchor.point);
+      const point = pointFrom(anchor.point);
       if (!point) continue;
       const screen = imagePointToScreen(point, view);
       ctx.fillStyle = anchor.locked ? "#e1462e" : "#8fd3ff";
@@ -117,7 +130,20 @@
     if (!point || !action?.beats?.length) return null;
     const tolerance = Animotion.config.hitTolerancePx / sourceScale();
     return action.beats
-      .map((beat, index) => ({ beat, index, focusKey, distance: pointDistance(point, pointFromArray(beat.pose?.[focusKey])) }))
+      .map((beat, index) => ({ beat, index, focusKey, distance: pointDistance(point, pointFrom(beat.pose?.[focusKey])) }))
+      .filter((hit) => hit.distance <= tolerance)
+      .sort((a, b) => a.distance - b.distance)[0] || null;
+  }
+
+  function hitAnchor(event) {
+    const state = Animotion.state;
+    if (!isCutsceneEditable() || !state.previewView) return null;
+    const point = previewPoint(event);
+    const action = currentAction();
+    if (!point || !action?.anchors?.length) return null;
+    const tolerance = Animotion.config.hitTolerancePx / sourceScale();
+    return action.anchors
+      .map((anchor) => ({ anchor, distance: pointDistance(point, pointFrom(anchor.point)) }))
       .filter((hit) => hit.distance <= tolerance)
       .sort((a, b) => a.distance - b.distance)[0] || null;
   }
@@ -127,6 +153,27 @@
     if (!beat?.pose || !focusKey || !point) return false;
     beat.pose[focusKey] = [Math.round(Number(point.x) || 0), Math.round(Number(point.y) || 0)];
     return true;
+  }
+
+  function editAnchorPoint(action, anchorKey, point) {
+    const anchor = action?.anchors?.find((candidate) => candidate.key === anchorKey);
+    if (!anchor || !point) return false;
+    anchor.point = { x: Math.round(Number(point.x) || 0), y: Math.round(Number(point.y) || 0) };
+    return true;
+  }
+
+  function regenerateActionFromAnchors() {
+    const state = Animotion.state;
+    const bridge = Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge);
+    const primaryId = bridge.primaryPartId || state.selectedPartId;
+    const plan = { ...currentPlan(), anchors: currentAction()?.anchors || [] };
+    const primary = plan.anchors.find((anchor) => anchor.key === bridge.jointAction?.focusKey && anchor.role === "primary");
+    if (primary?.point) plan.target = { ...primary.point };
+    const result = Animotion.motionPlanner.createPlan(state.parts, primaryId, bridge, plan);
+    state.cutsceneBridge = { ...bridge, jointAction: result.jointAction };
+    state.motionPlan = { ...plan, target: result.target, anchors: result.anchors };
+    applyPartTracks(result.partTracks);
+    syncSelectedPartPose();
   }
 
   function regeneratePrimaryTrack() {
@@ -140,6 +187,18 @@
     if (!part || !track) return;
     part.keyframes = track.keyframes;
     part.customMotion = Animotion.timeline.evaluatePartAtFrame(part, state.currentFrame);
+  }
+
+  function applyPartTracks(tracks) {
+    for (const track of tracks || []) {
+      const part = Animotion.state.parts.find((candidate) => candidate.id === track.partId);
+      if (part) part.keyframes = track.keyframes;
+    }
+  }
+
+  function syncSelectedPartPose() {
+    const part = Animotion.parts?.selectedPart?.();
+    if (part) part.customMotion = Animotion.timeline.evaluatePartAtFrame(part, Animotion.state.currentFrame);
   }
 
   function currentAction() {
@@ -163,7 +222,7 @@
     ctx.setLineDash([12, 14]);
     ctx.beginPath();
     points.forEach((point, index) => {
-      const screen = imagePointToScreen(pointFromArray(point), view);
+      const screen = imagePointToScreen(pointFrom(point), view);
       if (index === 0) ctx.moveTo(screen.x, screen.y);
       else ctx.lineTo(screen.x, screen.y);
     });
@@ -175,7 +234,7 @@
 
   function drawTrajectoryMarker(ctx, view, points, progress) {
     const index = Math.min(points.length - 1, Math.floor(progress * (points.length - 1)));
-    const screen = imagePointToScreen(pointFromArray(points[index]), view);
+    const screen = imagePointToScreen(pointFrom(points[index]), view);
     ctx.globalAlpha = 0.85;
     ctx.fillStyle = "#c32222";
     ctx.beginPath();
@@ -194,30 +253,16 @@
   }
 
   function imagePointToScreen(point, view) {
-    return Animotion.previewTransform.imagePointToScreen(
-      point,
-      view,
-      Animotion.state.previewSourceFrame,
-      Animotion.state.previewSourceTransform
-    );
+    return Animotion.previewTransform.imagePointToScreen(point, view, Animotion.state.previewSourceFrame, Animotion.state.previewSourceTransform);
   }
 
   function sourceScale() {
-    return Animotion.previewTransform.sourceScale(
-      Animotion.state.previewView,
-      Animotion.state.previewSourceFrame,
-      Animotion.state.previewSourceTransform
-    );
+    return Animotion.previewTransform.sourceScale(Animotion.state.previewView, Animotion.state.previewSourceFrame, Animotion.state.previewSourceTransform);
   }
 
-  function pointFromArray(point) {
+  function pointFrom(point) {
     if (!point) return null;
-    return { x: Number(point[0]) || 0, y: Number(point[1]) || 0 };
-  }
-
-  function pointFromObject(point) {
-    if (!point) return null;
-    return { x: Number(point.x) || 0, y: Number(point.y) || 0 };
+    return { x: Number(point.x ?? point[0]) || 0, y: Number(point.y ?? point[1]) || 0 };
   }
 
   function pointDistance(a, b) {
@@ -246,7 +291,7 @@
     Animotion.ui?.refreshUi?.();
   }
 
-  Animotion.trajectoryEditor = { drawOverlay, editBeatPoint };
+  Animotion.trajectoryEditor = { drawOverlay, editBeatPoint, editAnchorPoint };
   install();
 
   if (typeof module !== "undefined") module.exports = Animotion.trajectoryEditor;
