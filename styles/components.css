@@ -144,6 +144,39 @@
   padding: 10px;
 }
 
+.motion-draft-tools,
+.motion-draft-inspector {
+  display: grid;
+  gap: 10px;
+  border: 2px solid var(--line);
+  border-radius: 7px;
+  background: #f5f7ff;
+  padding: 10px;
+}
+
+.motion-draft-header,
+.motion-draft-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.motion-draft-rows {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.motion-draft-row span {
+  color: var(--muted);
+}
+
+.motion-draft-tools.hidden,
+.motion-draft-inspector.hidden {
+  display: none;
+}
+
 button.active {
   background: var(--accent-3);
 }

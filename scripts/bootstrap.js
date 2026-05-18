@@ -45,6 +45,7 @@
     "preview",
     "render",
     "ui",
+    "motion-draft-editor",
     "editor",
     "io",
     "export",
