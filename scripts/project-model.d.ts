@@ -207,6 +207,11 @@ export type MotionTargetDebug = {
   delta?: (Vec2 & { coordinateSpace: "sourceImage" }) | null;
   computedDistance?: number;
   distanceThreshold?: number;
+  rootDelta?: Vec2 & { coordinateSpace: "sourceImage" };
+  bodyFollowStrength?: number;
+  primaryPartId?: string | null;
+  bodyRootPartId?: string | null;
+  rootDeltaPartIds?: string[];
   requestedMotionScope?: MotionScope;
   chosenMotionScope?: MotionScope;
   coordinateSpace?: "sourceImage" | string;

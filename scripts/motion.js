@@ -27,7 +27,12 @@
     const frame = state.running
       ? Animotion.cutsceneModel.bridgeFrameFromTime(t, bridge, Animotion.config.timelineFps)
       : state.currentFrame;
-    return Animotion.motionModel.poseToTransform(Animotion.timeline.evaluatePartAtFrame(part, frame));
+    const transform = Animotion.motionModel.poseToTransform(Animotion.timeline.evaluatePartAtFrame(part, frame));
+    return Animotion.characterRootMotion?.applyToTransform?.(transform, part, {
+      parts: state.parts,
+      frame,
+      targetDebug: bridge.jointAction?.targetDebug,
+    }) || transform;
   }
 
   function keyframeMotionForPart(part, t) {

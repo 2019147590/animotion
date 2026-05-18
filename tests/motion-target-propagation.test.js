@@ -1,10 +1,12 @@
 const assert = require("node:assert/strict");
 
 require("../scripts/motion-model.js");
+require("../scripts/timeline.js");
 require("../scripts/coordinate-spaces.js");
 require("../scripts/motion-hints.js");
 require("../scripts/motion-drafts.js");
 require("../scripts/motion-target-debug.js");
+const characterRootMotion = require("../scripts/character-root-motion.js");
 require("../scripts/pose-assist.js");
 require("../scripts/joint-coordinates.js");
 require("../scripts/motion-anchors.js");
@@ -97,3 +99,59 @@ test("motion scope override can force full-character follow", () => {
   assert.equal(Math.hypot(bodyImpactPose(plan).x, bodyImpactPose(plan).y) > 0, true);
   assert.equal(Math.hypot(armImpact.x, armImpact.y) > 0, true);
 });
+
+test("full-character mode applies identical rootDelta to visible character parts", () => {
+  const plan = fullCharacterPlan();
+  const debug = characterRootMotion.evaluationDebug(plan.parts, 15, plan.bridge);
+  const rootDelta = debug.rootDelta;
+  for (const part of debug.parts.filter((part) => part.id !== "prop")) {
+    assert.deepEqual({ x: part.x, y: part.y }, { x: rootDelta.x, y: rootDelta.y });
+  }
+});
+
+test("body-follow mode applies rootDelta to unparented character parts", () => {
+  const bridge = cutsceneModel.normalizeBridge({ impactFrame: 15 });
+  const parts = [...sampleParts(), { id: "arm", type: "arm", rect: { x: 20, y: 28, w: 18, h: 44 } }];
+  const plan = motionPlanner.createPlan(parts, "leg", bridge, { template: "kick", target: { x: 150, y: 70 } });
+  const debug = characterRootMotion.evaluationDebug(partsWithTracks(parts, plan), 15, {
+    ...bridge,
+    primaryPartId: "leg",
+    jointAction: plan.jointAction,
+  });
+  const arm = debug.parts.find((part) => part.id === "arm");
+  assert.equal(debug.rootDeltaPartIds.includes("arm"), true);
+  assert.deepEqual({ x: arm.x, y: arm.y }, { x: debug.rootDelta.x, y: debug.rootDelta.y });
+});
+
+test("primary part leads more strongly than torso in kick body-follow mode", () => {
+  const bridge = cutsceneModel.normalizeBridge({ impactFrame: 15 });
+  const parts = sampleParts();
+  const plan = motionPlanner.createPlan(parts, "leg", bridge, { template: "kick", target: { x: 150, y: 70 } });
+  const primary = plan.partTracks.find((track) => track.partId === "leg").keyframes.find((keyframe) => keyframe.frame === 15).pose;
+  assert.equal(Math.hypot(primary.jointX, primary.jointY) > Math.hypot(plan.targetDebug.rootDelta.x, plan.targetDebug.rootDelta.y), true);
+});
+
+function fullCharacterPlan() {
+  const bridge = cutsceneModel.normalizeBridge({ impactFrame: 15 });
+  const parts = [
+    ...sampleParts(),
+    { id: "arm", type: "arm", rect: { x: 20, y: 28, w: 18, h: 44 } },
+    { id: "prop", type: "prop", rect: { x: 5, y: 5, w: 8, h: 8 } },
+  ];
+  const plan = motionPlanner.createPlan(parts, "leg", bridge, {
+    template: "kick",
+    motionScope: "full-character",
+    target: { x: 150, y: 70 },
+  });
+  return {
+    parts: partsWithTracks(parts, plan),
+    bridge: { ...bridge, primaryPartId: "leg", jointAction: plan.jointAction },
+  };
+}
+
+function partsWithTracks(parts, plan) {
+  return parts.map((part) => ({
+    ...part,
+    keyframes: plan.partTracks.find((track) => track.partId === part.id)?.keyframes || [],
+  }));
+}

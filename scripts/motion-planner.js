@@ -130,10 +130,11 @@
     const active = activeKeys(primary, parts);
     const direction = Animotion.cutsceneModel.inferEffectDirection(parts, primaryId);
     const target = plan.target || Animotion.motionAnchors?.anchorPoint?.(plan.anchors, active.end) || autoTarget(base[active.end], direction, primary);
-    const targetDebug = Animotion.motionTargetDebug?.analyzeTarget?.(plan, base, active, target) || null;
+    const targetDebug = Animotion.motionTargetDebug?.analyzeTarget?.(plan, base, active, target) || {};
     const scopedPlan = { ...plan, targetDebug };
     const anchors = Animotion.motionAnchors?.anchorsFromPlan?.(scopedPlan, parts, primary, base, active, direction, target) || [];
     const beats = templateBeats(plan.template, bridge).map((spec) => poseBeat(spec, base, active, target, direction, anchors));
+    Object.assign(targetDebug, Animotion.characterRootMotion?.debugForPlan?.(parts, primary, beats, base, plan, targetDebug) || {});
     return {
       target,
       motionScope: plan.motionScope,
@@ -227,7 +228,7 @@
       }
       return { frame: beat.at, pose };
     }
-    if (bridge.bodyAssistEnabled !== false && motionScopeForBridge(bridge) === "full-character") {
+    if (bridge.bodyAssistEnabled !== false && bridge?.jointAction?.targetDebug?.chosenMotionScope === "full-character") {
       Object.assign(pose, { x: beat.pose.hip[0] - base.hip[0], y: beat.pose.hip[1] - base.hip[1] });
       return { frame: beat.at, pose };
     }
@@ -240,7 +241,6 @@
     }
     return { frame: beat.at, pose };
   }
-  function motionScopeForBridge(bridge) { return bridge?.jointAction?.targetDebug?.chosenMotionScope || null; }
   function statusText(plan, part) {
     if (!part) return "파츠를 선택하면 목표점 기반 궤적을 만들 수 있습니다.";
     const target = plan.target ? `목표 ${plan.target.x}, ${plan.target.y}` : "목표점 없음";

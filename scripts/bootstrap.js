@@ -24,6 +24,7 @@
     "motion-drafts",
     "motion-target-policy",
     "motion-target-debug",
+    "character-root-motion",
     "joint-coordinates",
     "cutscene-model",
     "motion-anchors",

@@ -117,7 +117,7 @@
     return Animotion.panelEditor?.createPanelCanvas("impact") || state.nextImage;
   }
 
-  function drawParts(view, now) {
+  function drawParts(view, now, cutscene) {
     const t = state.running ? (now - state.startTime) / 1000 : state.pausedTime;
     syncTimelineFrame(t);
     const matrixCache = new Map();
@@ -127,6 +127,9 @@
       if (!part.hidden) drawPart(part, t, matrixCache, view);
     }
     previewCtx.restore();
+    state.motionEvaluationDebug = cutscene?.active
+      ? Animotion.characterRootMotion?.evaluationDebug?.(state.parts, state.currentFrame, cutscene.bridge)
+      : null;
     return matrixCache;
   }
 
@@ -211,9 +214,7 @@
     Animotion.cutsceneEffects.drawPanelMask(previewCtx, size);
   }
 
-  function editingLayerVisible() {
-    return !state.running && !state.exporting;
-  }
+  function editingLayerVisible() { return !state.running && !state.exporting; }
 
   function sourceTransition(cutscene) {
     const values = cutscene.values;
@@ -259,13 +260,9 @@
     drawPivot(previewCtx, { x: 0, y: 0, scale: 1 }, screen.x, screen.y, true, role);
   }
 
-  function sourceScale(view) {
-    return Animotion.previewTransform.sourceScale(view, state.previewSourceFrame, state.previewSourceTransform);
-  }
+  function sourceScale(view) { return Animotion.previewTransform.sourceScale(view, state.previewSourceFrame, state.previewSourceTransform); }
 
-  function applyMatrix(ctx, matrix) {
-    ctx.transform(matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f);
-  }
+  function applyMatrix(ctx, matrix) { ctx.transform(matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f); }
 
   function worldMatrix(part, t, cache) {
     if (cache.has(part.id)) return cache.get(part.id);
