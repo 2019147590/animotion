@@ -23,13 +23,13 @@
     return setPanelSetup(state.panelSetup || {});
   }
 
-  function setCrop(target, crop) {
-    setupFor(target).crop = crop ? normalizeRect(crop) : null;
+  function setCrop(target, crop, options = {}) {
+    setPanelValue(target, "crop", crop ? normalizeRect(crop) : null, options);
     refresh();
   }
 
-  function setCharacterMask(target, shape) {
-    setupFor(target).characterMask = shape ? normalizeShape(shape) : null;
+  function setCharacterMask(target, shape, options = {}) {
+    setPanelValue(target, "characterMask", shape ? normalizeShape(shape) : null, options);
     refresh();
   }
 
@@ -45,6 +45,24 @@
 
   function setupFor(target) {
     return ensurePanelSetup()[normalizeTarget(target)];
+  }
+
+  function setPanelValue(target, key, value, options) {
+    const panelTarget = normalizeTarget(target);
+    const panel = setupFor(panelTarget);
+    const before = cloneValue(panel[key]);
+    const after = cloneValue(value);
+    panel[key] = after;
+    if (!sameValue(before, after)) recordPanelChange(panelTarget, key, before, after, options);
+  }
+
+  function recordPanelChange(target, key, before, after, options) {
+    if (options.recordHistory === false) return;
+    Animotion.commandHistory?.record?.({
+      label: `panel-${key}`,
+      undo: () => setPanelValue(target, key, before, { recordHistory: false }),
+      redo: () => setPanelValue(target, key, after, { recordHistory: false }),
+    });
   }
 
   function normalizeTarget(target) {
@@ -80,6 +98,15 @@
 
   function refresh() {
     Animotion.ui?.refreshUi?.();
+  }
+
+  function sameValue(left, right) {
+    return JSON.stringify(left) === JSON.stringify(right);
+  }
+
+  function cloneValue(value) {
+    if (value === undefined || value === null) return value;
+    return JSON.parse(JSON.stringify(value));
   }
 
   Animotion.panelCommands = {

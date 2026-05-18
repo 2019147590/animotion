@@ -129,7 +129,7 @@ Recent commit:
 
 ### Project Model And Commands
 
-Implemented in this working tree but not yet committed.
+Implemented on `master`.
 
 - `scripts/project-model.js`: central `AnimotionProject` runtime normalization and project part/editor part conversion.
 - `scripts/project-serialization.js`: converts current editor state into `AnimotionProject`.
@@ -144,6 +144,7 @@ Implemented in this working tree but not yet committed.
 - `scripts/timeline.js`: pure timeline/keyframe utilities. It returns evaluated poses and next keyframe arrays but does not mutate parts.
 - `scripts/command-history.js`: bounded command history scaffold with undo/redo stacks.
 - Part inspector and rig-point updates through `partCommands.updatePart` now record old/new patches for Undo/Redo.
+- Panel crop and character-mask updates through `panelCommands.setCrop` and `panelCommands.setCharacterMask` now record old/new patches for Undo/Redo.
 - `Ctrl+Z`, `Ctrl+Y`, and `Ctrl+Shift+Z` trigger history undo/redo outside text-entry inputs.
 - New image reset, project restore, legacy rig restore, and Lookism preset load clear command history.
 
@@ -152,7 +153,7 @@ Current architecture note:
 - Renderers still read runtime editor state such as `state.parts`, `state.cutsceneBridge`, `state.motionPlan`, and `state.panelSetup`.
 - The central project model is currently the save/load and normalization boundary, not yet the single in-memory source of truth.
 - The command layer is an intermediate step toward broad Undo/Redo and eventually making `state.project` the primary editable data store.
-- Undo/Redo currently covers the narrow part update slice only. Part creation/deletion, panel setup, timeline keyframes, generated motion plans, and session-level changes are still not undoable.
+- Undo/Redo currently covers part updates plus panel crop/mask edits. Part creation/deletion, timeline keyframes, generated motion plans, and session-level changes are still not undoable.
 
 ## Current Limits
 
@@ -166,7 +167,7 @@ Current architecture note:
 - The generated motion is a draft; anchor editing exists, but detailed anchor/keyframe graph tooling is still limited.
 - Target point placement alone does not generate a trajectory; generation is still an explicit user action.
 - Natural connection into B cut is limited because A/B body-part correspondence and B cut impact anchors are not implemented.
-- Undo/Redo is implemented only for part update commands; most command helpers still centralize mutation without command records.
+- Undo/Redo is implemented for part updates and panel crop/mask edits; several command helpers still centralize mutation without command records.
 - `state.project` is synchronized at save/load and command boundaries, but render/edit code still depends on legacy editor state fields.
 
 ## Important Files
@@ -232,25 +233,7 @@ $env:PYTHONPATH='src'; python -m unittest discover -s tests
 
 ## Suggested Next Work Unit
 
-Extend command history from the proven part-update slice to one more small editor surface before adding more feature surface.
-
-Smallest next scope:
-
-```text
-Choose either part create/delete or panel crop/mask
--> add old/new command records for that one surface
--> keep replay side effects behind existing command helpers
--> add regression tests for undo, redo, and redo-stack clearing
--> keep project JSON unchanged
-```
-
-Why this is next:
-
-- The codebase now has a working command history core, but only part updates record old/new state.
-- One more small slice will validate that the history model handles non-trivial object updates before timeline/planner history.
-- Keeping this incremental avoids trying to solve full generated-motion undo at once.
-
-After Undo/Redo scaffolding, return to manual B cut impact anchoring / A-to-B correspondence, not a new AI feature.
+Add manual B cut impact anchoring / A-to-B correspondence, not a new AI feature.
 
 Smallest next scope:
 
@@ -286,15 +269,15 @@ Branch:
 master
 ```
 
-Latest known commit at handoff time:
+Latest known committed baseline at handoff time:
 
 ```text
-5064c57 Add direct motion anchor picking
+b41c0e5 Refactor project model and command history
 ```
 
 ## Current Working Tree Notes
 
-As of this handoff update, the command/model refactor is implemented in the working tree but not committed.
+As of this handoff update, the command/model refactor is committed on `master`.
 
 Recently completed in the working tree:
 
@@ -302,6 +285,7 @@ Recently completed in the working tree:
 - Save/load refactor to project JSON while preserving legacy rig and AI rig imports.
 - Part, motion, session, and panel command layers.
 - Command history scaffold with Undo/Redo for part update commands.
+- Panel crop and character-mask Undo/Redo.
 - Keyboard history shortcuts: `Ctrl+Z`, `Ctrl+Y`, and `Ctrl+Shift+Z`.
 - Timeline keyframe mutation removed from `scripts/timeline.js`; keyframe writes now stay in `scripts/motion-commands.js`.
 - Planner, anchor picker, trajectory editor, timeline controls, preview rig edits, cutscene controls/options, IO restore, and Lookism preset application moved toward command helpers.
@@ -311,7 +295,3 @@ Recently completed in the working tree:
   - `tests/motion-commands.test.js`
   - `tests/session-commands.test.js`
   - `tests/panel-commands.test.js`
-
-Known untracked/planned-context file:
-
-- `animotion_2_5_d_planning_spec.md` is present as an untracked planning document and was used as the source for the project model direction.

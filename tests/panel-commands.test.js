@@ -21,6 +21,7 @@ function loadAnimotion() {
   for (const path of [
     "scripts/config.js",
     "scripts/geometry.js",
+    "scripts/command-history.js",
     "scripts/panel-editor.js",
     "scripts/panel-commands.js",
   ]) runScript(context, path);
@@ -61,4 +62,36 @@ test("panel command stores normalized character mask", () => {
   assert.equal(mask.closed, false);
   assert.equal(mask.points[1].x, 3);
   assert.equal(mask.points[1].y, 4);
+});
+
+test("panel crop command records undo and redo", () => {
+  const Animotion = loadAnimotion();
+  Animotion.panelCommands.setCrop("source", { x: 1, y: 2, w: 30, h: 40 });
+  assert.equal(Animotion.state.panelSetup.source.crop.w, 30);
+  assert.equal(Animotion.commandHistory.undo(), true);
+  assert.equal(Animotion.state.panelSetup.source.crop, null);
+  assert.equal(Animotion.commandHistory.redo(), true);
+  assert.equal(Animotion.state.panelSetup.source.crop.w, 30);
+});
+
+test("panel mask command records undo without mutating snapshots", () => {
+  const Animotion = loadAnimotion();
+  const mask = {
+    kind: "polygon",
+    points: [{ x: 1, y: 2 }, { x: 3, y: 4 }, { x: 5, y: 6 }],
+  };
+  Animotion.panelCommands.setCharacterMask("impact", mask);
+  mask.points[0].x = 99;
+  assert.equal(Animotion.state.panelSetup.impact.characterMask.points[0].x, 1);
+  assert.equal(Animotion.commandHistory.undo(), true);
+  assert.equal(Animotion.state.panelSetup.impact.characterMask, null);
+});
+
+test("panel command clears redo after a new crop edit", () => {
+  const Animotion = loadAnimotion();
+  Animotion.panelCommands.setCrop("source", { x: 1, y: 2, w: 30, h: 40 });
+  Animotion.commandHistory.undo();
+  Animotion.panelCommands.setCrop("source", { x: 3, y: 4, w: 10, h: 20 });
+  assert.equal(Animotion.commandHistory.canRedo(), false);
+  assert.equal(Animotion.state.panelSetup.source.crop.w, 10);
 });
