@@ -38,6 +38,7 @@
     drawSelectedRigPoints(view, now, matrixCache, drawPivot);
     Animotion.correspondenceEditor?.drawOverlay?.(previewCtx, view);
     Animotion.motionPlanner?.drawOverlay?.(previewCtx, view, cutscene);
+    Animotion.hiddenCompletionGuideEditor?.drawOverlay?.(previewCtx, view);
     previewCtx.restore();
   }
 

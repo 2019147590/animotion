@@ -17,10 +17,12 @@ function loadAnimotion() {
   vm.createContext(context);
   for (const path of [
     "scripts/coordinate-spaces.js",
+    "scripts/geometry.js",
     "scripts/hidden-completion-assets.js",
     "scripts/motion-hints.js",
     "scripts/motion-drafts.js",
     "scripts/motion-draft-editor.js",
+    "scripts/hidden-completion-guide-editor.js",
   ]) runScript(context, path);
   const Animotion = context.window.Animotion;
   Animotion.state = { motionPlan: {}, cutsceneBridge: null };
@@ -252,8 +254,42 @@ test("motion draft editor lifecycle buttons update the active snapshot", () => {
   assert.equal(removed.hiddenCompletion.assetStatus, "missing");
 });
 
+test("hidden completion guide editor creates and edits a selected part patch", () => {
+  const Animotion = loadAnimotion();
+  const part = {
+    id: "leg-a",
+    name: "leg",
+    sourceRect: { x: 10, y: 20, w: 30, h: 40 },
+    rect: { x: 10, y: 20, w: 30, h: 40 },
+    mask: { points: [{ x: 0, y: 0 }, { x: 15, y: 20 }, { x: 30, y: 40 }] },
+  };
+  Animotion.imageBounds = () => ({ width: 100, height: 80 });
+  Animotion.projectModel = { createEmptyProject: () => ({ assets: [] }) };
+  Animotion.state.project = { assets: [] };
+  Animotion.state.parts = [part];
+  Animotion.state.selectedPartId = part.id;
+  Animotion.parts = { selectedPart: () => part };
+  Animotion.state.motionPlan.motionDraft = Animotion.motionDrafts.compileFromHints({
+    source: "correspondence",
+    hiddenCompletion: "required",
+  }, { partId: part.id });
+
+  const asset = Animotion.hiddenCompletionGuideEditor.createGuideFromSelectedPart();
+  assert.equal(asset.type, "hiddenCompletionPatch");
+  assert.equal(asset.renderMode, "guideOnly");
+  assert.equal(asset.patchStatus, "guide");
+  assert.equal(Animotion.state.project.assets[0].id, asset.id);
+  assert.equal(Animotion.state.motionPlan.motionDraft.hiddenCompletion.assetStatus, "ready");
+  assert.equal(Animotion.state.motionPlan.motionDraft.hiddenCompletion.assetId, asset.id);
+
+  const updated = Animotion.hiddenCompletionGuideEditor.updateSelectedGuideVertexFromImagePoint(2, { x: 25, y: 50 });
+  assert.equal(updated.guide.meshVerticesNormalized[2].xNorm, 0.5);
+  assert.equal(updated.guide.meshVerticesNormalized[2].yNorm, 0.75);
+});
+
 test("motion draft editor is loaded after ui refresh hooks are available", () => {
   const bootstrap = fs.readFileSync("scripts/bootstrap.js", "utf8");
   assert.equal(bootstrap.indexOf('"ui"') < bootstrap.indexOf('"motion-draft-editor"'), true);
   assert.equal(bootstrap.includes("motion-draft-editor"), true);
+  assert.equal(bootstrap.indexOf('"motion-draft-editor"') < bootstrap.indexOf('"hidden-completion-guide-editor"'), true);
 });

@@ -48,6 +48,7 @@
     "render",
     "ui",
     "motion-draft-editor",
+    "hidden-completion-guide-editor",
     "editor",
     "io",
     "export",

@@ -145,7 +145,8 @@
 }
 
 .motion-draft-tools,
-.motion-draft-inspector {
+.motion-draft-inspector,
+.hidden-completion-guide-tools {
   display: grid;
   gap: 10px;
   border: 2px solid var(--line);
@@ -173,7 +174,8 @@
 }
 
 .motion-draft-tools.hidden,
-.motion-draft-inspector.hidden {
+.motion-draft-inspector.hidden,
+.hidden-completion-guide-tools.hidden {
   display: none;
 }
 

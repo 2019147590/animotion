@@ -15,6 +15,7 @@
   function onPreviewPointerDown(event) {
     const part = Animotion.parts.selectedPart();
     if (!part || !state.previewView) return;
+    if (Animotion.hiddenCompletionGuideEditor?.beginDrag?.(event)) return;
     const point = previewPoint(event);
     if (!point) return;
     const role = hitRigRole(part, point) || selectedRole();
@@ -30,6 +31,7 @@
   }
 
   function onPreviewPointerMove(event) {
+    if (Animotion.hiddenCompletionGuideEditor?.updateDrag?.(event)) return;
     if (!state.previewDrag || !state.previewView) return;
     const part = state.parts.find((candidate) => candidate.id === state.previewDrag.partId);
     const point = previewPoint(event);
@@ -41,6 +43,7 @@
   }
 
   function onPreviewPointerUp(event) {
+    if (Animotion.hiddenCompletionGuideEditor?.endDrag?.(event)) return;
     if (previewCanvas.hasPointerCapture(event.pointerId)) {
       previewCanvas.releasePointerCapture(event.pointerId);
     }
