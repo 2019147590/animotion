@@ -1,18 +1,19 @@
 {
   const global = typeof window !== "undefined" ? window : globalThis;
   const Animotion = global.Animotion || (global.Animotion = {});
-
   const TEMPLATES = {
     kick: { label: "킥", beats: [["ready", 0, 0, 0, 0], ["compress", 0.24, -0.16, 0.08, 0.2], ["chamber", 0.56, 0.1, -0.12, 0.48], ["extend", 0.82, 0.58, -0.04, 0.82], ["impact", 1, 0, 0, 1]] },
     punch: { label: "펀치", beats: [["guard", 0, 0, 0, 0], ["windup", 0.25, -0.2, 0.04, 0.15], ["drive", 0.58, 0.24, -0.02, 0.58], ["extension", 0.84, 0.75, 0, 0.86], ["impact", 1, 0, 0, 1]] },
     dash: { label: "돌진", beats: [["ready", 0, 0, 0, 0], ["lean", 0.28, -0.08, 0.04, 0.2], ["launch", 0.62, 0.45, -0.08, 0.58], ["snap", 0.86, 0.82, -0.02, 0.86], ["arrive", 1, 0, 0, 1]] },
   };
-  function normalizePlan(plan = {}) {
-    const target = normalizeTarget(plan.target);
+  function normalizePlan(plan = {}, options = {}) {
+    const bounds = options.imageBounds || sourceBounds();
+    const target = normalizeTarget(plan.target, plan.targetNormalized, bounds);
     return {
       template: TEMPLATES[plan.template] ? plan.template : "kick",
       target,
-      anchors: Animotion.motionAnchors?.normalizeAnchors?.(plan.anchors) || [],
+      targetNormalized: target ? normalizedPoint(target, bounds) : null,
+      anchors: Animotion.motionAnchors?.normalizeAnchors?.(plan.anchors, { imageBounds: bounds }) || [],
       targetMode: Boolean(plan.targetMode),
       selectedBeatId: plan.selectedBeatId ? String(plan.selectedBeatId) : null,
       targetSource: normalizeTargetSource(plan.targetSource, target),
@@ -20,9 +21,11 @@
       motionDraft: Animotion.motionDrafts?.normalize?.(plan.motionDraft) || Animotion.motionDrafts?.compileFromHints?.(plan.motionHints) || null,
     };
   }
-  function normalizeTarget(target) {
-    if (!target) return null;
-    return { x: Math.round(Number(target.x) || 0), y: Math.round(Number(target.y) || 0) };
+  function normalizeTarget(target, normalized, bounds) {
+    const restored = Animotion.coordinateSpaces?.pointFromNormalizedImagePoint?.(normalized, bounds);
+    const source = restored || target;
+    if (!source) return null;
+    return { x: Math.round(Number(source.x) || 0), y: Math.round(Number(source.y) || 0) };
   }
   function normalizeTargetSource(source, target = null) {
     if (!source) return target ? { type: "manual" } : null;
@@ -236,7 +239,6 @@
     const selected = plan.selectedBeatId ? ` · beat ${plan.selectedBeatId}` : "";
     return `${TEMPLATES[plan.template].label} · ${target}${source}${hints ? ` · ${hints}` : ""}${plan.anchors.length ? ` · anchors ${plan.anchors.length}` : ""}${selected}`;
   }
-
   function autoTarget(start, direction, primary) {
     const p = pointFromArray(start || [0, 0]);
     const distance = primary?.type === "leg" ? 170 : 120;
@@ -245,7 +247,6 @@
   function isBodyPrimary(part) {
     return part?.type === "body" || part?.type === "spine";
   }
-
   function bendNormal(baseRoot, baseMid, baseEnd, root, end) {
     const sign = Math.sign((baseMid.x - baseRoot.x) * (baseEnd.y - baseRoot.y) - (baseMid.y - baseRoot.y) * (baseEnd.x - baseRoot.x)) || 1;
     const dx = end.x - root.x;
@@ -253,7 +254,6 @@
     const length = Math.max(1, Math.hypot(dx, dy));
     return { x: -dy / length * sign, y: dx / length * sign };
   }
-
   function refs() {
     return {
       template: document.querySelector("#motionPlanTemplate"),
@@ -262,7 +262,6 @@
       status: document.querySelector("#motionPlanStatus"),
     };
   }
-
   function previewPoint(event) {
     const canvas = Animotion.dom.previewCanvas;
     const rect = canvas.getBoundingClientRect();
@@ -274,28 +273,29 @@
       Animotion.state.previewSourceTransform
     ) || screen;
   }
-
   function pointFromArray(point) {
     return { x: Number(point?.[0]) || 0, y: Number(point?.[1]) || 0 };
   }
-
   function lerpPoint(a, b, ratio) {
     return { x: a.x + (b.x - a.x) * ratio, y: a.y + (b.y - a.y) * ratio };
   }
-
   function rounded(point) {
     return [Math.round(point.x), Math.round(point.y)];
   }
   function distance(a, b) {
     return Math.hypot(a.x - b.x, a.y - b.y);
   }
-
+  function normalizedPoint(point, bounds) {
+    return Animotion.coordinateSpaces?.normalizedImagePointFromPoint?.(point, bounds) || null;
+  }
+  function sourceBounds() {
+    if (Animotion.state?.image) return { width: Animotion.state.image.naturalWidth, height: Animotion.state.image.naturalHeight };
+    return typeof Animotion.imageBounds === "function" ? Animotion.imageBounds() : null;
+  }
   function refresh() {
     Animotion.ui?.refreshUi?.();
   }
-
   Animotion.motionPlanner = { normalizePlan, createPlan, installControls, refreshControls, tracksForJointAction };
   installControls();
-
   if (typeof module !== "undefined") module.exports = Animotion.motionPlanner;
 }

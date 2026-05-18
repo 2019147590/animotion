@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 
 require("../scripts/motion-model.js");
+require("../scripts/coordinate-spaces.js");
 require("../scripts/motion-hints.js");
 require("../scripts/motion-drafts.js");
 const motionTargetPolicy = require("../scripts/motion-target-policy.js");
@@ -106,6 +107,56 @@ test("anchor picker updates a selected anchor as a locked user point", () => {
   assert.deepEqual(updated.find((anchor) => anchor.key === "chest").point, { x: 84, y: 24 });
   assert.equal(updated.find((anchor) => anchor.key === "chest").locked, true);
   assert.deepEqual(updated.find((anchor) => anchor.key === "rFoot").point, { x: 90, y: 70 });
+});
+
+test("motion target and anchors restore from source-image normalized points", () => {
+  globalThis.Animotion.imageBounds = () => ({ width: 200, height: 160 });
+  const plan = motionPlanner.normalizePlan({
+    template: "kick",
+    target: { x: 10, y: 20 },
+    targetNormalized: { xNorm: 0.5, yNorm: 0.25, coordinateSpace: "normalized-image" },
+    anchors: [{
+      key: "rFoot",
+      role: "primary",
+      point: { x: 10, y: 20 },
+      pointNormalized: { xNorm: 0.75, yNorm: 0.5, coordinateSpace: "normalized-image" },
+    }],
+  });
+  assert.deepEqual(plan.target, { x: 100, y: 40 });
+  assert.deepEqual(plan.anchors[0].point, { x: 150, y: 80 });
+  assert.equal(plan.targetNormalized.xNorm, 0.5);
+  assert.equal(plan.anchors[0].pointNormalized.yNorm, 0.5);
+  const bridge = cutsceneModel.normalizeBridge({
+    jointAction: {
+      source: "test",
+      anchors: plan.anchors,
+      beats: [{ id: "impact", at: 15, pose: { rFoot: [1, 1] } }],
+    },
+  });
+  assert.deepEqual(bridge.jointAction.anchors[0].point, { x: 150, y: 80 });
+  delete globalThis.Animotion.imageBounds;
+});
+
+test("trajectory beat poses restore from source-image normalized points", () => {
+  globalThis.Animotion.imageBounds = () => ({ width: 200, height: 160 });
+  const bridge = cutsceneModel.normalizeBridge({
+    jointAction: {
+      source: "test",
+      focusKey: "rFoot",
+      beats: [{
+        id: "impact",
+        at: 15,
+        pose: { rFoot: [10, 20] },
+        poseNormalized: { rFoot: { xNorm: 0.75, yNorm: 0.5, coordinateSpace: "normalized-image" } },
+      }],
+    },
+  });
+  assert.deepEqual(bridge.jointAction.beats[0].pose.rFoot, [150, 80]);
+  assert.equal(bridge.jointAction.beats[0].poseNormalized.rFoot.xNorm, 0.75);
+  assert.equal(trajectoryEditor.editBeatPoint(bridge.jointAction, 0, "rFoot", { x: 100, y: 40 }), true);
+  assert.equal(bridge.jointAction.beats[0].poseNormalized.rFoot.xNorm, 0.5);
+  assert.equal(bridge.jointAction.beats[0].poseNormalized.rFoot.yNorm, 0.25);
+  delete globalThis.Animotion.imageBounds;
 });
 
 test("motion planner preserves correspondence target source metadata", () => {

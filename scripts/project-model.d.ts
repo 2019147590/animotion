@@ -49,6 +49,10 @@ export type Part = {
   opacity: number;
   pivot: Vec2;
   joint?: Vec2;
+  sourceRectNormalized?: NormalizedImageRect | null;
+  pivotNormalized?: NormalizedLocalPoint | null;
+  jointNormalized?: NormalizedLocalPoint | null;
+  maskVerticesNormalized?: NormalizedLocalPoint[];
   mask?: PolygonMask | null;
   transform: Transform2D;
   mesh?: Mesh2D;
@@ -230,6 +234,8 @@ export type OcclusionMetadata = {
 
 export type Vec2 = { x: number; y: number };
 export type NormalizedImagePoint = { xNorm: number; yNorm: number; coordinateSpace: "normalized-image" };
+export type NormalizedImageRect = { xNorm: number; yNorm: number; wNorm: number; hNorm: number; coordinateSpace: "normalized-image" };
+export type NormalizedLocalPoint = { xNorm: number; yNorm: number; coordinateSpace: "part-local-normalized" };
 export type Rect = { x: number; y: number; w: number; h: number };
 export type PolygonMask = { points: Vec2[] };
 export type Mesh2D = { vertices: Vec2[]; triangles: [number, number, number][]; uvs?: Vec2[] };

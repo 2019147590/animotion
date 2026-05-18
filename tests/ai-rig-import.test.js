@@ -28,6 +28,7 @@ function loadAnimotion() {
   vm.createContext(context);
   runScript(context, "scripts/config.js");
   runScript(context, "scripts/geometry.js");
+  runScript(context, "scripts/coordinate-spaces.js");
   runScript(context, "scripts/motion-model.js");
   runScript(context, "scripts/project-model.js");
   runScript(context, "scripts/project-serialization.js");
@@ -104,9 +105,57 @@ test("save payload uses the central AnimotionProject model", () => {
   assert.equal(project.parts[0].layerIndex, 3);
   assert.equal(project.parts[0].visible, false);
   assert.equal(project.parts[0].opacity, 0.5);
+  assert.equal(project.parts[0].sourceRectNormalized.coordinateSpace, "normalized-image");
+  assert.equal(project.parts[0].sourceRectNormalized.xNorm, 10 / 640);
+  assert.equal(project.parts[0].pivotNormalized.coordinateSpace, "part-local-normalized");
+  assert.equal(project.parts[0].pivotNormalized.xNorm, 5 / 30);
+  assert.equal(project.parts[0].jointNormalized.yNorm, 30 / 40);
+  assert.equal(project.parts[0].maskVerticesNormalized.length, 0);
   assert.equal(project.motions[0].keyframes[0].targetId, "part-arm");
   assert.equal(project.timeline.currentFrame, 7);
   assert.equal(project.editor.separateCharacter, true);
+});
+
+test("project importer restores normalized part coordinates against the current source image size", () => {
+  const Animotion = loadAnimotion();
+  Animotion.state.image = { naturalWidth: 200, naturalHeight: 160 };
+  const parts = Animotion.io.rigPartsFromPayload({
+    format: "animotion-project",
+    version: "1.0.0",
+    metadata: { name: "Scaled", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+    canvas: { width: 100, height: 80, fps: 24, durationFrames: 12 },
+    assets: [{ id: "source-image", type: "sourceImage", name: "small.png", uri: "small.png" }],
+    parts: [{
+      id: "part-leg",
+      name: "leg",
+      type: "leg",
+      assetId: "asset-leg",
+      sourceRect: { x: 10, y: 20, w: 30, h: 40 },
+      sourceRectNormalized: { xNorm: 0.1, yNorm: 0.25, wNorm: 0.3, hNorm: 0.5, coordinateSpace: "normalized-image" },
+      pivot: { x: 15, y: 10 },
+      joint: { x: 24, y: 30 },
+      pivotNormalized: { xNorm: 0.5, yNorm: 0.25, coordinateSpace: "part-local-normalized" },
+      jointNormalized: { xNorm: 0.8, yNorm: 0.75, coordinateSpace: "part-local-normalized" },
+      mask: { kind: "polygon", points: [{ x: 0, y: 0 }, { x: 3, y: 4 }, { x: 15, y: 20 }] },
+      maskVerticesNormalized: [
+        { xNorm: 0, yNorm: 0, coordinateSpace: "part-local-normalized" },
+        { xNorm: 1, yNorm: 1, coordinateSpace: "part-local-normalized" },
+        { xNorm: 0.5, yNorm: 0.5, coordinateSpace: "part-local-normalized" },
+      ],
+      transform: { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 },
+    }],
+    motions: [],
+  });
+  assert.equal(parts[0].rect.x, 20);
+  assert.equal(parts[0].rect.y, 40);
+  assert.equal(parts[0].rect.w, 60);
+  assert.equal(parts[0].rect.h, 80);
+  assert.equal(parts[0].pivot.x, 30);
+  assert.equal(parts[0].pivot.y, 20);
+  assert.equal(parts[0].joint.x, 48);
+  assert.equal(parts[0].joint.y, 60);
+  assert.equal(parts[0].mask.points[1].x, 60);
+  assert.equal(parts[0].mask.points[1].y, 80);
 });
 
 test("project importer restores editor part fields from AnimotionProject", () => {

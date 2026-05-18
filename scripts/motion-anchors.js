@@ -2,19 +2,21 @@
   const global = typeof window !== "undefined" ? window : globalThis;
   const Animotion = global.Animotion || (global.Animotion = {});
 
-  function normalizeAnchors(anchors = []) {
+  function normalizeAnchors(anchors = [], options = {}) {
     if (!Array.isArray(anchors)) return [];
-    return anchors.map(normalizeAnchor).filter(Boolean);
+    return anchors.map((anchor) => normalizeAnchor(anchor, options)).filter(Boolean);
   }
 
-  function normalizeAnchor(anchor) {
-    const point = normalizePoint(anchor?.point);
+  function normalizeAnchor(anchor, options = {}) {
+    const bounds = options.imageBounds || sourceBounds();
+    const point = normalizedImagePoint(anchor?.pointNormalized, bounds) || normalizePoint(anchor?.point);
     if (!anchor?.key || !point) return null;
     return {
       key: String(anchor.key),
       partId: anchor.partId ? String(anchor.partId) : null,
       role: String(anchor.role || "draft"),
       point,
+      pointNormalized: normalizedPoint(point, bounds),
       locked: anchor.locked === true,
       ...(anchor.source ? { source: String(anchor.source) } : {}),
       ...(anchor.motionHints ? { motionHints: Animotion.motionHints?.normalize?.(anchor.motionHints) || anchor.motionHints } : {}),
@@ -46,7 +48,7 @@
     const index = anchors.findIndex((candidate) => candidate.key === active.end && candidate.role === "primary");
     const primaryAnchor = anchor(active.end, primary?.id, "primary", target, true);
     if (index === -1) return [primaryAnchor, ...anchors];
-    return anchors.map((candidate, candidateIndex) => candidateIndex === index ? { ...candidate, point: target, locked: true } : candidate);
+    return anchors.map((candidate, candidateIndex) => candidateIndex === index ? withPoint(candidate, target, true) : candidate);
   }
 
   function legAnchors(parts, primary, base, active, direction, primaryAnchor) {
@@ -86,7 +88,12 @@
   }
 
   function anchor(key, partId, role, point, locked) {
-    return { key, partId: partId || null, role, point: normalizePoint(point), locked };
+    return withPoint({ key, partId: partId || null, role }, point, locked);
+  }
+
+  function withPoint(anchor, point, locked) {
+    const normalized = normalizePoint(point);
+    return { ...anchor, point: normalized, pointNormalized: normalizedPoint(normalized, sourceBounds()), locked };
   }
 
   function followAnchor(parts, type, basePoint, target, amount) {
@@ -118,6 +125,19 @@
   function normalizePoint(point) {
     if (!point) return null;
     return { x: Math.round(Number(point.x) || Number(point[0]) || 0), y: Math.round(Number(point.y) || Number(point[1]) || 0) };
+  }
+
+  function normalizedPoint(point, bounds) {
+    return Animotion.coordinateSpaces?.normalizedImagePointFromPoint?.(point, bounds) || null;
+  }
+
+  function normalizedImagePoint(point, bounds) {
+    return Animotion.coordinateSpaces?.pointFromNormalizedImagePoint?.(point, bounds) || null;
+  }
+
+  function sourceBounds() {
+    if (Animotion.state?.image) return { width: Animotion.state.image.naturalWidth, height: Animotion.state.image.naturalHeight };
+    return typeof Animotion.imageBounds === "function" ? Animotion.imageBounds() : null;
   }
 
   function pointFromArray(point) {

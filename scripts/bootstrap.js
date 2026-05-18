@@ -2,6 +2,7 @@
   const scripts = [
     "config",
     "geometry",
+    "coordinate-spaces",
     "project-model",
     "project-serialization",
     "correspondence-model",

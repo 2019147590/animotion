@@ -70,6 +70,7 @@
     return next.map((anchor) => anchor.key === anchorKey ? {
       ...anchor,
       point: normalizePoint(point),
+      pointNormalized: normalizedPoint(point),
       locked: true,
     } : anchor);
   }
@@ -100,6 +101,15 @@
 
   function normalizePoint(point) {
     return { x: Math.round(Number(point.x) || 0), y: Math.round(Number(point.y) || 0) };
+  }
+
+  function normalizedPoint(point) {
+    return Animotion.coordinateSpaces?.normalizedImagePointFromPoint?.(point, sourceBounds()) || null;
+  }
+
+  function sourceBounds() {
+    if (Animotion.state?.image) return { width: Animotion.state.image.naturalWidth, height: Animotion.state.image.naturalHeight };
+    return typeof Animotion.imageBounds === "function" ? Animotion.imageBounds() : null;
   }
 
   function isCutsceneEditable() {

@@ -7,12 +7,6 @@
   const DEFAULT_CANVAS = { width: 1, height: 1, fps: 24, durationFrames: 120, backgroundColor: "#f7f0df" };
   const PART_TYPES = new Set(["head", "body", "spine", "arm", "leg", "hand", "hair", "eye", "mouth", "clothes", "prop", "background"]);
 
-  /**
-   * Central AnimotionProject model.
-   * Current MVP-only fields such as sourceRect and motionSettings are kept on Part
-   * so the existing canvas renderer can round-trip without a full UI rewrite.
-   */
-
   function createEmptyProject(options = {}) {
     const now = isoNow();
     const canvas = normalizeCanvas(options.canvas);
@@ -36,15 +30,16 @@
     };
   }
 
-  function normalizeProject(payload) {
+  function normalizeProject(payload, options = {}) {
     const project = createEmptyProject({
       name: payload?.metadata?.name,
       createdAt: payload?.metadata?.createdAt,
       updatedAt: payload?.metadata?.updatedAt,
       canvas: payload?.canvas,
     });
+    const imageBounds = options.imageBounds || canvasBounds(project.canvas);
     project.assets = normalizeArray(payload?.assets, normalizeAsset);
-    project.parts = normalizeArray(payload?.parts, normalizeProjectPart);
+    project.parts = normalizeArray(payload?.parts, (part, index) => normalizeProjectPart(part, index, { imageBounds }));
     project.proxies = Array.isArray(payload?.proxies) ? payload.proxies : [];
     project.rigs = Array.isArray(payload?.rigs) ? payload.rigs : [];
     project.motions = normalizeArray(payload?.motions, normalizeMotionClip);
@@ -68,10 +63,14 @@
     return payload?.format === PROJECT_FORMAT || (payload?.metadata && payload?.canvas && Array.isArray(payload?.assets));
   }
 
-  function normalizeProjectPart(part = {}, index = 0) {
+  function normalizeProjectPart(part = {}, index = 0, options = {}) {
     const id = stringOrDefault(part.id, `part-${index + 1}`);
-    const rect = normalizeRect(part.rect || part.sourceRect);
+    const imageBounds = options.imageBounds || canvasBounds(options.canvas);
+    const storedRect = normalizeRect(part.rect || part.sourceRect);
+    const rect = rectForCurrentImage(part, imageBounds);
     const layerIndex = intOrDefault(part.order, intOrDefault(part.layerIndex, index + 1));
+    const pivot = localPointForCurrentRect(part.pivotNormalized, part.pivot, rect);
+    const joint = localPointForCurrentRect(part.jointNormalized, part.joint, rect);
     return {
       id,
       name: stringOrDefault(part.name, `part_${index + 1}`),
@@ -82,9 +81,13 @@
       layerIndex,
       visible: part.hidden !== undefined ? part.hidden !== true : part.visible !== false,
       opacity: clampNumber(part.alpha ?? part.opacity, 0, 1, 1),
-      pivot: normalizePoint(part.pivot, { x: rect.w * 0.5, y: rect.h * 0.5 }),
-      joint: normalizePoint(part.joint, { x: rect.w * 0.5, y: rect.h * 0.5 }),
-      mask: normalizeMask(part.mask),
+      pivot,
+      joint,
+      sourceRectNormalized: normalizedImageRect(rect, imageBounds),
+      pivotNormalized: normalizedLocalPoint(pivot, rect),
+      jointNormalized: normalizedLocalPoint(joint, rect),
+      mask: normalizeMask(part.mask, part.maskVerticesNormalized, rect, storedRect),
+      maskVerticesNormalized: normalizedMaskVertices(part.mask, rect),
       transform: normalizeTransform(part.transform),
       sourceRect: rect,
       motionSettings: normalizeCustomMotion(part.customMotion || part.motionSettings),
@@ -189,9 +192,20 @@
     };
   }
 
-  function normalizeMask(mask) {
+  function normalizeMask(mask, normalizedVertices = null, rect = null, storedRect = null) {
     if (!mask?.points) return null;
-    return { ...mask, points: mask.points.map((point) => normalizePoint(point, { x: 0, y: 0 })) };
+    const restored = Animotion.coordinateSpaces?.pointsFromNormalizedLocalPoints?.(normalizedVertices, rect);
+    if (restored?.length) return { ...mask, points: restored };
+    const scaleX = rect && storedRect ? rect.w / storedRect.w : 1;
+    const scaleY = rect && storedRect ? rect.h / storedRect.h : 1;
+    return {
+      ...mask,
+      points: mask.points.map((point) => normalizePoint({ x: point.x * scaleX, y: point.y * scaleY }, { x: 0, y: 0 })),
+    };
+  }
+
+  function normalizedMaskVertices(mask, rect) {
+    return Animotion.coordinateSpaces?.normalizedLocalPointsFromPoints?.(mask?.points, rect) || [];
   }
 
   function normalizeTransform(transform = {}) {
@@ -206,6 +220,31 @@
 
   function normalizePoint(point = {}, fallback) {
     return { x: numberOrDefault(point.x, fallback.x), y: numberOrDefault(point.y, fallback.y) };
+  }
+
+  function rectForCurrentImage(part, imageBounds) {
+    const normalized = Animotion.coordinateSpaces?.rectFromNormalizedImageRect?.(part.sourceRectNormalized, imageBounds);
+    return normalizeRect(normalized || part.rect || part.sourceRect);
+  }
+
+  function localPointForCurrentRect(normalized, point, rect) {
+    const restored = Animotion.coordinateSpaces?.pointFromNormalizedLocalPoint?.(normalized, rect);
+    return normalizePoint(restored || point, { x: rect.w * 0.5, y: rect.h * 0.5 });
+  }
+
+  function normalizedImageRect(rect, imageBounds) {
+    return Animotion.coordinateSpaces?.normalizedImageRectFromRect?.(rect, imageBounds) || null;
+  }
+
+  function normalizedLocalPoint(point, rect) {
+    return Animotion.coordinateSpaces?.normalizedLocalPointFromPoint?.(point, rect) || null;
+  }
+
+  function canvasBounds(canvas = {}) {
+    return {
+      width: intOrDefault(canvas.width, DEFAULT_CANVAS.width),
+      height: intOrDefault(canvas.height, DEFAULT_CANVAS.height),
+    };
   }
 
   function objectOrEmpty(value) {

@@ -58,12 +58,13 @@
   }
 
   function createRigPayload() {
-    const bridge = state.cutsceneBridge ? Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge) : null;
+    const imageBounds = currentImageBounds();
+    const bridge = state.cutsceneBridge ? Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge, { imageBounds }) : null;
     return Animotion.projectModel.projectFromEditorState({
       ...state,
       cutsceneBridge: bridge,
       panelSetup: Animotion.panelEditor?.ensureSetup?.() || null,
-      motionPlan: Animotion.motionPlanner?.normalizePlan?.(state.motionPlan) || null,
+      motionPlan: Animotion.motionPlanner?.normalizePlan?.(state.motionPlan, { imageBounds }) || null,
     });
   }
 
@@ -105,7 +106,9 @@
 
   function rigPartsFromPayload(payload) {
     if (Animotion.projectModel?.isProjectPayload?.(payload)) {
-      return Animotion.projectModel.editorPartsFromProject(Animotion.projectModel.normalizeProject(payload));
+      return Animotion.projectModel.editorPartsFromProject(
+        Animotion.projectModel.normalizeProject(payload, { imageBounds: currentImageBounds() })
+      );
     }
     if (Array.isArray(payload.parts)) return payload.parts;
     if (Number(payload.version) === 3) {
@@ -134,7 +137,7 @@
   }
 
   function restoreProjectPayload(payload, currentBridge) {
-    const project = Animotion.projectModel.normalizeProject(payload);
+    const project = Animotion.projectModel.normalizeProject(payload, { imageBounds: currentImageBounds() });
     Animotion.sessionCommands.restoreProject(
       project,
       Animotion.projectModel.editorPartsFromProject(project).map(deserializeRigPart),
@@ -149,6 +152,10 @@
   function inlineMask(mask, rect) {
     if (mask?.points) return mask;
     return Animotion.geometry.shapeToMask(Animotion.geometry.rectShape(rect), rect);
+  }
+
+  function currentImageBounds() {
+    return state.image ? { width: state.image.naturalWidth, height: state.image.naturalHeight } : null;
   }
 
   function downloadUrl(url, filename) {

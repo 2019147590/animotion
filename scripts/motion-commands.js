@@ -51,9 +51,11 @@
   }
 
   function setMotionPlan(patch = {}) {
+    const nextPatch = { ...patch };
+    if (hasOwn(nextPatch, "target") && !hasOwn(nextPatch, "targetNormalized")) nextPatch.targetNormalized = null;
     state.motionPlan = normalizeMotionPlan({
       ...currentMotionPlan(),
-      ...patch,
+      ...nextPatch,
     });
     return state.motionPlan;
   }
@@ -94,6 +96,10 @@
 
   function normalizeMotionPlan(plan) {
     return Animotion.motionPlanner?.normalizePlan?.(plan) || { ...plan };
+  }
+
+  function hasOwn(value, key) {
+    return Object.prototype.hasOwnProperty.call(value, key);
   }
 
   Animotion.motionCommands = {

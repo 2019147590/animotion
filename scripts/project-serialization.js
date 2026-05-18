@@ -6,7 +6,7 @@
   function projectFromEditorState(state, options = {}) {
     const previous = state.project || {};
     const canvas = canvasFromState(state, options);
-    const parts = (state.parts || []).map((part, index) => model.normalizeProjectPart(part, index));
+    const parts = (state.parts || []).map((part, index) => model.normalizeProjectPart(part, index, { imageBounds: canvas }));
     const motions = motionClipsFromParts(parts, canvas.durationFrames);
     return {
       ...model.createEmptyProject({

@@ -152,6 +152,7 @@
     const beat = action?.beats?.[beatIndex];
     if (!beat?.pose || !focusKey || !point) return false;
     beat.pose[focusKey] = [Math.round(Number(point.x) || 0), Math.round(Number(point.y) || 0)];
+    beat.poseNormalized = { ...(beat.poseNormalized || {}), [focusKey]: normalizedPoint(beat.pose[focusKey]) };
     return true;
   }
 
@@ -159,6 +160,7 @@
     const anchor = action?.anchors?.find((candidate) => candidate.key === anchorKey);
     if (!anchor || !point) return false;
     anchor.point = { x: Math.round(Number(point.x) || 0), y: Math.round(Number(point.y) || 0) };
+    anchor.pointNormalized = normalizedPoint(anchor.point);
     return true;
   }
 
@@ -252,6 +254,15 @@
   function pointDistance(a, b) {
     if (!a || !b) return Infinity;
     return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+
+  function normalizedPoint(point) {
+    return Animotion.coordinateSpaces?.normalizedImagePointFromPoint?.(point, sourceBounds()) || null;
+  }
+
+  function sourceBounds() {
+    if (Animotion.state?.image) return { width: Animotion.state.image.naturalWidth, height: Animotion.state.image.naturalHeight };
+    return typeof Animotion.imageBounds === "function" ? Animotion.imageBounds() : null;
   }
 
   function isCutsceneEditable() {

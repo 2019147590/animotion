@@ -29,8 +29,9 @@
     });
   }
 
-  function normalizeBridge(bridge = {}) {
+  function normalizeBridge(bridge = {}, options = {}) {
     bridge = bridge || {};
+    const imageBounds = options.imageBounds || sourceBounds();
     const durationFrames = clampInt(bridge.durationFrames, 8, 120, DEFAULT_BRIDGE.durationFrames);
     return {
       primaryPartId: bridge.primaryPartId || null,
@@ -46,7 +47,7 @@
       impactScale: clampNumber(bridge.impactScale, 0.5, 1.8, DEFAULT_BRIDGE.impactScale),
       sourceMotionEnabled: bridge.sourceMotionEnabled === true,
       bodyAssistEnabled: bridge.bodyAssistEnabled !== false,
-      jointAction: normalizeJointAction(bridge.jointAction),
+      jointAction: normalizeJointAction(bridge.jointAction, { imageBounds }),
     };
   }
 
@@ -129,33 +130,53 @@
     return Object.fromEntries(PANEL_KEYS.map((key) => [key, bridge[key]]));
   }
 
-  function normalizeJointAction(action) {
+  function normalizeJointAction(action, options = {}) {
     if (!action?.beats?.length) return null;
     return {
       source: String(action.source || "part-pivots-v1"),
       focusKey: action.focusKey ? String(action.focusKey) : null,
-      anchors: Animotion.motionAnchors?.normalizeAnchors?.(action.anchors) || [],
-      beats: action.beats.map(normalizeBeat).filter(Boolean),
+      anchors: Animotion.motionAnchors?.normalizeAnchors?.(action.anchors, options) || [],
+      beats: action.beats.map((beat) => normalizeBeat(beat, options)).filter(Boolean),
       ...(action.motionHints ? { motionHints: Animotion.motionHints?.normalize?.(action.motionHints) || action.motionHints } : {}),
       ...(action.motionDraft ? { motionDraft: Animotion.motionDrafts?.normalize?.(action.motionDraft) || action.motionDraft } : {}),
     };
   }
 
-  function normalizeBeat(beat) {
-    if (!beat?.pose) return null;
+  function normalizeBeat(beat, options = {}) {
+    const pose = normalizePose(beat?.pose, beat?.poseNormalized, options.imageBounds);
+    if (!pose) return null;
     return {
       id: String(beat.id || "beat"),
       at: Math.max(1, Math.round(Number(beat.at) || 1)),
-      pose: normalizePose(beat.pose),
+      pose,
+      poseNormalized: normalizedPose(pose, options.imageBounds),
     };
   }
 
-  function normalizePose(pose) {
-    return Object.fromEntries(Object.entries(pose).map(([key, point]) => [key, normalizePoint(point)]));
+  function normalizePose(pose, normalizedPose, bounds) {
+    const restored = poseFromNormalized(normalizedPose, bounds);
+    const source = restored || pose;
+    if (!source) return null;
+    return Object.fromEntries(Object.entries(source).map(([key, point]) => [key, normalizePoint(point)]));
   }
 
   function normalizePoint(point) {
-    return [Math.round(Number(point?.[0]) || 0), Math.round(Number(point?.[1]) || 0)];
+    return [Math.round(Number(point?.x ?? point?.[0]) || 0), Math.round(Number(point?.y ?? point?.[1]) || 0)];
+  }
+
+  function poseFromNormalized(pose, bounds) {
+    if (!pose || !bounds) return null;
+    const restored = Object.entries(pose)
+      .map(([key, point]) => [key, Animotion.coordinateSpaces?.pointFromNormalizedImagePoint?.(point, bounds)])
+      .filter((entry) => entry[1]);
+    return restored.length ? Object.fromEntries(restored) : null;
+  }
+
+  function normalizedPose(pose, bounds) {
+    if (!pose || !bounds) return {};
+    return Object.fromEntries(Object.entries(pose)
+      .map(([key, point]) => [key, Animotion.coordinateSpaces?.normalizedImagePointFromPoint?.(point, bounds)])
+      .filter((entry) => entry[1]));
   }
 
   function smoothstep(value) {
@@ -185,6 +206,11 @@
 
   function clampInt(value, min, max, fallback) {
     return Math.round(clampNumber(value, min, max, fallback));
+  }
+
+  function sourceBounds() {
+    if (Animotion.state?.image) return { width: Animotion.state.image.naturalWidth, height: Animotion.state.image.naturalHeight };
+    return typeof Animotion.imageBounds === "function" ? Animotion.imageBounds() : null;
   }
 
   Animotion.cutsceneModel = {
