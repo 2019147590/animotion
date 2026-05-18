@@ -58,3 +58,16 @@ Decision: choose option 2. The project model remains the storage boundary; edito
 ## Impact Note
 
 `sourceRect`, `pivot`, `joint`, `mask.points`, `motionPlan.target`, and action-anchor `point` remain runtime pixel fields because preview, render, planner, and existing tests read them directly. New normalized fields are additive and are used at save/load or planner normalization boundaries.
+
+## Hidden Completion Patch Asset
+
+`hiddenCompletion.assetKind` normalizes legacy `inpaintedPatch` to `hiddenCompletionPatch`.
+
+Patch asset coordinate spaces:
+
+- `sourceRectNormalized`: A/source image normalized rect.
+- `maskVerticesNormalized`: selected part-local normalized vertices.
+- `patchTransform.translationNormalized`: part-local normalized translation.
+- `patchTransform.scaleX`, `patchTransform.scaleY`, and `patchTransform.rotation`: patch-local transform values.
+
+When project assets are available, a draft can stay `assetStatus: "ready"` only if `hiddenCompletion.assetId` points to a project asset with `type: "hiddenCompletionPatch"`.

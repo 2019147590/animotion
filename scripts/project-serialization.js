@@ -55,7 +55,14 @@
     if (state.imageName) assets.push(imageAsset("source-image", "sourceImage", state.imageName, state.image));
     if (state.nextImageName) assets.push(imageAsset("impact-image", "sourceImage", state.nextImageName, state.nextImage));
     for (const part of parts) assets.push(partAsset(part));
+    assets.push(...preservedPatchAssets(state));
     return assets.filter(Boolean);
+  }
+
+  function preservedPatchAssets(state) {
+    return (state.project?.assets || [])
+      .map((asset) => Animotion.hiddenCompletionAssets?.normalizeAsset?.(asset))
+      .filter(Boolean);
   }
 
   function imageAsset(id, type, name, image) {

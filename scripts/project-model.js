@@ -126,6 +126,8 @@
   }
 
   function normalizeAsset(asset) {
+    const patch = Animotion.hiddenCompletionAssets?.normalizeAsset?.(asset);
+    if (patch) return patch;
     if (!asset?.id || !asset?.type) return null;
     return {
       id: String(asset.id),

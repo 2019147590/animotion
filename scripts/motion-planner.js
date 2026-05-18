@@ -18,7 +18,7 @@
       selectedBeatId: plan.selectedBeatId ? String(plan.selectedBeatId) : null,
       targetSource: normalizeTargetSource(plan.targetSource, target),
       motionHints: Animotion.motionHints?.normalize?.(plan.motionHints) || null,
-      motionDraft: Animotion.motionDrafts?.normalize?.(plan.motionDraft) || Animotion.motionDrafts?.compileFromHints?.(plan.motionHints) || null,
+      motionDraft: Animotion.motionDrafts?.normalize?.(plan.motionDraft, { assets: options.assets }) || Animotion.motionDrafts?.compileFromHints?.(plan.motionHints) || null,
     };
   }
   function normalizeTarget(target, normalized, bounds) {

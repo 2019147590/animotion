@@ -3,6 +3,7 @@
     "config",
     "geometry",
     "coordinate-spaces",
+    "hidden-completion-assets",
     "project-model",
     "project-serialization",
     "correspondence-model",

@@ -68,7 +68,7 @@
   }
 
   function setCutsceneBridge(bridge) {
-    state.cutsceneBridge = bridge ? Animotion.cutsceneModel.normalizeBridge(bridge) : null;
+    state.cutsceneBridge = bridge ? Animotion.cutsceneModel.normalizeBridge(bridge, { assets: projectAssets() }) : null;
     return state.cutsceneBridge;
   }
 
@@ -95,11 +95,15 @@
   }
 
   function normalizeMotionPlan(plan) {
-    return Animotion.motionPlanner?.normalizePlan?.(plan) || { ...plan };
+    return Animotion.motionPlanner?.normalizePlan?.(plan, { assets: projectAssets() }) || { ...plan };
   }
 
   function hasOwn(value, key) {
     return Object.prototype.hasOwnProperty.call(value, key);
+  }
+
+  function projectAssets() {
+    return state.project?.assets || null;
   }
 
   Animotion.motionCommands = {

@@ -174,7 +174,7 @@ test("correspondence model compiles a planner draft from the relation", () => {
   assert.equal(draft.motionDraft.sourceCorrespondenceId, "leg-target");
   assert.equal(draft.motionDraft.sourceTargetId, "foot");
   assert.equal(draft.motionDraft.visibility.keyframes[1].value, 0.55);
-  assert.equal(draft.motionDraft.hiddenCompletion.assetKind, "inpaintedPatch");
+  assert.equal(draft.motionDraft.hiddenCompletion.assetKind, "hiddenCompletionPatch");
   assert.equal(draft.motionDraft.hiddenCompletion.assetStatus, "missing");
   assert.equal(draft.motionDraft.hiddenCompletion.assetId, null);
   assert.equal(draft.relation.occlusion.hiddenCompletion, "candidate");

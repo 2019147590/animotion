@@ -59,12 +59,12 @@
 
   function createRigPayload() {
     const imageBounds = currentImageBounds();
-    const bridge = state.cutsceneBridge ? Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge, { imageBounds }) : null;
+    const bridge = state.cutsceneBridge ? Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge, { imageBounds, assets: state.project?.assets }) : null;
     return Animotion.projectModel.projectFromEditorState({
       ...state,
       cutsceneBridge: bridge,
       panelSetup: Animotion.panelEditor?.ensureSetup?.() || null,
-      motionPlan: Animotion.motionPlanner?.normalizePlan?.(state.motionPlan, { imageBounds }) || null,
+      motionPlan: Animotion.motionPlanner?.normalizePlan?.(state.motionPlan, { imageBounds, assets: state.project?.assets }) || null,
     });
   }
 

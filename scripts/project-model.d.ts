@@ -30,11 +30,17 @@ export type CanvasSettings = {
 
 export type Asset = {
   id: string;
-  type: "sourceImage" | "partImage" | "inpaintedPatch" | "texture" | "effect";
+  type: "sourceImage" | "partImage" | "hiddenCompletionPatch" | "inpaintedPatch" | "texture" | "effect";
   name: string;
   uri: string;
   width?: number;
   height?: number;
+  sourcePartId?: string | null;
+  sourceRectNormalized?: NormalizedImageRect | null;
+  maskVerticesNormalized?: NormalizedLocalPoint[];
+  patchTransform?: HiddenCompletionPatchTransform;
+  patchStatus?: "draft" | "missing" | "requested" | "ready";
+  preview?: { label: string | null; color: string; visible: boolean };
 };
 
 export type Part = {
@@ -218,12 +224,20 @@ export type MotionDraftZOrder = {
 export type MotionDraftHiddenCompletion = {
   needed: boolean;
   status: OcclusionMetadata["hiddenCompletion"];
-  assetKind: "inpaintedPatch" | string;
+  assetKind: "hiddenCompletionPatch" | "inpaintedPatch" | string;
   assetStatus: "none" | "missing" | "requested" | "ready";
   assetId: string | null;
   requestId: string | null;
   requestedAt: string | null;
   completedAt: string | null;
+};
+
+export type HiddenCompletionPatchTransform = {
+  coordinateSpace: "part-local";
+  translationNormalized: NormalizedLocalPoint;
+  scaleX: number;
+  scaleY: number;
+  rotation: number;
 };
 
 export type OcclusionMetadata = {

@@ -75,7 +75,7 @@
   function updateActiveDraft(updater) {
     const context = activeDraftContext();
     if (!context?.draft) return null;
-    const next = Animotion.motionDrafts.normalize(updater(context.draft));
+    const next = Animotion.motionDrafts.normalize(updater(context.draft), { assets: projectAssets() });
     if (context.scope === "action-snapshot") updateActionDraft(next);
     else Animotion.motionCommands.setMotionPlan({ motionDraft: next });
     refresh();
@@ -264,6 +264,10 @@
   }
   function refresh() {
     Animotion.ui?.refreshUi?.();
+  }
+
+  function projectAssets() {
+    return Animotion.state?.project?.assets || null;
   }
 
   Animotion.motionDraftEditor = { installControls, refreshControls, activeDraftContext, updateVisibilityImpactValue, updateZOrderImpactValue, updateHiddenCompletion, requestHiddenCompletion, markHiddenCompletionReady, removeHiddenCompletionAsset, draftRows };

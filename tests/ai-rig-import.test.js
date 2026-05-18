@@ -29,6 +29,7 @@ function loadAnimotion() {
   runScript(context, "scripts/config.js");
   runScript(context, "scripts/geometry.js");
   runScript(context, "scripts/coordinate-spaces.js");
+  runScript(context, "scripts/hidden-completion-assets.js");
   runScript(context, "scripts/motion-model.js");
   runScript(context, "scripts/project-model.js");
   runScript(context, "scripts/project-serialization.js");
@@ -83,6 +84,20 @@ test("save payload uses the central AnimotionProject model", () => {
     separateCharacter: true,
     panelSetup: { source: { crop: { x: 1, y: 2, w: 300, h: 200 } } },
     motionPlan: { template: "kick", target: { x: 10, y: 20 } },
+    project: {
+      assets: [{
+        id: "hidden-part-arm",
+        type: "hiddenCompletionPatch",
+        name: "arm hidden",
+        uri: "hidden-completion://hidden-part-arm",
+        sourcePartId: "part-arm",
+        sourceRectNormalized: { xNorm: 0.1, yNorm: 0.2, wNorm: 0.3, hNorm: 0.4, coordinateSpace: "normalized-image" },
+        maskVerticesNormalized: [{ xNorm: 0.5, yNorm: 0.25, coordinateSpace: "part-local-normalized" }],
+        patchTransform: { translationNormalized: { xNorm: 0.2, yNorm: 0.3 }, scaleX: 1.1, scaleY: 1, rotation: 0.2 },
+        patchStatus: "ready",
+        preview: { label: "arm back", color: "#8fd3ff", visible: true },
+      }],
+    },
     parts: [{
       id: "part-arm",
       name: "arm",
@@ -114,6 +129,11 @@ test("save payload uses the central AnimotionProject model", () => {
   assert.equal(project.motions[0].keyframes[0].targetId, "part-arm");
   assert.equal(project.timeline.currentFrame, 7);
   assert.equal(project.editor.separateCharacter, true);
+  const patch = project.assets.find((asset) => asset.id === "hidden-part-arm");
+  assert.equal(patch.type, "hiddenCompletionPatch");
+  assert.equal(patch.sourcePartId, "part-arm");
+  assert.equal(patch.patchStatus, "ready");
+  assert.equal(patch.maskVerticesNormalized[0].xNorm, 0.5);
 });
 
 test("project importer restores normalized part coordinates against the current source image size", () => {
@@ -156,6 +176,35 @@ test("project importer restores normalized part coordinates against the current 
   assert.equal(parts[0].joint.y, 60);
   assert.equal(parts[0].mask.points[1].x, 60);
   assert.equal(parts[0].mask.points[1].y, 80);
+});
+
+test("project serialization preserves hidden completion patch assets after reload", () => {
+  const Animotion = loadAnimotion();
+  const project = Animotion.projectModel.normalizeProject({
+    format: "animotion-project",
+    version: "1.0.0",
+    metadata: { name: "Patch", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+    canvas: { width: 100, height: 80, fps: 24, durationFrames: 12 },
+    assets: [{
+      id: "hidden-leg",
+      type: "hiddenCompletionPatch",
+      name: "leg hidden",
+      uri: "hidden-completion://hidden-leg",
+      sourcePartId: "part-leg",
+      patchStatus: "ready",
+    }],
+    parts: [{ id: "part-leg", name: "leg", type: "leg", sourceRect: { x: 10, y: 20, w: 30, h: 40 } }],
+  });
+  const saved = Animotion.projectModel.projectFromEditorState({
+    project,
+    imageName: "panel.png",
+    image: { naturalWidth: 100, naturalHeight: 80 },
+    parts: Animotion.projectModel.editorPartsFromProject(project),
+    currentFrame: 1,
+  });
+  const patch = saved.assets.find((asset) => asset.id === "hidden-leg");
+  assert.equal(patch.type, "hiddenCompletionPatch");
+  assert.equal(patch.patchStatus, "ready");
 });
 
 test("project importer restores editor part fields from AnimotionProject", () => {

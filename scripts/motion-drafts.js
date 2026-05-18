@@ -25,8 +25,8 @@
     });
   }
 
-  function snapshot(draft) {
-    const normalized = normalize(draft);
+  function snapshot(draft, options = {}) {
+    const normalized = normalize(draft, options);
     return normalized ? { ...normalized, draftScope: "action-snapshot" } : null;
   }
 
@@ -70,7 +70,7 @@
     });
   }
 
-  function normalize(draft) {
+  function normalize(draft, options = {}) {
     if (!draft || typeof draft !== "object") return null;
     return {
       source: String(draft.source || draft.generatedFrom || "manual"),
@@ -83,7 +83,7 @@
       generatedFrom: String(draft.generatedFrom || draft.source || "unknown"),
       visibility: normalizeVisibility(draft.visibility),
       zOrder: normalizeZOrder(draft.zOrder),
-      hiddenCompletion: normalizeHiddenCompletion(draft.hiddenCompletion),
+      hiddenCompletion: normalizeHiddenCompletion(draft.hiddenCompletion, options),
       warnings: normalizeWarnings(draft.warnings),
     };
   }
@@ -118,7 +118,7 @@
     return {
       needed,
       status: hints.hiddenCompletion,
-      assetKind: "inpaintedPatch",
+      assetKind: "hiddenCompletionPatch",
       assetStatus: needed ? "missing" : "none",
       assetId: null,
     };
@@ -142,17 +142,17 @@
     };
   }
 
-  function normalizeHiddenCompletion(hiddenCompletion = {}) {
+  function normalizeHiddenCompletion(hiddenCompletion = {}, options = {}) {
     hiddenCompletion = hiddenCompletion && typeof hiddenCompletion === "object" ? hiddenCompletion : {};
     const status = ["none", "candidate", "required"].includes(hiddenCompletion.status) ? hiddenCompletion.status : "none";
     const needed = hiddenCompletion.needed === true || status !== "none";
     const legacy = hiddenCompletion.placeholderAsset;
     const assetId = stringOrNull(hiddenCompletion.assetId || legacy?.id);
-    const assetStatus = normalizeAssetStatus(hiddenCompletion.assetStatus || legacy?.state, needed, assetId);
+    const assetStatus = normalizeAssetStatus(hiddenCompletion.assetStatus || legacy?.state, needed, assetId, options.assets);
     return {
       needed,
       status,
-      assetKind: String(hiddenCompletion.assetKind || legacy?.type || "inpaintedPatch"),
+      assetKind: normalizeAssetKind(hiddenCompletion.assetKind || legacy?.type),
       assetStatus,
       assetId: assetStatus === "ready" ? assetId : null,
       requestId: assetStatus === "requested" ? stringOrNull(hiddenCompletion.requestId) : null,
@@ -161,11 +161,22 @@
     };
   }
 
-  function normalizeAssetStatus(value, needed, assetId = null) {
-    if (value === "ready") return assetId ? "ready" : "missing";
+  function normalizeAssetStatus(value, needed, assetId = null, assets = null) {
+    if (value === "ready") return hasReadyAsset(assetId, assets) ? "ready" : "missing";
     if (value === "requested") return "requested";
     if (value === "missing") return "missing";
     return needed ? "missing" : "none";
+  }
+
+  function normalizeAssetKind(kind) {
+    if (!kind || kind === "inpaintedPatch") return "hiddenCompletionPatch";
+    return String(kind);
+  }
+
+  function hasReadyAsset(assetId, assets) {
+    if (!assetId) return false;
+    if (!Array.isArray(assets)) return true;
+    return Boolean(Animotion.hiddenCompletionAssets?.findById?.(assets, assetId));
   }
 
   function normalizeKeyframes(keyframes, valueNormalizer) {

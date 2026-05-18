@@ -16,6 +16,8 @@ function loadAnimotion() {
   const context = { window: { Animotion: {} } };
   vm.createContext(context);
   for (const path of [
+    "scripts/coordinate-spaces.js",
+    "scripts/hidden-completion-assets.js",
     "scripts/motion-hints.js",
     "scripts/motion-drafts.js",
     "scripts/motion-draft-editor.js",
@@ -83,6 +85,7 @@ test("motion draft hidden completion follows request ready replace remove lifecy
     source: "correspondence",
     hiddenCompletion: "required",
   }, { partId: "leg-a" });
+  assert.equal(draft.hiddenCompletion.assetKind, "hiddenCompletionPatch");
   const requested = Animotion.motionDrafts.requestHiddenCompletion(draft, {
     requestId: "request-1",
     requestedAt: "2026-05-18T00:00:00+09:00",
@@ -103,6 +106,29 @@ test("motion draft hidden completion follows request ready replace remove lifecy
   assert.equal(removed.hiddenCompletion.assetId, null);
 });
 
+test("hidden completion patch asset normalizes project metadata", () => {
+  const Animotion = loadAnimotion();
+  const asset = Animotion.hiddenCompletionAssets.normalizeAsset({
+    id: "hidden-leg",
+    type: "hiddenCompletionPatch",
+    sourcePartId: "leg-a",
+    sourceRectNormalized: { xNorm: 0.2, yNorm: 0.3, wNorm: 0.4, hNorm: 0.5 },
+    maskVerticesNormalized: [{ xNorm: 1.2, yNorm: -0.5 }],
+    patchTransform: { translationNormalized: { xNorm: 0.2, yNorm: 0.3 }, scaleX: 1.25, rotation: 0.1 },
+    patchStatus: "ready",
+    preview: { label: "leg back", visible: false },
+  });
+  assert.equal(asset.type, "hiddenCompletionPatch");
+  assert.equal(asset.sourcePartId, "leg-a");
+  assert.equal(asset.sourceRectNormalized.coordinateSpace, "normalized-image");
+  assert.equal(asset.maskVerticesNormalized[0].xNorm, 1);
+  assert.equal(asset.maskVerticesNormalized[0].yNorm, 0);
+  assert.equal(asset.patchTransform.coordinateSpace, "part-local");
+  assert.equal(asset.patchTransform.translationNormalized.xNorm, 0.2);
+  assert.equal(asset.patchStatus, "ready");
+  assert.equal(asset.preview.visible, false);
+});
+
 test("motion draft ready status requires an asset id", () => {
   const Animotion = loadAnimotion();
   const draft = Animotion.motionDrafts.compileFromHints({
@@ -115,6 +141,33 @@ test("motion draft ready status requires an asset id", () => {
   });
   assert.equal(normalized.hiddenCompletion.assetStatus, "missing");
   assert.equal(normalized.hiddenCompletion.assetId, null);
+});
+
+test("motion draft ready status requires a patch asset when assets are provided", () => {
+  const Animotion = loadAnimotion();
+  const draft = Animotion.motionDrafts.compileFromHints({
+    source: "correspondence",
+    hiddenCompletion: "required",
+  }, { partId: "leg-a" });
+  const ready = {
+    ...draft,
+    hiddenCompletion: { ...draft.hiddenCompletion, assetStatus: "ready", assetId: "hidden-leg" },
+  };
+  assert.equal(Animotion.motionDrafts.normalize(ready, { assets: [] }).hiddenCompletion.assetStatus, "missing");
+  const asset = Animotion.hiddenCompletionAssets.normalizeAsset({
+    id: "hidden-leg",
+    type: "hiddenCompletionPatch",
+    sourcePartId: "leg-a",
+  });
+  assert.equal(Animotion.motionDrafts.normalize(ready, { assets: [asset] }).hiddenCompletion.assetStatus, "ready");
+});
+
+test("motion draft normalizes legacy inpainted patch kind", () => {
+  const Animotion = loadAnimotion();
+  const normalized = Animotion.motionDrafts.normalize({
+    hiddenCompletion: { needed: true, status: "required", assetKind: "inpaintedPatch", assetStatus: "missing" },
+  });
+  assert.equal(normalized.hiddenCompletion.assetKind, "hiddenCompletionPatch");
 });
 
 test("motion draft editor lifecycle buttons update the active snapshot", () => {
