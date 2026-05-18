@@ -162,6 +162,11 @@ Implemented on `master`.
 - `motionPlan.motionDraft` is the current input/planning-level draft. `cutsceneBridge.jointAction.motionDraft` is the generated action snapshot copied at generation time.
 - Motion draft metadata records correspondence source fields such as source correspondence/target IDs, compiled hint version, and `draftKind: "non-destructive-2.5d"`.
 - Hidden completion placeholder state is metadata only: `needed`, `assetKind`, `assetStatus`, and `assetId`. The current lifecycle is `missing -> requested -> ready -> missing`; `ready` requires an asset id.
+- `hiddenCompletion.assetKind` now normalizes legacy `inpaintedPatch` to `hiddenCompletionPatch`.
+- `hiddenCompletion.assetId` can point to a project asset with `type: "hiddenCompletionPatch"`; when project assets are available, `ready` requires the referenced patch asset to exist.
+- `hiddenCompletionPatch` assets preserve source part, source rect, part-local mask vertices, patch transform, guide-only render mode, and future generated-result metadata.
+- Guide mesh data is stored separately from generated output: `guide.meshVerticesNormalized`, `guide.meshFaces`, and `guide.silhouetteVerticesNormalized` are part-local normalized guide data, not final rendered image data.
+- `scripts/hidden-completion-guide-editor.js` adds the first user-facing guide flow: create a guide-only patch from the selected part, add it to `project.assets`, link it to `motionDraft.hiddenCompletion.assetId`, draw the guide mesh/silhouette on the preview, and drag guide vertices while saving normalized part-local coordinates.
 - Correspondence target overwrite policy is explicit: no target, correspondence target, and planner-default target can be overwritten; manual target overwrite is blocked until a confirm UI is added.
 - New image reset, project restore, legacy rig restore, and Lookism preset load clear command history.
 
@@ -181,7 +186,8 @@ Current architecture note:
 - B cut impact anchors are now stored as normalized image coordinates, but other point-like data such as pivots, joints, generated anchors, and trajectory points still need the same coordinate-space treatment.
 - Occlusion/depth/hidden-completion metadata is preserved as planner/action hints and compiled into non-destructive `motionDraft` data.
 - Motion draft visibility/depth/hidden-completion data is visible and minimally editable in the inspector/timeline, but it does not yet drive renderer opacity, z-order transitions, mesh/proxy deformation, or AI generation.
-- Hidden completion lifecycle metadata exists, but request/ready states do not yet call AI generation, manual upload, part replacement, or renderer compositing.
+- Hidden completion patch assets and guide mesh authoring exist, but request/ready states do not yet call AI generation, manual upload, part replacement, generated patch rendering, or renderer compositing.
+- Guide mesh preview is currently an editor overlay. It is not a final image patch and should be treated as AI/input guidance only.
 - Time-varying z-order / z-swap editing is not implemented.
 - The motion planner is template/rule based, not image-understanding based.
 - The generated motion is a draft; anchor editing exists, but detailed anchor/keyframe graph tooling is still limited.
@@ -208,6 +214,8 @@ Current architecture note:
 - `scripts/motion-hints.js`: motion hint normalization and status text for correspondence-derived occlusion/depth/hidden-completion.
 - `scripts/motion-drafts.js`: non-destructive 2.5D motion draft compilation and hidden-completion lifecycle helpers.
 - `scripts/motion-draft-editor.js`: motion draft inspector/timeline controls.
+- `scripts/hidden-completion-assets.js`: hidden-completion patch asset normalization, guide mesh model, and runtime guide mesh restoration.
+- `scripts/hidden-completion-guide-editor.js`: guide-only patch creation, preview overlay, and guide vertex dragging.
 - `scripts/motion-target-policy.js`: correspondence target overwrite policy.
 - `scripts/panel-commands.js`: panel target/crop/mask commands.
 - `scripts/panel-editor.js`: A/B crop and character mask UI/render helpers.
@@ -263,25 +271,27 @@ $env:PYTHONPATH='src'; python -m unittest discover -s tests
 
 ## Suggested Next Work Unit
 
-Extend normalized coordinate storage beyond B impact before adding renderer or AI behavior.
+Continue the hidden-completion guide workflow before adding AI generation.
 
 Smallest next scope:
 
 ```text
-Read existing pivot/joint/action-anchor point models
--> add normalized coordinate fields while keeping pixel fields for compatibility
--> convert normalized points to current image/crop pixels at display/compile boundaries
--> keep panel/camera/source transforms separate from saved point data
--> add regression tests for image-size changes after JSON reload
+Persist and reload guide patch editing through a realistic JSON round-trip
+-> create guide patch from selected part
+-> drag one or more mesh vertices
+-> save JSON
+-> reload JSON against the current source image
+-> verify the linked patch asset and normalized guide vertices survive
+-> verify preview overlay restores against the current part rect
 ```
 
 Why this is next:
 
-- B impact now uses stable normalized image coordinates, but other point data can still be tied to source pixel dimensions.
-- Coordinate data must stay independent from display transforms so saved JSON survives resized uploads, crop changes, and reloads.
-- Renderer z-order, hidden-completion generation, and AI tools should consume stable coordinate data rather than screen-sized pixels.
+- The guide editor now creates and edits mesh data, but the next risk is end-to-end persistence after real save/load.
+- AI inpainting should consume guide-only geometry as mask/silhouette/direction hints, not as a final stretched texture.
+- Renderer and AI work should wait until the guide patch asset path is proven stable through project serialization.
 
-Do not jump straight to AI matching, renderer z-swap, or mesh/proxy deformation. First make point coordinate storage consistent and reload-safe; later systems can consume those normalized anchors as editable drafts.
+Do not jump straight to AI matching, renderer z-swap, generated patch compositing, or 3D proxy work. First make guide patch authoring and JSON persistence boring and reliable.
 
 ## GitHub State
 
@@ -300,12 +310,12 @@ master
 Latest known committed baseline at handoff time:
 
 ```text
-c608bef Store B impact anchors as normalized coordinates
+126ed55 Create hidden completion guide editor
 ```
 
 ## Current Working Tree Notes
 
-As of this handoff update, the correspondence, motionDraft, hidden-completion lifecycle, and normalized B impact work is committed on `master`.
+As of this handoff update, the correspondence, motionDraft, normalized coordinate, hidden-completion patch asset, mesh guide model, and guide editor UI work is committed on `master` and pushed to `origin/master`.
 
 Recently completed in the working tree:
 
@@ -324,6 +334,11 @@ Recently completed in the working tree:
 - Non-destructive motion draft compilation from correspondence motion hints.
 - Motion draft inspector/timeline display and minimal editing controls.
 - Hidden completion asset lifecycle metadata: `missing`, `requested`, `ready`, and remove back to `missing`.
+- Hidden completion patch asset model with legacy `inpaintedPatch` normalization.
+- Hidden completion mesh guide model with part-local normalized mesh/silhouette vertices.
+- Guide-only hidden completion patch creation from the selected part.
+- Preview overlay for guide mesh and silhouette.
+- Preview vertex dragging for guide mesh vertices, saved back as part-local normalized coordinates.
 - B impact anchors saved as normalized image coordinates and restored against the current image size.
 - Keyboard history shortcuts: `Ctrl+Z`, `Ctrl+Y`, and `Ctrl+Shift+Z`.
 - Timeline keyframe mutation removed from `scripts/timeline.js`; keyframe writes now stay in `scripts/motion-commands.js`.
