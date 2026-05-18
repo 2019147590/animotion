@@ -94,6 +94,16 @@ test("dragging preserves the pointer grab offset without retargeting the point",
   approxPoint({ x: movedRendered.x - startRendered.x, y: movedRendered.y - startRendered.y }, { x: 10, y: 0 });
 });
 
+test("pose drag image delta is not clamped to source image bounds", () => {
+  const context = contextForZoom(1);
+  const session = {
+    ...context,
+    startPointerImagePosition: { x: 12, y: 9 },
+  };
+  const movedPointer = previewCoordinate.imageToPreviewPoint({ x: 160, y: -20 }, context);
+  approxPoint(previewCoordinate.dragImageDelta(session, movedPointer), { x: 148, y: -29 });
+});
+
 test("dragging outside all part rect edges preserves outside local coordinates", () => {
   const context = contextForZoom(1);
   const session = dragSession(context, { x: 12, y: 9 });

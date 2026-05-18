@@ -206,7 +206,7 @@ Current architecture note:
 - Renderers still read runtime editor state such as `state.parts`, `state.cutsceneBridge`, `state.motionPlan`, `state.panelSetup`, and `state.correspondences`.
 - The central project model is currently the save/load and normalization boundary, not yet the single in-memory source of truth.
 - The command layer is an intermediate step toward broad Undo/Redo and eventually making `state.project` the primary editable data store.
-- Undo/Redo currently covers part updates plus panel crop/mask edits. Part creation/deletion, timeline keyframes, generated motion plans, and session-level changes are still not undoable.
+- Undo/Redo currently covers part updates, panel crop/mask edits, and committed pose-drag keyframe edits. Part creation/deletion, generated motion plans, and session-level changes are still not undoable.
 
 ## Current Limits
 
@@ -231,7 +231,7 @@ Current architecture note:
 - The previous issue where A only jittered/twisted toward the target is reduced by character root delta propagation. Remaining attack quality work is motion design/timing/readability, not provider/request work.
 - B impact flashing caused by looping the short cutscene preview duration is known and intentionally out of scope for the current motion-target fix.
 - Target semantics are now separated, but visual overlays and tuning controls still need refinement so users can clearly distinguish correspondence anchors, active targets, root anchors, editable control points, and evaluated trajectory samples.
-- Undo/Redo is implemented for part updates and panel crop/mask edits; several command helpers still centralize mutation without command records.
+- Undo/Redo is implemented for part updates, panel crop/mask edits, and pose-drag commits; several command helpers still centralize mutation without command records.
 - `state.project` is synchronized at save/load and command boundaries, but render/edit code still depends on legacy editor state fields.
 
 ## Important Files
@@ -281,6 +281,7 @@ Current architecture note:
 - `scripts/preview-coordinate.js`: preview/client/image/part-local coordinate conversion helpers for direct manipulation.
 - `scripts/preview-hit-test.js`: selected part rig point hit tests shared by preview pointer arbitration.
 - `scripts/preview-pointer-arbitration.js`: preview pointerdown target arbitration and debug state.
+- `scripts/pose-drag-history.js`: command-history bridge for restoring pose-drag custom motion and committed keyframes.
 - `scripts/preview-transform.js`: coordinate conversion for A cut panel scale/position.
 - `scripts/preview.js`: Canvas preview rendering and trajectory overlays.
 - `scripts/cutscene-model.js`: cutscene bridge timing and panel transition values.
@@ -342,6 +343,7 @@ node tests\motion-target-state.test.js
 node tests\rig-connection.test.js
 node tests\edit-target-inspector.test.js
 node tests\preview-coordinate.test.js
+node tests\preview-pose-drag.test.js
 node tests\preview-hit-test.test.js
 node tests\preview-pointer-arbitration.test.js
 node tests\hidden-completion-roundtrip.test.js
@@ -395,12 +397,12 @@ master
 Latest known committed baseline before this handoff update:
 
 ```text
-fcf63a4 Separate motion target semantics
+81a192c Keep rig handles direct outside part bounds
 ```
 
 ## Current Working Tree Notes
 
-As of this handoff update, the latest motion-target/root-delta work has been committed and pushed on `master`.
+As of this handoff update, the latest preview pointer arbitration and pose-drag direct-manipulation work has been committed and pushed on `master`.
 
 Recently completed in the working tree:
 
@@ -420,11 +422,17 @@ Recently completed in the working tree:
   - Pointer moves use a single coordinate path and frozen start transforms, so rig points follow the pointer 1:1 across zoom levels.
   - Rig points can now move outside the selected part rectangle when authored outside the visual bounds. Joint, connection, and rotation pivot local coordinates are preserved even when outside `0..rect.w/h`.
   - Part-local normalized rig points may be outside `0..1` and round-trip through save/load without silent clamping.
+  - Cutscene pose joint dragging now uses unclamped preview-to-image deltas, so dragging past the source/image bounds no longer randomly caps the movement area.
+  - Selected joint pose dragging no longer adds extra selected-part translation or rotation on top of the joint delta, reducing jumpy deformation during direct manipulation.
+  - Pose-drag commits now record a command-history entry, so a bad joint drag can be restored with Undo after pointerup/keyframe commit.
 - Preview pointer arbitration:
   - Added central pointerdown arbitration with the priority order documented in `PREVIEW_POINTER_POLICY.md`.
   - Preview editors now expose `hitTarget(event)` and `beginDragFromTarget(event, target)` instead of competing with capture-phase `stopImmediatePropagation()`.
   - The latest target decision is stored in `Animotion.state.previewPointerArbitrationDebug`; console logging can be enabled with `Animotion.state.debugPreviewPointerArbitration = true` or `localStorage.debugPreviewPointerArbitration = "1"`.
   - Stale preview/trajectory drag state is cleared when the canvas no longer owns pointer capture, preventing old trajectory drags from blocking later rig handle drags.
+  - Active drag ownership is centralized so pointermove/pointerup route only to the editor chosen during pointerdown arbitration.
+  - Active picker state is exclusive across correspondence picking, motion anchor picking, and motion target picking so two picker modes cannot consume the same preview click.
+  - Arbitration now falls through to the next viable hit target when a higher-priority target cannot start a drag, instead of leaving the preview in a blocked state.
 - Central `AnimotionProject` save/load model and `.d.ts` type declarations.
 - Save/load refactor to project JSON while preserving legacy rig and AI rig imports.
 - Part, motion, session, and panel command layers.
@@ -485,3 +493,8 @@ Recently completed in the working tree:
   - `tests/motion-target-propagation.test.js`
   - `tests/motion-target-state.test.js`
   - `tests/cutscene-options.test.js`
+  - `tests/edit-target-inspector.test.js`
+  - `tests/geometry.test.js`
+  - `tests/preview-coordinate.test.js`
+  - `tests/preview-pose-drag.test.js`
+  - `tests/preview-pointer-arbitration.test.js`

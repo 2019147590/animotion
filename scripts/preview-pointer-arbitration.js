@@ -13,10 +13,15 @@
 
   function beginPointerDown(event) {
     const targets = collectTargets(event);
-    const target = decideTarget(targets);
+    let target = null;
+    let handled = false;
+    for (const candidate of rankedTargets(targets)) {
+      target = candidate;
+      if (!candidate || candidate.kind === "empty-preview-background") break;
+      handled = beginTarget(event, candidate);
+      if (handled) break;
+    }
     recordDebug(target, targets);
-    if (!target || target.kind === "empty-preview-background") return { handled: false, target, targets };
-    const handled = beginTarget(event, target);
     if (handled) {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -27,7 +32,7 @@
   function collectTargets(event) {
     const targets = [activeDragTarget(event)];
     targets.push(Animotion.previewEvents?.hitTarget?.(event) || null);
-    targets.push(activeModeTarget(event));
+    targets.push(...activeModeTargets(event));
     targets.push(optionalTarget("selected-part-transform-handle", Animotion.partTransformEditor?.hitTarget?.(event)));
     targets.push(trajectoryTarget(event));
     targets.push(optionalTarget("part-body", Animotion.previewEvents?.partBodyTarget?.(event)));
@@ -35,7 +40,11 @@
   }
 
   function decideTarget(targets = []) {
-    return [...targets].sort((a, b) => priorityOf(a.kind) - priorityOf(b.kind))[0] || null;
+    return rankedTargets(targets)[0] || null;
+  }
+
+  function rankedTargets(targets = []) {
+    return [...targets].sort((a, b) => priorityOf(a.kind) - priorityOf(b.kind));
   }
 
   function beginTarget(event, target) {
@@ -49,35 +58,35 @@
 
   function activeDragTarget(event) {
     const state = Animotion.state || {};
-    if (!state.previewDrag && !state.trajectoryDrag) return null;
-    if (!hasActivePointerCapture(event)) {
-      state.previewDrag = null;
-      state.trajectoryDrag = null;
-      return null;
-    }
-    return { kind: "active-drag-session", label: "active drag", detail: state.previewDrag?.kind || state.previewDrag?.mode || "trajectory" };
+    const owner = activeDragOwner();
+    if (!owner && !state.previewDrag && !state.trajectoryDrag) return null;
+    if (!hasPointerCaptureFor(owner?.pointerId ?? event?.pointerId)) return null;
+    const detail = owner?.kind || state.previewDrag?.kind || state.previewDrag?.mode || "trajectory";
+    return { kind: "active-drag-session", label: "active drag", detail };
   }
 
-  function hasActivePointerCapture(event) {
+  function hasPointerCaptureFor(pointerId) {
     const canvas = Animotion.dom?.previewCanvas;
-    return Boolean(event?.pointerId !== undefined && canvas?.hasPointerCapture?.(event.pointerId));
+    return Boolean(pointerId !== undefined && canvas?.hasPointerCapture?.(pointerId));
   }
 
-  function activeModeTarget(event) {
-    return activeTarget("hiddenCompletionGuideEditor", "hidden completion guide", event)
-      || activeTarget("correspondenceEditor", "B cut reference picker", event)
-      || activeTarget("motionAnchorPicker", "motion anchor picker", event)
-      || activeTarget("motionPlanner", "motion target picker", event);
+  function activeModeTargets(event) {
+    return [
+      activeTarget("hiddenCompletionGuideEditor", "hidden completion guide", event),
+      activeTarget("correspondenceEditor", "B cut reference picker", event),
+      activeTarget("motionAnchorPicker", "motion anchor picker", event),
+      activeTarget("motionPlanner", "motion target picker", event),
+    ].filter(Boolean);
   }
 
   function activeTarget(editorKey, fallbackLabel, event) {
     const hit = Animotion[editorKey]?.hitTarget?.(event);
-    return hit ? { kind: "active-mode-guide-point", editorKey, label: hit.label || fallbackLabel, hit } : null;
+    return hit ? { kind: "active-mode-guide-point", editorKey, label: hit.label || fallbackLabel, hit, payload: hit } : null;
   }
 
   function trajectoryTarget(event) {
     const hit = Animotion.trajectoryEditor?.hitTarget?.(event);
-    return hit ? { kind: "motion-trajectory-point", label: hit.label || "motion trajectory", hit } : null;
+    return hit ? { kind: "motion-trajectory-point", editorKey: "trajectoryEditor", label: hit.label || "motion trajectory", hit, payload: hit } : null;
   }
 
   function optionalTarget(kind, target) {
@@ -106,9 +115,73 @@
   function debugTarget(target) {
     return {
       kind: target.kind,
+      editorKey: target.editorKey || "",
       label: target.label || "",
-      detail: target.detail || target.hit?.label || target.hit?.beat?.id || target.hit?.anchor?.key || "",
+      detail: target.detail || target.hit?.label || target.hit?.hit?.beat?.id || target.hit?.hit?.anchor?.key || target.hit?.beat?.id || target.hit?.anchor?.key || "",
     };
+  }
+
+  function setActiveDragOwner(editorKey, event, options = {}) {
+    if (!Animotion.state || !editorKey) return null;
+    if (editorKey === "trajectoryEditor") Animotion.state.previewDrag = null;
+    else Animotion.state.trajectoryDrag = null;
+    const owner = {
+      editorKey,
+      pointerId: event?.pointerId,
+      kind: options.kind || editorKey,
+      label: options.label || "",
+    };
+    Animotion.state.activePreviewDrag = owner;
+    return owner;
+  }
+
+  function clearActiveDragOwner(owner = null) {
+    if (!Animotion.state?.activePreviewDrag) return;
+    if (owner && Animotion.state.activePreviewDrag.editorKey !== owner.editorKey) return;
+    Animotion.state.activePreviewDrag = null;
+  }
+
+  function activeDragOwner() {
+    return Animotion.state?.activePreviewDrag || null;
+  }
+
+  function handlePointerMove(event) {
+    const owner = activeDragOwner();
+    if (!owner) return false;
+    if (!ownsPointer(owner, event) || !hasPointerCaptureFor(owner.pointerId)) return true;
+    const handled = Animotion[owner.editorKey]?.updateDrag?.(event) === true;
+    if (handled) event.preventDefault();
+    return true;
+  }
+
+  function handlePointerUp(event) {
+    const owner = activeDragOwner();
+    if (!owner) return false;
+    if (!ownsPointer(owner, event)) return true;
+    const handled = Animotion[owner.editorKey]?.endDrag?.(event) === true;
+    clearActiveDragOwner(owner);
+    return handled || true;
+  }
+
+  function ownsPointer(owner, event) {
+    return owner.pointerId === undefined || event?.pointerId === undefined || owner.pointerId === event.pointerId;
+  }
+
+  function activateExclusivePicker(editorKey) {
+    deactivatePicker("correspondenceEditor", editorKey);
+    deactivatePicker("motionAnchorPicker", editorKey);
+    deactivatePicker("motionPlanner", editorKey);
+    if (Animotion.state) Animotion.state.activePreviewPicker = editorKey || null;
+  }
+
+  function clearActivePicker(editorKey) {
+    if (Animotion.state?.activePreviewPicker === editorKey) Animotion.state.activePreviewPicker = null;
+  }
+
+  function deactivatePicker(editorKey, activeEditorKey) {
+    if (editorKey === activeEditorKey) return;
+    if (editorKey === "motionPlanner") Animotion.motionPlanner?.setTargetMode?.(false, { skipExclusive: true, refresh: false });
+    else Animotion[editorKey]?.setPickMode?.(false, { skipExclusive: true, refresh: false });
   }
 
   function debugEnabled() {
@@ -119,6 +192,18 @@
     }
   }
 
-  Animotion.previewPointerArbitration = { PRIORITY_ORDER, collectTargets, decideTarget, beginPointerDown };
+  Animotion.previewPointerArbitration = {
+    PRIORITY_ORDER,
+    collectTargets,
+    decideTarget,
+    beginPointerDown,
+    setActiveDragOwner,
+    clearActiveDragOwner,
+    activeDragOwner,
+    handlePointerMove,
+    handlePointerUp,
+    activateExclusivePicker,
+    clearActivePicker,
+  };
   if (typeof module !== "undefined") module.exports = Animotion.previewPointerArbitration;
 }

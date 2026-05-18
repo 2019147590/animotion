@@ -22,7 +22,7 @@
   function hitTarget(event) {
     const part = Animotion.parts.selectedPart();
     if (!part || !state.previewView) return null;
-    const point = previewPoint(event);
+    const point = previewImagePoint(event);
     if (!point) return null;
     const hit = hitRigPoint(part, point);
     if (!hit || !editableRole(hit.role)) return null;
@@ -39,33 +39,49 @@
     els.pivotEditTarget.value = target.role === "joint" ? "joint" : "anchor";
     if (mode === "pose") updateControlPose(part.id, { x: 0, y: 0 });
     previewCanvas.setPointerCapture(event.pointerId);
+    Animotion.previewPointerArbitration?.setActiveDragOwner?.("previewEvents", event, { kind: mode, label: target.label });
     Animotion.ui.refreshUi();
     return true;
   }
 
   function onPreviewPointerMove(event) {
+    if (Animotion.previewPointerArbitration?.handlePointerMove?.(event)) return;
     if (Animotion.hiddenCompletionGuideEditor?.updateDrag?.(event)) return;
-    if (!state.previewDrag || !state.previewView) return updateHover(event);
+    if (updateDrag(event)) return;
+    updateHover(event);
+  }
+
+  function updateDrag(event) {
+    if (!state.previewDrag || !state.previewView) return false;
     const part = state.parts.find((candidate) => candidate.id === state.previewDrag.partId);
-    if (!part) return;
+    if (!part) return true;
     if (state.previewDrag.mode === "pose") {
-      const point = previewPoint(event);
-      if (!point) return;
-      updateControlPose(part.id, dragDelta(point));
+      const delta = Animotion.previewCoordinate.dragImageDelta(state.previewDrag, previewPointer(event));
+      if (!delta) return true;
+      updateControlPose(part.id, delta);
     }
     else moveRigPoint(part, previewPointer(event));
     event.preventDefault();
     Animotion.ui.refreshUi();
+    return true;
   }
 
   function onPreviewPointerUp(event) {
+    if (Animotion.previewPointerArbitration?.handlePointerUp?.(event)) return;
     if (Animotion.hiddenCompletionGuideEditor?.endDrag?.(event)) return;
+    endDrag(event);
+  }
+
+  function endDrag(event) {
+    if (!state.previewDrag) return false;
     if (previewCanvas.hasPointerCapture(event.pointerId)) {
       previewCanvas.releasePointerCapture(event.pointerId);
     }
     if (state.previewDrag?.mode === "pose") commitControlPose();
     if (state.previewDrag?.mode === "rig") commitRigPointDrag();
     state.previewDrag = null;
+    Animotion.previewPointerArbitration?.clearActiveDragOwner?.({ editorKey: "previewEvents" });
+    return true;
   }
 
   function updateControlPose(partId, delta) {
@@ -77,9 +93,11 @@
   }
 
   function commitControlPose() {
+    const before = state.previewDrag?.poseHistorySnapshot;
     for (const part of state.parts) {
       Animotion.motionCommands.insertKeyframe(part, state.currentFrame, part.customMotion);
     }
+    Animotion.poseDragHistory?.record?.(before, Animotion.poseDragHistory.snapshot(state.parts));
   }
 
   function moveRigPoint(part, pointerPreviewPosition) {
@@ -111,7 +129,8 @@
       coordinateSpace: "part-local",
       startPointerPreviewPosition: pointer,
       startPointerLocalPosition: { ...(pointerLocal || startPointLocal) },
-      startPoint: previewPoint(event),
+      startPointerImagePosition: previewImagePoint(event),
+      startPoint: previewImagePoint(event),
       startPointLocalPosition: { ...startPointLocal },
       startPointNormalizedPosition: Animotion.previewCoordinate.partLocalToNormalizedPoint(startPointLocal, part),
       grabOffset: {
@@ -119,6 +138,7 @@
         y: (pointerLocal || startPointLocal).y - startPointLocal.y,
       },
       basePoses: snapshotPoses(),
+      poseHistorySnapshot: mode === "pose" ? Animotion.poseDragHistory?.snapshot?.(state.parts) : null,
       ...base,
     };
   }
@@ -147,7 +167,7 @@
   function updateHover(event) {
     if (!state.previewView) return;
     const part = Animotion.parts.selectedPart();
-    const point = part ? previewPoint(event) : null;
+    const point = part ? previewImagePoint(event) : null;
     const hit = point ? hitRigPoint(part, point) : null;
     const hadHover = Boolean(state.hoveredEditPoint);
     state.hoveredEditPoint = hit ? editPointSelection(hit.role, hit.label) : null;
@@ -197,28 +217,9 @@
     return role === "joint" && timelineLikeMode() ? "pose" : "rig";
   }
 
-  function dragDelta(point) {
-    return {
-      x: point.x - state.previewDrag.startPoint.x,
-      y: point.y - state.previewDrag.startPoint.y,
-    };
-  }
-
-  function previewPoint(event) {
-    const rect = previewCanvas.getBoundingClientRect();
-    const screen = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-    const point = Animotion.previewTransform.screenPointToImage(
-      screen,
-      state.previewView,
-      state.previewSourceFrame,
-      state.previewSourceTransform
-    );
-    if (!point) return null;
-    const bounds = Animotion.panelEditor?.imageBounds?.("source") || Animotion.imageBounds();
-    return {
-      x: geometry.clamp(point.x, 0, bounds.width),
-      y: geometry.clamp(point.y, 0, bounds.height),
-    };
+  function previewImagePoint(event) {
+    if (!state.previewView || !state.previewSourceFrame) return null;
+    return Animotion.previewCoordinate.previewToImagePoint(previewPointer(event), dragContext(null, null));
   }
 
   function sourceScale() {
@@ -259,5 +260,5 @@
     return els.motionTemplate.value === "keyframes" || els.motionTemplate.value === "cutscene";
   }
 
-  Animotion.previewEvents = { bindPreviewCanvasEvents, hitTarget, beginDragFromTarget };
+  Animotion.previewEvents = { bindPreviewCanvasEvents, hitTarget, beginDragFromTarget, updateDrag, endDrag };
 }

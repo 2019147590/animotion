@@ -194,6 +194,17 @@ test("control rig drag propagates a limb pull into spine and head poses", () => 
   assert.equal(head.rotate, -2);
 });
 
+test("control rig drag keeps large selected joint pulls unclamped", () => {
+  const parts = [
+    { id: "spine", type: "spine", rect: { x: 40, y: 20, w: 20, h: 50 } },
+    { id: "arm", type: "arm", rect: { x: 67, y: 25, w: 18, h: 45 } },
+  ];
+  const tracks = poseAssist.solveControlPose(parts, "arm", { x: 140, y: -120 });
+  const arm = tracks.find((track) => track.partId === "arm").pose;
+  assert.equal(arm.jointX, 140);
+  assert.equal(arm.jointY, -120);
+});
+
 test("cutscene bridge infers direction from the primary part side", () => {
   const parts = [
     { id: "body", type: "body", rect: { x: 40, y: 20, w: 20, h: 50 } },

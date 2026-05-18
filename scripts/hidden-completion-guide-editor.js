@@ -73,6 +73,7 @@
     Animotion.state.previewDrag = { kind: DRAG_KIND, assetId: hit.asset.id, vertexIndex: hit.index };
     Animotion.state.selectedEditPoint = { kind: "hiddenGuide", role: "보완 가이드 점", label: `${hit.asset.id} · vertex ${hit.index + 1}` };
     Animotion.dom.previewCanvas.setPointerCapture(event.pointerId);
+    Animotion.previewPointerArbitration?.setActiveDragOwner?.("hiddenCompletionGuideEditor", event, { kind: DRAG_KIND, label: hit.asset.id });
     return true;
   }
   function updateDrag(event) {
@@ -91,6 +92,7 @@
       Animotion.dom.previewCanvas.releasePointerCapture(event.pointerId);
     }
     Animotion.state.previewDrag = null;
+    Animotion.previewPointerArbitration?.clearActiveDragOwner?.({ editorKey: "hiddenCompletionGuideEditor" });
     refresh();
     return true;
   }

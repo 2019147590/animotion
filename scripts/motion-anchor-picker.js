@@ -36,9 +36,18 @@
 
   function togglePickMode() {
     if (!selectedKey) return;
-    pickMode = !pickMode;
-    freezePlayback();
-    refresh();
+    setPickMode(!pickMode);
+  }
+
+  function setPickMode(active, options = {}) {
+    if (active && !options.skipExclusive) {
+      Animotion.previewPointerArbitration?.activateExclusivePicker?.("motionAnchorPicker");
+    }
+    pickMode = Boolean(active);
+    if (!pickMode) Animotion.previewPointerArbitration?.clearActivePicker?.("motionAnchorPicker");
+    if (pickMode) freezePlayback();
+    if (options.refresh !== false) refresh();
+    return pickMode;
   }
 
   function hitTarget(event) {
@@ -48,12 +57,12 @@
   }
 
   function beginDragFromTarget(event, target) {
-    const point = target?.hit?.point || target?.point || previewPoint(event);
-    const key = target?.hit?.selectedKey || target?.selectedKey || selectedKey;
+    const payload = target?.payload || target?.hit || target;
+    const point = payload?.point || previewPoint(event);
+    const key = payload?.selectedKey || selectedKey;
     if (!point || !key) return false;
     setAnchorAndRegenerate(key, point);
-    pickMode = false;
-    refresh();
+    setPickMode(false);
     return true;
   }
 
@@ -138,7 +147,7 @@
     Animotion.ui?.refreshUi?.();
   }
 
-  Animotion.motionAnchorPicker = { refreshControls, updateAnchorPoint, setAnchorAndRegenerate, hitTarget, beginDragFromTarget };
+  Animotion.motionAnchorPicker = { refreshControls, updateAnchorPoint, setAnchorAndRegenerate, hitTarget, beginDragFromTarget, setPickMode };
   installControls();
 
   if (typeof module !== "undefined") module.exports = Animotion.motionAnchorPicker;

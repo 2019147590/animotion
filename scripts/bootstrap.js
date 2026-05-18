@@ -16,6 +16,7 @@
     "dom-state",
     "edit-target-inspector",
     "command-history",
+    "pose-drag-history",
     "view",
     "path",
     "panel-editor",

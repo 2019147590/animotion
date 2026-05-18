@@ -240,6 +240,8 @@ test("anchor picker is loaded after planner before trajectory editor", () => {
   assert.equal(bootstrap.indexOf('"motion-target-state"') < bootstrap.indexOf('"motion-planner"'), true);
   assert.equal(bootstrap.indexOf('"motion-target-debug"') < bootstrap.indexOf('"motion-planner"'), true);
   assert.equal(bootstrap.indexOf('"character-root-motion"') < bootstrap.indexOf('"motion-planner"'), true);
+  assert.equal(bootstrap.indexOf('"command-history"') < bootstrap.indexOf('"pose-drag-history"'), true);
+  assert.equal(bootstrap.indexOf('"pose-drag-history"') < bootstrap.indexOf('"preview-events"'), true);
   assert.equal(bootstrap.indexOf('"motion-panel-mapper"') < bootstrap.indexOf('"motion-planner"'), true);
   assert.equal(bootstrap.indexOf('"motion-planner"') < bootstrap.indexOf('"motion-anchor-picker"'), true);
   assert.equal(bootstrap.indexOf('"motion-anchor-picker"') < bootstrap.indexOf('"motion-trajectory-editor"'), true);

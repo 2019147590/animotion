@@ -111,9 +111,18 @@
 
   function togglePickMode() {
     if (!selectedPart() || !Animotion.state.nextImage) return;
-    pickMode = !pickMode;
-    freezePlayback();
-    refresh();
+    setPickMode(!pickMode);
+  }
+
+  function setPickMode(active, options = {}) {
+    if (active && !options.skipExclusive) {
+      Animotion.previewPointerArbitration?.activateExclusivePicker?.("correspondenceEditor");
+    }
+    pickMode = Boolean(active);
+    if (!pickMode) Animotion.previewPointerArbitration?.clearActivePicker?.("correspondenceEditor");
+    if (pickMode) freezePlayback();
+    if (options.refresh !== false) refresh();
+    return pickMode;
   }
 
   function useAsMotionTarget() {
@@ -153,14 +162,14 @@
   }
 
   function beginDragFromTarget(event, target) {
-    const point = target?.hit?.point || target?.point || impactPoint(event);
+    const payload = target?.payload || target?.hit || target;
+    const point = payload?.point || impactPoint(event);
     if (!point) return false;
     saveFromControls({
       impactAnchor: point,
       bImpact: Animotion.correspondenceModel.normalizedPointFromImagePoint(point, Animotion.panelEditor?.imageBounds?.("impact")),
     });
-    pickMode = false;
-    refresh();
+    setPickMode(false);
     return true;
   }
 
@@ -276,6 +285,6 @@
     return Animotion.motionCommands?.currentMotionPlan?.() || Animotion.motionPlanner.normalizePlan(Animotion.state.motionPlan);
   }
 
-  Animotion.correspondenceEditor = { refreshControls, drawOverlay, impactPoint, impactPointToScreen, compiledCorrespondenceDraft, useAsMotionTarget, clearManualTarget, hitTarget, beginDragFromTarget };
+  Animotion.correspondenceEditor = { refreshControls, drawOverlay, impactPoint, impactPointToScreen, compiledCorrespondenceDraft, useAsMotionTarget, clearManualTarget, hitTarget, beginDragFromTarget, setPickMode };
   installControls();
 }

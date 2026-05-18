@@ -60,8 +60,8 @@
 
   function currentTarget(state = Animotion.state || {}, els = Animotion.dom?.els || {}) {
     if (state.previewDrag?.kind === "hidden-completion-guide") return hiddenGuideTarget("가이드 꼭짓점", "드래그 중");
-    if (state.hoveredEditPoint || state.selectedEditPoint) return pointTarget(state.hoveredEditPoint || state.selectedEditPoint);
     if (state.trajectoryDrag) return motionPathDragTarget(state.trajectoryDrag);
+    if (state.hoveredEditPoint || state.selectedEditPoint) return pointTarget(state.hoveredEditPoint || state.selectedEditPoint);
     const plan = currentPlan(state);
     if (plan?.selectedBeatId) return motionPathTarget("선택 비트", `beat ${plan.selectedBeatId}`);
     const guide = activeGuideAsset(state);

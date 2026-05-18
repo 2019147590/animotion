@@ -84,12 +84,8 @@
   }
 
   function activeControlPose(part, pull, side) {
-    const limbBoost = part.type === "arm" ? 1 : 0.75;
     return {
       ...zeroPose(),
-      x: pull.x * 0.16,
-      y: pull.y * 0.12,
-      rotate: clamp((pull.x * side + pull.y * 0.35) * 0.42 * limbBoost, -35, 35),
       jointX: pull.x,
       jointY: pull.y,
     };
@@ -147,9 +143,14 @@
 
   function limitDelta(delta) {
     return {
-      x: clamp(Number(delta.x) || 0, -80, 80),
-      y: clamp(Number(delta.y) || 0, -80, 80),
+      x: finiteNumber(delta.x),
+      y: finiteNumber(delta.y),
     };
+  }
+
+  function finiteNumber(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : 0;
   }
 
   function zeroPose() {

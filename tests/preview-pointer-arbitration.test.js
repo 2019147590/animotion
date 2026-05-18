@@ -72,7 +72,7 @@ test("active drag session wins over new pointerdown candidates", () => {
   assert.equal(target.kind, "active-drag-session");
 });
 
-test("stale drag session without pointer capture is cleared before arbitration", () => {
+test("stale drag session without pointer capture is ignored without mutating drag state", () => {
   const Animotion = reset({
     dom: { previewCanvas: { hasPointerCapture: () => false } },
     state: { trajectoryDrag: { beatIndex: 0 } },
@@ -80,7 +80,7 @@ test("stale drag session without pointer capture is cleared before arbitration",
   });
   const target = arbitration.decideTarget(arbitration.collectTargets(capturedEvent()));
   assert.equal(target.kind, "selected-part-rigging-point");
-  assert.equal(Animotion.state.trajectoryDrag, null);
+  assert.deepEqual(Animotion.state.trajectoryDrag, { beatIndex: 0 });
 });
 
 test("empty preview background is selected when no editor hits", () => {
@@ -112,6 +112,29 @@ test("beginPointerDown starts only the selected target and records debug", () =>
   assert.equal(Animotion.state.previewPointerArbitrationDebug.selected.kind, "selected-part-rigging-point");
 });
 
+test("beginPointerDown falls through when a higher-priority target cannot start", () => {
+  let rigStarted = 0;
+  let trajectoryStarted = 0;
+  const event = eventStub();
+  const Animotion = reset({
+    previewEvents: {
+      hitTarget: () => ({ kind: "selected-part-rigging-point", label: "관절점" }),
+      beginDragFromTarget: () => { rigStarted += 1; return false; },
+    },
+    trajectoryEditor: {
+      hitTarget: () => ({ type: "beat", label: "이동 경로점", hit: { beat: { id: "impact" } } }),
+      beginDragFromTarget: () => { trajectoryStarted += 1; return true; },
+    },
+  });
+  const result = arbitration.beginPointerDown(event);
+  assert.equal(result.handled, true);
+  assert.equal(result.target.kind, "motion-trajectory-point");
+  assert.equal(rigStarted, 1);
+  assert.equal(trajectoryStarted, 1);
+  assert.equal(event.stopped, 1);
+  assert.equal(Animotion.state.previewPointerArbitrationDebug.selected.kind, "motion-trajectory-point");
+});
+
 test("beginPointerDown dispatches active mode pickers through the arbiter", () => {
   let picked = 0;
   const event = eventStub();
@@ -126,4 +149,94 @@ test("beginPointerDown dispatches active mode pickers through the arbiter", () =
   assert.equal(result.target.editorKey, "correspondenceEditor");
   assert.equal(picked, 1);
   assert.equal(event.stopped, 1);
+});
+
+test("active drag target uses the owner pointer capture", () => {
+  reset({
+    dom: { previewCanvas: { hasPointerCapture: (pointerId) => pointerId === 7 } },
+    state: { activePreviewDrag: { editorKey: "trajectoryEditor", pointerId: 7, kind: "trajectory" } },
+    previewEvents: { hitTarget: () => ({ kind: "selected-part-rigging-point", label: "관절점" }) },
+  });
+  const event = capturedEvent();
+  event.pointerId = 2;
+  const target = arbitration.decideTarget(arbitration.collectTargets(event));
+  assert.equal(target.kind, "active-drag-session");
+});
+
+test("pointermove is routed only to the active drag owner", () => {
+  let trajectoryMoves = 0;
+  let previewMoves = 0;
+  const event = capturedEvent();
+  reset({
+    dom: { previewCanvas: { hasPointerCapture: (pointerId) => pointerId === 1 } },
+    state: { activePreviewDrag: { editorKey: "trajectoryEditor", pointerId: 1, kind: "trajectory" } },
+    trajectoryEditor: { updateDrag: () => { trajectoryMoves += 1; return true; } },
+    previewEvents: { updateDrag: () => { previewMoves += 1; return true; } },
+  });
+  assert.equal(arbitration.handlePointerMove(event), true);
+  assert.equal(trajectoryMoves, 1);
+  assert.equal(previewMoves, 0);
+  assert.equal(event.prevented, 1);
+});
+
+test("starting a trajectory drag clears stale preview drag state", () => {
+  const event = capturedEvent();
+  const Animotion = reset({
+    state: {
+      previewDrag: { mode: "rig" },
+      trajectoryDrag: { beatIndex: 0 },
+    },
+  });
+  arbitration.setActiveDragOwner("trajectoryEditor", event, { kind: "trajectory" });
+  assert.equal(Animotion.state.previewDrag, null);
+  assert.deepEqual(Animotion.state.trajectoryDrag, { beatIndex: 0 });
+});
+
+test("starting a preview drag clears stale trajectory drag state", () => {
+  const event = capturedEvent();
+  const Animotion = reset({
+    state: {
+      previewDrag: { mode: "rig" },
+      trajectoryDrag: { beatIndex: 0 },
+    },
+  });
+  arbitration.setActiveDragOwner("previewEvents", event, { kind: "rig" });
+  assert.deepEqual(Animotion.state.previewDrag, { mode: "rig" });
+  assert.equal(Animotion.state.trajectoryDrag, null);
+});
+
+test("pointerup is routed to the active drag owner and clears ownership", () => {
+  let ended = 0;
+  const event = capturedEvent();
+  const Animotion = reset({
+    state: { activePreviewDrag: { editorKey: "trajectoryEditor", pointerId: 1, kind: "trajectory" } },
+    trajectoryEditor: { endDrag: () => { ended += 1; return true; } },
+  });
+  assert.equal(arbitration.handlePointerUp(event), true);
+  assert.equal(ended, 1);
+  assert.equal(Animotion.state.activePreviewDrag, null);
+});
+
+test("overlapping active picker candidates are all visible to debug", () => {
+  reset({
+    correspondenceEditor: { hitTarget: () => ({ label: "B컷 참조 위치", point: { x: 10, y: 20 } }) },
+    motionPlanner: { hitTarget: () => ({ label: "움직임 목표", point: { x: 30, y: 40 } }) },
+  });
+  const targets = arbitration.collectTargets(eventStub());
+  const activeModes = targets.filter((target) => target.kind === "active-mode-guide-point");
+  assert.equal(activeModes.length, 2);
+  assert.equal(activeModes[0].editorKey, "correspondenceEditor");
+  assert.deepEqual(activeModes[0].payload.point, { x: 10, y: 20 });
+});
+
+test("exclusive picker activation deactivates other picker modes", () => {
+  const calls = [];
+  const Animotion = reset({
+    correspondenceEditor: { setPickMode: (active) => calls.push(["correspondence", active]) },
+    motionAnchorPicker: { setPickMode: (active) => calls.push(["anchor", active]) },
+    motionPlanner: { setTargetMode: (active) => calls.push(["planner", active]) },
+  });
+  arbitration.activateExclusivePicker("motionAnchorPicker");
+  assert.deepEqual(calls, [["correspondence", false], ["planner", false]]);
+  assert.equal(Animotion.state.activePreviewPicker, "motionAnchorPicker");
 });

@@ -33,6 +33,15 @@ test("inspector reports motion path target for selected beat", () => {
   delete globalThis.Animotion.motionCommands;
 });
 
+test("inspector reports active trajectory drag before stale hovered rig point", () => {
+  const target = inspector.currentTarget({
+    hoveredEditPoint: { kind: "joint", role: "관절점", label: "head" },
+    trajectoryDrag: { beatIndex: 0, focusKey: "rFoot" },
+  }, {});
+  assert.equal(target.kind, "motion-path");
+  assert.equal(target.role, "이동 궤적 미리보기");
+});
+
 test("inspector reports hidden completion guide drag before pose", () => {
   const target = inspector.currentTarget({
     previewDrag: { kind: "hidden-completion-guide" },

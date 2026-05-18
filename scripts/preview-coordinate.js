@@ -47,6 +47,12 @@
     return partLocalToPreviewPoint(dragLocalPoint(session, currentPointerPreviewPosition), session);
   }
 
+  function dragImageDelta(session, currentPointerPreviewPosition) {
+    const current = previewToImagePoint(currentPointerPreviewPosition, session);
+    const start = session.startPointerImagePosition;
+    return current && start ? { x: current.x - start.x, y: current.y - start.y } : null;
+  }
+
   function previewToImagePoint(point, context) {
     if (!point) return null;
     const matrix = inverseMatrix(sourceMatrix(context));
@@ -159,8 +165,11 @@
     partLocalToPreviewPoint,
     normalizedToPartLocalPoint,
     partLocalToNormalizedPoint,
+    previewToImagePoint,
+    imageToPreviewPoint,
     dragLocalPoint,
     dragRenderedPoint,
+    dragImageDelta,
   };
   if (typeof module !== "undefined") module.exports = Animotion.previewCoordinate;
 }
