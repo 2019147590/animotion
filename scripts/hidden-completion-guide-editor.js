@@ -189,10 +189,14 @@
   }
   function normalizedPointInPart(part, point) {
     const local = {
-      x: Animotion.geometry.clamp(point.x - part.rect.x, 0, part.rect.w),
-      y: Animotion.geometry.clamp(point.y - part.rect.y, 0, part.rect.h),
+      x: point.x - part.rect.x,
+      y: point.y - part.rect.y,
     };
-    return Animotion.coordinateSpaces.normalizedLocalPointFromPoint(local, part.rect);
+    return {
+      xNorm: part.rect.w ? local.x / part.rect.w : 0,
+      yNorm: part.rect.h ? local.y / part.rect.h : 0,
+      coordinateSpace: "part-local-normalized",
+    };
   }
   function currentPartMatrix(part) {
     const t = Animotion.state.running ? (performance.now() - Animotion.state.startTime) / 1000 : Animotion.state.pausedTime;

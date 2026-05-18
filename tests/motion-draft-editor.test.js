@@ -136,8 +136,8 @@ test("hidden completion patch asset normalizes project metadata", () => {
   assert.equal(asset.type, "hiddenCompletionPatch");
   assert.equal(asset.sourcePartId, "leg-a");
   assert.equal(asset.sourceRectNormalized.coordinateSpace, "normalized-image");
-  assert.equal(asset.maskVerticesNormalized[0].xNorm, 1);
-  assert.equal(asset.maskVerticesNormalized[0].yNorm, 0);
+  assert.equal(asset.maskVerticesNormalized[0].xNorm, 1.2);
+  assert.equal(asset.maskVerticesNormalized[0].yNorm, -0.5);
   assert.equal(asset.guide.coordinateSpace, "part-local-normalized");
   assert.equal(asset.guide.meshVerticesNormalized[2].xNorm, 1);
   assert.equal(asset.guide.meshFaces[1][0], 2);

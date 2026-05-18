@@ -17,13 +17,13 @@
   function rectFromNormalizedImageRect(rect, bounds) {
     if (!rect) return null;
     const safe = safeBounds(bounds);
-    const x = clampInt(rect.xNorm * safe.width, 0, safe.width - 1);
-    const y = clampInt(rect.yNorm * safe.height, 0, safe.height - 1);
+    const x = clampInt(normalizedValue(rect, "xNorm", "x") * safe.width, 0, safe.width - 1);
+    const y = clampInt(normalizedValue(rect, "yNorm", "y") * safe.height, 0, safe.height - 1);
     return {
       x,
       y,
-      w: clampInt(rect.wNorm * safe.width, 1, safe.width - x),
-      h: clampInt(rect.hNorm * safe.height, 1, safe.height - y),
+      w: clampInt(normalizedValue(rect, "wNorm", "width", "w") * safe.width, 1, safe.width - x),
+      h: clampInt(normalizedValue(rect, "hNorm", "height", "h") * safe.height, 1, safe.height - y),
     };
   }
 
@@ -41,8 +41,8 @@
     if (!point) return null;
     const safeRect = normalizeRect(rect);
     return {
-      x: Math.round(clamp01(Number(point.xNorm)) * safeRect.w),
-      y: Math.round(clamp01(Number(point.yNorm)) * safeRect.h),
+      x: Math.round(clamp01(normalizedValue(point, "xNorm", "x", 0)) * safeRect.w),
+      y: Math.round(clamp01(normalizedValue(point, "yNorm", "y", 1)) * safeRect.h),
     };
   }
 
@@ -69,8 +69,8 @@
     if (!point || !bounds) return null;
     const safe = safeBounds(bounds);
     return {
-      x: Math.round(clamp01(Number(point.xNorm)) * safe.width),
-      y: Math.round(clamp01(Number(point.yNorm)) * safe.height),
+      x: Math.round(clamp01(normalizedValue(point, "xNorm", "x", 0)) * safe.width),
+      y: Math.round(clamp01(normalizedValue(point, "yNorm", "y", 1)) * safe.height),
     };
   }
 
@@ -103,7 +103,15 @@
   }
 
   function clamp01(value) {
-    return Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0));
+    const number = Number(value);
+    return Math.min(1, Math.max(0, Number.isFinite(number) ? number : 0));
+  }
+
+  function normalizedValue(value, primary, alias, tupleIndex = null) {
+    if (!value) return 0;
+    if (value[primary] !== undefined) return value[primary];
+    if (value[alias] !== undefined) return value[alias];
+    return tupleIndex === null ? 0 : value[tupleIndex];
   }
 
   Animotion.coordinateSpaces = {

@@ -167,6 +167,16 @@ Implemented on `master`.
 - `hiddenCompletionPatch` assets preserve source part, source rect, part-local mask vertices, patch transform, guide-only render mode, and future generated-result metadata.
 - Guide mesh data is stored separately from generated output: `guide.meshVerticesNormalized`, `guide.meshFaces`, and `guide.silhouetteVerticesNormalized` are part-local normalized guide data, not final rendered image data.
 - `scripts/hidden-completion-guide-editor.js` adds the first user-facing guide flow: create a guide-only patch from the selected part, add it to `project.assets`, link it to `motionDraft.hiddenCompletion.assetId`, draw the guide mesh/silhouette on the preview, and drag guide vertices while saving normalized part-local coordinates.
+- `scripts/hidden-completion-request.js`: converts a saved `hiddenCompletionPatch` asset into provider-neutral `HiddenCompletionRequestPayload` data. Request options are intentionally limited to `promptVersion`, `includeWarnings`, `strictMode`, and `requestId`; provider/model/API settings are rejected here.
+- `scripts/hidden-completion-prep.js`: prepares source crop and mask descriptors from the neutral request. Normalized request coordinates are not mutated; clipping happens only at the rasterization/mask boundary.
+- `scripts/hidden-completion-provider.js`: provider adapter interface, capability declaration, and normalized provider runner.
+- `scripts/hidden-completion-result.js`: normalizes provider output, stores generated patch texture assets, and writes provenance onto the generated result/patch asset.
+- `scripts/hidden-completion-prompt.js`: shared hidden-completion prompt builder used by provider adapters.
+- `scripts/hidden-completion-stability-provider.js`: server-side Stability image-edit/inpaint adapter. It reads API keys from environment variables only and must not be called from browser code.
+- `scripts/hidden-completion-local-sd-provider.js`: server-side `local-sd-inpaint` adapter for local/VESSL/RunPod worker validation.
+- `scripts/hidden-completion-local-sd-worker-contract.js`: small validation helpers for the Local SD worker wire request/response contract.
+- `HIDDEN_COMPLETION_REQUEST.md`: provider-neutral request contract and provider separation rules.
+- `LOCAL_SD_WORKER_CONTRACT.md`: provider-specific Local SD worker endpoint request/response contract.
 - Correspondence target overwrite policy is explicit: no target, correspondence target, and planner-default target can be overwritten; manual target overwrite is blocked until a confirm UI is added.
 - New image reset, project restore, legacy rig restore, and Lookism preset load clear command history.
 
@@ -186,7 +196,10 @@ Current architecture note:
 - B cut impact anchors are now stored as normalized image coordinates, but other point-like data such as pivots, joints, generated anchors, and trajectory points still need the same coordinate-space treatment.
 - Occlusion/depth/hidden-completion metadata is preserved as planner/action hints and compiled into non-destructive `motionDraft` data.
 - Motion draft visibility/depth/hidden-completion data is visible and minimally editable in the inspector/timeline, but it does not yet drive renderer opacity, z-order transitions, mesh/proxy deformation, or AI generation.
-- Hidden completion patch assets and guide mesh authoring exist, but request/ready states do not yet call AI generation, manual upload, part replacement, generated patch rendering, or renderer compositing.
+- Hidden completion patch assets, guide mesh authoring, provider-neutral request building, source/mask preparation descriptors, provider adapter skeleton, Stability API adapter, Local SD worker adapter, and result/provenance writer are implemented.
+- Stability and Local SD providers are server-side adapters only. The browser app still does not call AI APIs directly, store API keys, load models, or require GPU for normal editing.
+- Provider calls are not wired into an end-user UI/job queue yet. Current provider tests use mocked fetch/worker calls only.
+- Generated patch images can be stored as texture assets and linked from `hiddenCompletionPatch.generatedResult`, but renderer compositing of generated hidden patches is still future work.
 - Guide mesh preview is currently an editor overlay. It is not a final image patch and should be treated as AI/input guidance only.
 - Time-varying z-order / z-swap editing is not implemented.
 - The motion planner is template/rule based, not image-understanding based.
@@ -216,6 +229,17 @@ Current architecture note:
 - `scripts/motion-draft-editor.js`: motion draft inspector/timeline controls.
 - `scripts/hidden-completion-assets.js`: hidden-completion patch asset normalization, guide mesh model, and runtime guide mesh restoration.
 - `scripts/hidden-completion-guide-editor.js`: guide-only patch creation, preview overlay, and guide vertex dragging.
+- `scripts/hidden-completion-request.js`: provider-neutral hidden-completion request builder.
+- `scripts/hidden-completion-request.d.ts`: request payload/options TypeScript declarations.
+- `scripts/hidden-completion-prep.js`: source crop and mask descriptor preparation.
+- `scripts/hidden-completion-provider.js`: provider adapter interface and capability declaration.
+- `scripts/hidden-completion-result.js`: normalized provider result and project asset writer.
+- `scripts/hidden-completion-prompt.js`: shared prompt builder for adapters.
+- `scripts/hidden-completion-stability-provider.js`: server-side Stability API inpaint adapter.
+- `scripts/hidden-completion-local-sd-provider.js`: server-side Local Stable Diffusion worker adapter.
+- `scripts/hidden-completion-local-sd-worker-contract.js`: Local SD worker request/response validation helpers.
+- `HIDDEN_COMPLETION_REQUEST.md`: provider-neutral request, coordinate, and provider separation contract.
+- `LOCAL_SD_WORKER_CONTRACT.md`: Local Stable Diffusion worker endpoint contract.
 - `scripts/motion-target-policy.js`: correspondence target overwrite policy.
 - `scripts/panel-commands.js`: panel target/crop/mask commands.
 - `scripts/panel-editor.js`: A/B crop and character mask UI/render helpers.
@@ -264,6 +288,11 @@ node tests\session-commands.test.js
 node tests\panel-commands.test.js
 node tests\correspondence-commands.test.js
 node tests\motion-draft-editor.test.js
+node tests\hidden-completion-roundtrip.test.js
+node tests\hidden-completion-request.test.js
+node tests\hidden-completion-provider.test.js
+node tests\hidden-completion-stability-provider.test.js
+node tests\hidden-completion-local-sd-provider.test.js
 node --test lookism\test\cutscene-values.test.mjs
 cd ai-rig-server
 $env:PYTHONPATH='src'; python -m unittest discover -s tests
@@ -271,27 +300,26 @@ $env:PYTHONPATH='src'; python -m unittest discover -s tests
 
 ## Suggested Next Work Unit
 
-Continue the hidden-completion guide workflow before adding AI generation.
+Add the server/Node runner boundary for hidden completion provider execution.
 
 Smallest next scope:
 
 ```text
-Persist and reload guide patch editing through a realistic JSON round-trip
--> create guide patch from selected part
--> drag one or more mesh vertices
--> save JSON
--> reload JSON against the current source image
--> verify the linked patch asset and normalized guide vertices survive
--> verify preview overlay restores against the current part rect
+Browser/app builds neutral request and prepared descriptors
+-> Node/server runner receives request, source image bytes, mask bytes, and providerConfig
+-> runner selects Stability or local-sd-inpaint adapter
+-> mocked and manual provider execution return normalized result
+-> result writer stores generated texture asset and patch provenance
+-> UI/job queue can later call this without exposing API keys
 ```
 
 Why this is next:
 
-- The guide editor now creates and edits mesh data, but the next risk is end-to-end persistence after real save/load.
-- AI inpainting should consume guide-only geometry as mask/silhouette/direction hints, not as a final stretched texture.
-- Renderer and AI work should wait until the guide patch asset path is proven stable through project serialization.
+- Request/persistence/provider contracts are now stable enough for a server-side execution boundary.
+- API keys and model/workflow paths must stay outside browser code.
+- Provider adapters are mockable, but there is not yet a real app-to-runner command path.
 
-Do not jump straight to AI matching, renderer z-swap, generated patch compositing, or 3D proxy work. First make guide patch authoring and JSON persistence boring and reliable.
+Do not put provider settings into `HiddenCompletionRequestPayload`, call Stability from browser code, add GPU requirements to normal project loading/editing, or start fine-tuning. Add runner/job orchestration before renderer compositing.
 
 ## GitHub State
 
@@ -307,7 +335,7 @@ Branch:
 master
 ```
 
-Latest known committed baseline at handoff time:
+Latest known committed baseline before this handoff update:
 
 ```text
 126ed55 Create hidden completion guide editor
@@ -315,7 +343,7 @@ Latest known committed baseline at handoff time:
 
 ## Current Working Tree Notes
 
-As of this handoff update, the correspondence, motionDraft, normalized coordinate, hidden-completion patch asset, mesh guide model, and guide editor UI work is committed on `master` and pushed to `origin/master`.
+As of this handoff update, the hidden-completion request/provider contract work is ready to commit and push on `master`.
 
 Recently completed in the working tree:
 
@@ -339,6 +367,15 @@ Recently completed in the working tree:
 - Guide-only hidden completion patch creation from the selected part.
 - Preview overlay for guide mesh and silhouette.
 - Preview vertex dragging for guide mesh vertices, saved back as part-local normalized coordinates.
+- JSON round-trip tests for hidden completion guide assets.
+- Provider-neutral hidden completion request builder and documentation.
+- Request options allowlist to keep provider/model/API settings out of the neutral payload.
+- Source/mask preparation descriptor layer.
+- Provider adapter interface with capability declarations.
+- Normalized hidden completion result writer with generated texture asset storage and patch provenance.
+- Server-side Stability image-edit/inpaint adapter with env-only API key handling and mocked tests.
+- Server-side Local Stable Diffusion worker adapter with mocked tests.
+- Local Stable Diffusion worker endpoint contract documentation and validation helpers.
 - B impact anchors saved as normalized image coordinates and restored against the current image size.
 - Keyboard history shortcuts: `Ctrl+Z`, `Ctrl+Y`, and `Ctrl+Shift+Z`.
 - Timeline keyframe mutation removed from `scripts/timeline.js`; keyframe writes now stay in `scripts/motion-commands.js`.
@@ -351,4 +388,9 @@ Recently completed in the working tree:
   - `tests/panel-commands.test.js`
   - `tests/correspondence-commands.test.js`
   - `tests/motion-draft-editor.test.js`
+  - `tests/hidden-completion-roundtrip.test.js`
+  - `tests/hidden-completion-request.test.js`
+  - `tests/hidden-completion-provider.test.js`
+  - `tests/hidden-completion-stability-provider.test.js`
+  - `tests/hidden-completion-local-sd-provider.test.js`
   - `tests/cutscene-options.test.js`

@@ -2,7 +2,7 @@
   const global = typeof window !== "undefined" ? window : globalThis;
   const Animotion = global.Animotion || (global.Animotion = {});
   const TYPE = "hiddenCompletionPatch";
-  const PATCH_STATUSES = new Set(["draft", "guide", "missing", "requested", "ready"]);
+  const PATCH_STATUSES = new Set(["draft", "guide", "missing", "queued", "processing", "requested", "ready", "failed"]);
   const RESULT_STATUSES = new Set(["none", "requested", "ready", "failed"]);
   const RENDER_MODES = new Set(["guideOnly", "generated", "manualOverride"]);
 
@@ -89,25 +89,25 @@
   function normalizeImageRect(rect) {
     if (!rect) return null;
     return {
-      xNorm: clamp01(rect.xNorm),
-      yNorm: clamp01(rect.yNorm),
-      wNorm: clamp01(rect.wNorm),
-      hNorm: clamp01(rect.hNorm),
+      xNorm: clamp01(rect.xNorm ?? rect.x),
+      yNorm: clamp01(rect.yNorm ?? rect.y),
+      wNorm: clamp01(rect.wNorm ?? rect.width ?? rect.w),
+      hNorm: clamp01(rect.hNorm ?? rect.height ?? rect.h),
       coordinateSpace: "normalized-image",
     };
   }
 
   function normalizeLocalPoints(points = []) {
     return (Array.isArray(points) ? points : []).map((point) => ({
-      xNorm: clamp01(point.xNorm),
-      yNorm: clamp01(point.yNorm),
+      xNorm: numberOrDefault(point.xNorm ?? point.x ?? point[0], 0),
+      yNorm: numberOrDefault(point.yNorm ?? point.y ?? point[1], 0),
       coordinateSpace: "part-local-normalized",
     }));
   }
 
   function normalizeGuide(guide = {}, fallbackSilhouette = []) {
-    const mesh = normalizeLocalPoints(guide.meshVerticesNormalized);
-    const silhouette = normalizeLocalPoints(guide.silhouetteVerticesNormalized);
+    const mesh = normalizeGuidePoints(guide.meshVerticesNormalized);
+    const silhouette = normalizeGuidePoints(guide.silhouetteVerticesNormalized);
     const fallback = normalizeLocalPoints(fallbackSilhouette);
     return {
       kind: "meshGuide",
@@ -117,6 +117,14 @@
       guideStrength: clamp01(guide.guideStrength ?? 1),
       coordinateSpace: "part-local-normalized",
     };
+  }
+
+  function normalizeGuidePoints(points = []) {
+    return (Array.isArray(points) ? points : []).map((point) => ({
+      xNorm: numberOrDefault(point.xNorm ?? point.x ?? point[0], 0),
+      yNorm: numberOrDefault(point.yNorm ?? point.y ?? point[1], 0),
+      coordinateSpace: "part-local-normalized",
+    }));
   }
 
   function normalizeOptionalGuide(guide, fallbackSilhouette = []) {
@@ -136,13 +144,28 @@
       assetId: stringOrNull(result.assetId),
       generatedAt: isoOrNull(result.generatedAt),
       sourceGuideVersion: stringOrNull(result.sourceGuideVersion),
+      ...(result.provenance ? { provenance: normalizeProvenance(result.provenance) } : {}),
+    };
+  }
+
+  function normalizeProvenance(provenance = {}) {
+    return {
+      provider: stringOrNull(provenance.provider),
+      modelId: stringOrNull(provenance.modelId),
+      modelLicense: stringOrNull(provenance.modelLicense),
+      requestHash: stringOrNull(provenance.requestHash),
+      inputAssetIds: (Array.isArray(provenance.inputAssetIds) ? provenance.inputAssetIds : []).map(String),
+      promptVersion: stringOrNull(provenance.promptVersion),
+      createdAt: isoOrNull(provenance.createdAt),
+      userSuppliedRights: stringOrDefault(provenance.userSuppliedRights, "assumed-original-or-authorized"),
+      rawProviderMetadata: objectOrNull(provenance.rawProviderMetadata),
     };
   }
 
   function normalizeTransform(transform = {}) {
     return {
       coordinateSpace: "part-local",
-      translationNormalized: normalizeTranslation(transform.translationNormalized || transform.translation),
+      translationNormalized: normalizeTranslation(transform.translationNormalized || transform.translation || transform),
       scaleX: numberOrDefault(transform.scaleX, 1),
       scaleY: numberOrDefault(transform.scaleY, 1),
       rotation: numberOrDefault(transform.rotation, 0),
@@ -151,8 +174,8 @@
 
   function normalizeTranslation(point = {}) {
     return {
-      xNorm: clamp01(point.xNorm),
-      yNorm: clamp01(point.yNorm),
+      xNorm: clamp01(point.xNorm ?? point.x ?? point[0]),
+      yNorm: clamp01(point.yNorm ?? point.y ?? point[1]),
       coordinateSpace: "part-local-normalized",
     };
   }
@@ -183,7 +206,11 @@
   }
 
   function toRuntimePoints(points, rect) {
-    return Animotion.coordinateSpaces?.pointsFromNormalizedLocalPoints?.(points, rect) || [];
+    const safe = rect || { w: 1, h: 1 };
+    return (Array.isArray(points) ? points : []).map((point) => ({
+      x: numberOrDefault(point.xNorm ?? point.x ?? point[0], 0) * safe.w,
+      y: numberOrDefault(point.yNorm ?? point.y ?? point[1], 0) * safe.h,
+    }));
   }
 
   function clamp01(value) {
@@ -208,6 +235,10 @@
     if (!value) return null;
     const time = Date.parse(value);
     return Number.isFinite(time) ? new Date(time).toISOString() : null;
+  }
+
+  function objectOrNull(value) {
+    return value && typeof value === "object" ? JSON.parse(JSON.stringify(value)) : null;
   }
 
   Animotion.hiddenCompletionAssets = { TYPE, createForPart, normalizeAsset, isPatchAsset, findById, defaultGuideForPart, runtimeGuideMesh };
