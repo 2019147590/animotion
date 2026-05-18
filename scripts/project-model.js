@@ -50,7 +50,7 @@
     project.motions = normalizeArray(payload?.motions, normalizeMotionClip);
     project.effects = Array.isArray(payload?.effects) ? payload.effects : [];
     project.timeline = normalizeTimeline(payload?.timeline, project.canvas.durationFrames);
-    project.editor = objectOrEmpty(payload?.editor);
+    project.editor = normalizeEditor(payload?.editor, project.parts);
     return project;
   }
 
@@ -210,6 +210,14 @@
 
   function objectOrEmpty(value) {
     return value && typeof value === "object" ? value : {};
+  }
+
+  function normalizeEditor(editor, parts) {
+    const data = objectOrEmpty(editor);
+    return {
+      ...data,
+      correspondences: Animotion.correspondenceModel?.normalizeList?.(data.correspondences, parts) || [],
+    };
   }
 
   function clampNumber(value, min, max, fallback) {

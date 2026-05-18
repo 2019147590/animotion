@@ -36,6 +36,7 @@
     const matrixCache = drawParts(view, now, cutscene);
     drawImpactLayers(view, w, h, cutscene);
     drawSelectedRigPoints(view, now, matrixCache, drawPivot);
+    Animotion.correspondenceEditor?.drawOverlay?.(previewCtx, view);
     Animotion.motionPlanner?.drawOverlay?.(previewCtx, view, cutscene);
     previewCtx.restore();
   }

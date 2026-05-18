@@ -21,6 +21,7 @@ function loadAnimotion() {
     "scripts/motion-model.js",
     "scripts/timeline.js",
     "scripts/project-model.js",
+    "scripts/correspondence-model.js",
     "scripts/project-serialization.js",
     "scripts/cutscene-model.js",
     "scripts/motion-planner.js",
@@ -38,10 +39,12 @@ function loadAnimotion() {
     currentFrame: 1,
     cutsceneBridge: null,
     panelSetup: {},
+    correspondences: [],
     motionPlan: { template: "kick", target: null, targetMode: false },
     separateCharacter: false,
   };
   runScript(context, "scripts/motion-commands.js");
+  runScript(context, "scripts/correspondence-commands.js");
   runScript(context, "scripts/session-commands.js");
   return Animotion;
 }
@@ -71,7 +74,17 @@ test("session command restores a project and preserves valid selection", () => {
     canvas: { width: 100, height: 80, fps: 24, durationFrames: 12 },
     assets: [{ id: "source-image", type: "sourceImage", name: "panel.png", uri: "panel.png" }],
     parts: [{ id: "head", name: "head", type: "head", sourceRect: part.rect }],
-    editor: { imageName: "panel.png", selectedPartId: "head", motionPlan: { template: "dash" } },
+    editor: {
+      imageName: "panel.png",
+      selectedPartId: "head",
+      motionPlan: { template: "dash" },
+      correspondences: [{
+        sourcePartId: "head",
+        sourcePartType: "head",
+        targetPartType: "head",
+        impactAnchor: { x: 12, y: 14 },
+      }],
+    },
     timeline: { currentFrame: 7, durationFrames: 12, tracks: [] },
   });
   Animotion.sessionCommands.restoreProject(project, [part], null);
@@ -79,6 +92,7 @@ test("session command restores a project and preserves valid selection", () => {
   assert.equal(Animotion.state.selectedPartId, "head");
   assert.equal(Animotion.state.currentFrame, 7);
   assert.equal(Animotion.state.motionPlan.template, "dash");
+  assert.equal(Animotion.state.correspondences[0].impactAnchor.x, 12);
 });
 
 test("session command updates cutscene bridge through motion command", () => {

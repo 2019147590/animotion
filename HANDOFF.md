@@ -142,15 +142,19 @@ Implemented on `master`.
 - `scripts/part-commands.js`: part-level state changes.
 - `scripts/motion-commands.js`: keyframes, generated tracks, cutscene bridge, motion plan, and planner result application.
 - `scripts/timeline.js`: pure timeline/keyframe utilities. It returns evaluated poses and next keyframe arrays but does not mutate parts.
+- `scripts/correspondence-model.js`: 2.5D-ready A/B correspondence normalization for source part, B target type, impact anchor, and occlusion metadata.
+- `scripts/correspondence-commands.js`: correspondence create/update/restore commands with Undo/Redo records.
+- `scripts/correspondence-editor.js`: manual B cut impact anchor picker and occlusion metadata controls.
 - `scripts/command-history.js`: bounded command history scaffold with undo/redo stacks.
 - Part inspector and rig-point updates through `partCommands.updatePart` now record old/new patches for Undo/Redo.
 - Panel crop and character-mask updates through `panelCommands.setCrop` and `panelCommands.setCharacterMask` now record old/new patches for Undo/Redo.
 - `Ctrl+Z`, `Ctrl+Y`, and `Ctrl+Shift+Z` trigger history undo/redo outside text-entry inputs.
+- `project.editor.correspondences` stores manual A/B body-part correspondence metadata and round-trips through JSON.
 - New image reset, project restore, legacy rig restore, and Lookism preset load clear command history.
 
 Current architecture note:
 
-- Renderers still read runtime editor state such as `state.parts`, `state.cutsceneBridge`, `state.motionPlan`, and `state.panelSetup`.
+- Renderers still read runtime editor state such as `state.parts`, `state.cutsceneBridge`, `state.motionPlan`, `state.panelSetup`, and `state.correspondences`.
 - The central project model is currently the save/load and normalization boundary, not yet the single in-memory source of truth.
 - The command layer is an intermediate step toward broad Undo/Redo and eventually making `state.project` the primary editable data store.
 - Undo/Redo currently covers part updates plus panel crop/mask edits. Part creation/deletion, timeline keyframes, generated motion plans, and session-level changes are still not undoable.
@@ -159,14 +163,14 @@ Current architecture note:
 
 - No AI model is connected locally.
 - No DWPose, See-through, SAM, or VLM runner is implemented in the browser.
-- A/B body-part correspondence is not implemented.
-- B cut impact anchors / A-to-B part correspondence are not implemented.
-- Hidden limb estimation is not implemented.
+- Manual 2.5D-ready A/B body-part correspondence metadata is implemented, but it is not yet consumed by motion generation.
+- B cut impact anchors can be stored per selected A part, but they are not yet converted into generated primary action targets.
+- Occlusion / hidden-completion metadata can be stored, but hidden limb estimation and generation are not implemented.
 - Time-varying z-order / z-swap editing is not implemented.
 - The motion planner is template/rule based, not image-understanding based.
 - The generated motion is a draft; anchor editing exists, but detailed anchor/keyframe graph tooling is still limited.
 - Target point placement alone does not generate a trajectory; generation is still an explicit user action.
-- Natural connection into B cut is limited because A/B body-part correspondence and B cut impact anchors are not implemented.
+- Natural connection into B cut is limited because correspondence metadata is not yet used by the planner.
 - Undo/Redo is implemented for part updates and panel crop/mask edits; several command helpers still centralize mutation without command records.
 - `state.project` is synchronized at save/load and command boundaries, but render/edit code still depends on legacy editor state fields.
 
@@ -181,6 +185,9 @@ Current architecture note:
 - `scripts/part-commands.js`: part creation/update/delete commands.
 - `scripts/motion-commands.js`: keyframe, bridge, motion plan, and generated-track commands.
 - `scripts/timeline.js`: pure keyframe sorting, insertion-result, deletion-result, and frame evaluation helpers.
+- `scripts/correspondence-model.js`: correspondence and occlusion metadata normalization.
+- `scripts/correspondence-commands.js`: correspondence mutation and history records.
+- `scripts/correspondence-editor.js`: correspondence UI and B cut impact anchor picking.
 - `scripts/panel-commands.js`: panel target/crop/mask commands.
 - `scripts/panel-editor.js`: A/B crop and character mask UI/render helpers.
 - `scripts/motion-anchors.js`: action-anchor generation and normalization.
@@ -226,6 +233,7 @@ node tests\part-commands.test.js
 node tests\motion-commands.test.js
 node tests\session-commands.test.js
 node tests\panel-commands.test.js
+node tests\correspondence-commands.test.js
 node --test lookism\test\cutscene-values.test.mjs
 cd ai-rig-server
 $env:PYTHONPATH='src'; python -m unittest discover -s tests
@@ -233,25 +241,23 @@ $env:PYTHONPATH='src'; python -m unittest discover -s tests
 
 ## Suggested Next Work Unit
 
-Add manual B cut impact anchoring / A-to-B correspondence, not a new AI feature.
+Use manual 2.5D-ready correspondence data in the motion planner, not a new AI feature.
 
 Smallest next scope:
 
 ```text
-Let the user choose the active A part
--> show B cut reference with adjustable opacity
--> allow placing a matching B cut impact anchor for that A part or action anchor
--> store the B cut impact anchor in project JSON
--> use that impact anchor as the generated primary action target
+Read the selected A part correspondence
+-> convert the stored B cut impact anchor through current panel/crop transform assumptions
+-> use it as the generated primary action target when explicitly requested
 -> keep the result editable through existing target, beat, and action-anchor handles
--> save/load through existing JSON
+-> preserve correspondence metadata for later 2D mesh, 3D proxy, and hidden completion systems
 ```
 
 Why this is next:
 
 - It attacks the current main naturalness problem directly.
-- A cut selected-part trajectory and multi-anchor action editing now exist, but they do not know where the matching B cut body point should land.
-- Manual anchors keep the MVP manual-first and avoid depending on AI correspondence too early.
+- A cut selected-part trajectory and multi-anchor action editing now exist, and correspondence metadata now records where the matching B cut body point should land.
+- The next step should consume that data explicitly, while keeping manual anchors editable and avoiding AI correspondence too early.
 
 Do not jump straight to AI matching. First make the manual correspondence data model and editor usable; later AI can propose those anchors as editable drafts.
 
@@ -272,7 +278,7 @@ master
 Latest known committed baseline at handoff time:
 
 ```text
-b41c0e5 Refactor project model and command history
+26e8eb2 Add panel setup undo history
 ```
 
 ## Current Working Tree Notes
@@ -286,6 +292,9 @@ Recently completed in the working tree:
 - Part, motion, session, and panel command layers.
 - Command history scaffold with Undo/Redo for part update commands.
 - Panel crop and character-mask Undo/Redo.
+- Manual 2.5D-ready A/B correspondence metadata.
+- B cut impact anchor picker for the selected A part.
+- Occlusion/depth/hidden-completion metadata controls.
 - Keyboard history shortcuts: `Ctrl+Z`, `Ctrl+Y`, and `Ctrl+Shift+Z`.
 - Timeline keyframe mutation removed from `scripts/timeline.js`; keyframe writes now stay in `scripts/motion-commands.js`.
 - Planner, anchor picker, trajectory editor, timeline controls, preview rig edits, cutscene controls/options, IO restore, and Lookism preset application moved toward command helpers.
@@ -295,3 +304,4 @@ Recently completed in the working tree:
   - `tests/motion-commands.test.js`
   - `tests/session-commands.test.js`
   - `tests/panel-commands.test.js`
+  - `tests/correspondence-commands.test.js`

@@ -135,6 +135,15 @@
   padding: 10px;
 }
 
+.correspondence-tools {
+  display: grid;
+  gap: 10px;
+  border: 2px solid var(--line);
+  border-radius: 7px;
+  background: #eef8f4;
+  padding: 10px;
+}
+
 button.active {
   background: var(--accent-3);
 }

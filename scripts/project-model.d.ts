@@ -127,8 +127,24 @@ export type EditorProjectData = {
   separateCharacter: boolean;
   cutsceneBridge: unknown;
   panelSetup: unknown;
+  correspondences: Correspondence[];
   motionPlan: unknown;
   selectedPartId: string | null;
+};
+
+export type Correspondence = {
+  id: string;
+  sourcePartId: string;
+  sourcePartType: string;
+  targetPartType: "head" | "chest" | "hip" | "arm" | "hand" | "leg" | "foot" | "hair" | "prop";
+  impactAnchor: Vec2 | null;
+  occlusion: OcclusionMetadata;
+};
+
+export type OcclusionMetadata = {
+  status: "visible" | "partial" | "hidden" | "unknown";
+  depthOrder: "front" | "behind" | "intersect" | "unknown";
+  hiddenCompletion: "none" | "candidate" | "required";
 };
 
 export type Vec2 = { x: number; y: number };

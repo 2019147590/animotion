@@ -27,6 +27,7 @@
     Animotion.panelEditor?.refreshControls?.();
     Animotion.motionPlanner?.refreshControls?.();
     Animotion.motionAnchorPicker?.refreshControls?.();
+    Animotion.correspondenceEditor?.refreshControls?.();
     Animotion.cutsceneOptions?.refreshControls?.();
     renderLookismPresetStatus();
     renderPanelScaleControls();

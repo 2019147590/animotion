@@ -24,6 +24,7 @@
       lookismPreset: null,
       panelEditTarget: "source",
       panelSetup: defaultPanelSetup(),
+      correspondences: [],
       motionPlan: defaultMotionPlan(),
     });
     clearHistory();
@@ -41,6 +42,7 @@
     state.project.parts = parts;
     state.separateCharacter = Boolean(payload.separateCharacter);
     setPanelSetup(payload.panelSetup);
+    setCorrespondences(payload.correspondences);
     Animotion.motionCommands.setMotionPlan(payload.motionPlan || state.motionPlan);
     setMergedBridge(payload.cutsceneBridge, currentBridge);
     clearHistory();
@@ -53,6 +55,7 @@
     state.nextImageName = project.editor?.nextImageName || state.nextImageName;
     state.separateCharacter = Boolean(project.editor?.separateCharacter);
     setPanelSetup(project.editor?.panelSetup);
+    setCorrespondences(project.editor?.correspondences);
     Animotion.motionCommands.setMotionPlan(project.editor?.motionPlan || state.motionPlan);
     setMergedBridge(project.editor?.cutsceneBridge, currentBridge);
     state.currentFrame = project.timeline?.currentFrame || state.currentFrame;
@@ -77,6 +80,7 @@
       startTime: performance.now(),
       currentFrame: 1,
       separateCharacter: false,
+      correspondences: [],
     });
     state.project = Animotion.projectModel.projectFromEditorState(state);
     state.project.parts = state.parts;
@@ -122,6 +126,14 @@
 
   function loadedSelectedPartId(partId) {
     return state.parts.some((part) => part.id === partId) ? partId : null;
+  }
+
+  function setCorrespondences(correspondences) {
+    if (Animotion.correspondenceCommands) {
+      return Animotion.correspondenceCommands.setCorrespondences(correspondences || [], { recordHistory: false });
+    }
+    state.correspondences = Animotion.correspondenceModel?.normalizeList?.(correspondences, state.parts) || [];
+    return state.correspondences;
   }
 
   function clearHistory() {

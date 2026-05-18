@@ -45,6 +45,7 @@
       source: { crop: null, characterMask: null },
       impact: { crop: null, characterMask: null },
     },
+    correspondences: [],
     motionPlan: { template: "kick", target: null, targetMode: false },
     separateCharacter: false,
     exporting: false,

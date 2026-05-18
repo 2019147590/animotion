@@ -146,6 +146,7 @@
       separateCharacter: Boolean(state.separateCharacter),
       cutsceneBridge: state.cutsceneBridge || null,
       panelSetup: state.panelSetup || null,
+      correspondences: Animotion.correspondenceModel?.normalizeList?.(state.correspondences, state.parts) || [],
       motionPlan: state.motionPlan || null,
       selectedPartId: state.selectedPartId || null,
     };
