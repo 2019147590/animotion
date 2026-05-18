@@ -142,20 +142,26 @@ Implemented on `master`.
 - `scripts/part-commands.js`: part-level state changes.
 - `scripts/motion-commands.js`: keyframes, generated tracks, cutscene bridge, motion plan, and planner result application.
 - `scripts/timeline.js`: pure timeline/keyframe utilities. It returns evaluated poses and next keyframe arrays but does not mutate parts.
-- `scripts/correspondence-model.js`: 2.5D-ready A/B correspondence normalization for source part, B target type, impact anchor, occlusion metadata, relation schema migration, and planner draft compilation.
+- `scripts/correspondence-model.js`: 2.5D-ready A/B correspondence normalization for source part, B target type, normalized B impact anchor, occlusion metadata, relation schema migration, and planner draft compilation.
 - `scripts/correspondence-commands.js`: correspondence create/update/restore commands with Undo/Redo records.
 - `scripts/correspondence-editor.js`: manual B cut impact anchor picker, occlusion metadata controls, and explicit correspondence-to-motion-target application.
 - `scripts/motion-panel-mapper.js`: converts B impact panel coordinates into A/source planner target coordinates using current crop/transform assumptions.
 - `scripts/motion-hints.js`: normalizes correspondence-derived motion hints for occlusion, depth order, hidden completion, and warnings.
+- `scripts/motion-drafts.js`: compiles correspondence motion hints into non-destructive 2.5D motion drafts and manages hidden-completion placeholder lifecycle metadata.
+- `scripts/motion-draft-editor.js`: surfaces motion draft visibility/depth/hidden-completion data in the inspector/timeline and provides minimal safe editing controls.
 - `scripts/motion-target-policy.js`: guards correspondence target application so manual motion targets are not overwritten without a future confirm UI.
 - `scripts/command-history.js`: bounded command history scaffold with undo/redo stacks.
 - Part inspector and rig-point updates through `partCommands.updatePart` now record old/new patches for Undo/Redo.
 - Panel crop and character-mask updates through `panelCommands.setCrop` and `panelCommands.setCharacterMask` now record old/new patches for Undo/Redo.
 - `Ctrl+Z`, `Ctrl+Y`, and `Ctrl+Shift+Z` trigger history undo/redo outside text-entry inputs.
 - `project.editor.correspondences` stores manual A/B body-part correspondence metadata and round-trips through JSON.
-- Correspondences now carry a B-lite relation schema alongside legacy flat fields: `schemaVersion`, `kind`, `source`, `target`, `impactAnchor`, and `occlusion`.
+- Correspondences now carry a B-lite relation schema alongside legacy flat fields: `schemaVersion`, `kind`, `source`, `target`, `impactAnchor`, `bImpact`, and `occlusion`.
+- B impact anchors are saved in normalized image coordinates as `bImpact: { xNorm, yNorm, coordinateSpace: "normalized-image" }` and converted back to current image/panel pixels at display and compile boundaries. Legacy `impactAnchor` remains for compatibility.
 - The selected correspondence can be explicitly applied as `motionPlan.target`; this compiles the B impact anchor into A/source coordinates and preserves `targetSource: { type: "correspondence" }`.
 - Correspondence-derived `motionHints` are carried into `motionPlan`, generated primary action anchors, and `cutsceneBridge.jointAction`.
+- `motionPlan.motionDraft` is the current input/planning-level draft. `cutsceneBridge.jointAction.motionDraft` is the generated action snapshot copied at generation time.
+- Motion draft metadata records correspondence source fields such as source correspondence/target IDs, compiled hint version, and `draftKind: "non-destructive-2.5d"`.
+- Hidden completion placeholder state is metadata only: `needed`, `assetKind`, `assetStatus`, and `assetId`. The current lifecycle is `missing -> requested -> ready -> missing`; `ready` requires an asset id.
 - Correspondence target overwrite policy is explicit: no target, correspondence target, and planner-default target can be overwritten; manual target overwrite is blocked until a confirm UI is added.
 - New image reset, project restore, legacy rig restore, and Lookism preset load clear command history.
 
@@ -172,8 +178,10 @@ Current architecture note:
 - No DWPose, See-through, SAM, or VLM runner is implemented in the browser.
 - Manual 2.5D-ready A/B body-part correspondence metadata is implemented and can be explicitly compiled into the motion planner target.
 - B cut impact anchors can be stored per selected A part and explicitly converted into a generated primary action target through `motion 목표로 사용`.
-- Occlusion/depth/hidden-completion metadata is preserved as planner/action hints, but hidden limb estimation and generation are not implemented.
-- Motion hints are surfaced as status text and stored on generated action data; they do not yet drive visibility keyframes, z-order transitions, or mesh/proxy deformation.
+- B cut impact anchors are now stored as normalized image coordinates, but other point-like data such as pivots, joints, generated anchors, and trajectory points still need the same coordinate-space treatment.
+- Occlusion/depth/hidden-completion metadata is preserved as planner/action hints and compiled into non-destructive `motionDraft` data.
+- Motion draft visibility/depth/hidden-completion data is visible and minimally editable in the inspector/timeline, but it does not yet drive renderer opacity, z-order transitions, mesh/proxy deformation, or AI generation.
+- Hidden completion lifecycle metadata exists, but request/ready states do not yet call AI generation, manual upload, part replacement, or renderer compositing.
 - Time-varying z-order / z-swap editing is not implemented.
 - The motion planner is template/rule based, not image-understanding based.
 - The generated motion is a draft; anchor editing exists, but detailed anchor/keyframe graph tooling is still limited.
@@ -193,11 +201,13 @@ Current architecture note:
 - `scripts/part-commands.js`: part creation/update/delete commands.
 - `scripts/motion-commands.js`: keyframe, bridge, motion plan, and generated-track commands.
 - `scripts/timeline.js`: pure keyframe sorting, insertion-result, deletion-result, and frame evaluation helpers.
-- `scripts/correspondence-model.js`: correspondence and occlusion metadata normalization.
+- `scripts/correspondence-model.js`: correspondence, normalized B impact, and occlusion metadata normalization.
 - `scripts/correspondence-commands.js`: correspondence mutation and history records.
 - `scripts/correspondence-editor.js`: correspondence UI and B cut impact anchor picking.
 - `scripts/motion-panel-mapper.js`: B impact coordinate to A/source planner target conversion.
 - `scripts/motion-hints.js`: motion hint normalization and status text for correspondence-derived occlusion/depth/hidden-completion.
+- `scripts/motion-drafts.js`: non-destructive 2.5D motion draft compilation and hidden-completion lifecycle helpers.
+- `scripts/motion-draft-editor.js`: motion draft inspector/timeline controls.
 - `scripts/motion-target-policy.js`: correspondence target overwrite policy.
 - `scripts/panel-commands.js`: panel target/crop/mask commands.
 - `scripts/panel-editor.js`: A/B crop and character mask UI/render helpers.
@@ -245,6 +255,7 @@ node tests\motion-commands.test.js
 node tests\session-commands.test.js
 node tests\panel-commands.test.js
 node tests\correspondence-commands.test.js
+node tests\motion-draft-editor.test.js
 node --test lookism\test\cutscene-values.test.mjs
 cd ai-rig-server
 $env:PYTHONPATH='src'; python -m unittest discover -s tests
@@ -252,25 +263,25 @@ $env:PYTHONPATH='src'; python -m unittest discover -s tests
 
 ## Suggested Next Work Unit
 
-Consume correspondence motion hints more deeply in the planner and motion UI, not a new AI feature.
+Extend normalized coordinate storage beyond B impact before adding renderer or AI behavior.
 
 Smallest next scope:
 
 ```text
-Read generated `motionHints`
--> add visibility/depth/z-order hint displays to the motion/action UI
--> keep hidden-completion as a warning/status badge, not generation yet
--> optionally create non-destructive draft visibility/depth keyframes
--> preserve all hints for later 2D mesh, 3D proxy, and AI hidden-completion systems
+Read existing pivot/joint/action-anchor point models
+-> add normalized coordinate fields while keeping pixel fields for compatibility
+-> convert normalized points to current image/crop pixels at display/compile boundaries
+-> keep panel/camera/source transforms separate from saved point data
+-> add regression tests for image-size changes after JSON reload
 ```
 
 Why this is next:
 
-- It attacks the current main naturalness problem directly.
-- A cut selected-part trajectory and multi-anchor action editing now exist, and correspondence metadata can now create the primary motion target.
-- The next step should make occlusion/depth/hidden-completion hints affect planning/editing affordances, while keeping manual anchors editable and avoiding AI correspondence too early.
+- B impact now uses stable normalized image coordinates, but other point data can still be tied to source pixel dimensions.
+- Coordinate data must stay independent from display transforms so saved JSON survives resized uploads, crop changes, and reloads.
+- Renderer z-order, hidden-completion generation, and AI tools should consume stable coordinate data rather than screen-sized pixels.
 
-Do not jump straight to AI matching. First make the manual correspondence data model and editor usable; later AI can propose those anchors as editable drafts.
+Do not jump straight to AI matching, renderer z-swap, or mesh/proxy deformation. First make point coordinate storage consistent and reload-safe; later systems can consume those normalized anchors as editable drafts.
 
 ## GitHub State
 
@@ -289,12 +300,12 @@ master
 Latest known committed baseline at handoff time:
 
 ```text
-26e8eb2 Add panel setup undo history
+c608bef Store B impact anchors as normalized coordinates
 ```
 
 ## Current Working Tree Notes
 
-As of this handoff update, the command/model refactor is committed on `master`.
+As of this handoff update, the correspondence, motionDraft, hidden-completion lifecycle, and normalized B impact work is committed on `master`.
 
 Recently completed in the working tree:
 
@@ -310,6 +321,10 @@ Recently completed in the working tree:
 - Correspondence target overwrite policy that protects manual targets.
 - Correspondence-derived motion hints on `motionPlan`, generated primary anchors, and `cutsceneBridge.jointAction`.
 - Occlusion/depth/hidden-completion metadata controls and hint status text.
+- Non-destructive motion draft compilation from correspondence motion hints.
+- Motion draft inspector/timeline display and minimal editing controls.
+- Hidden completion asset lifecycle metadata: `missing`, `requested`, `ready`, and remove back to `missing`.
+- B impact anchors saved as normalized image coordinates and restored against the current image size.
 - Keyboard history shortcuts: `Ctrl+Z`, `Ctrl+Y`, and `Ctrl+Shift+Z`.
 - Timeline keyframe mutation removed from `scripts/timeline.js`; keyframe writes now stay in `scripts/motion-commands.js`.
 - Planner, anchor picker, trajectory editor, timeline controls, preview rig edits, cutscene controls/options, IO restore, and Lookism preset application moved toward command helpers.
@@ -320,4 +335,5 @@ Recently completed in the working tree:
   - `tests/session-commands.test.js`
   - `tests/panel-commands.test.js`
   - `tests/correspondence-commands.test.js`
+  - `tests/motion-draft-editor.test.js`
   - `tests/cutscene-options.test.js`
