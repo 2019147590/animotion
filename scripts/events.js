@@ -4,14 +4,12 @@
   const { sourceCanvas, els } = Animotion.dom;
   const state = Animotion.state;
   const geometry = Animotion.geometry;
-
   function bindEvents() {
     bindSourceCanvasEvents();
     Animotion.previewEvents.bindPreviewCanvasEvents();
     bindControlEvents();
     bindWindowEvents();
   }
-
   function bindSourceCanvasEvents() {
     sourceCanvas.addEventListener("pointerdown", onSourcePointerDown);
     sourceCanvas.addEventListener("pointermove", onSourcePointerMove);
@@ -19,7 +17,6 @@
     sourceCanvas.addEventListener("dblclick", closeSelection);
     sourceCanvas.addEventListener("wheel", onSourceWheel, { passive: false });
   }
-
   function onSourcePointerDown(event) {
     if (!(Animotion.panelEditor?.imageFor() || state.image) || !state.sourceView) return;
     if (event.button === 1 || state.spaceDown) return beginPan(event);
@@ -170,7 +167,7 @@
     if (Animotion.panelEditor?.canEditRig() === false) return;
     const ready = geometry.shapeIsReady(state.selection, Animotion.imageBounds(), Animotion.config.minShapeSize);
     if (!ready) return;
-    Animotion.parts.createPartFromShape(els.partType.value, state.selection, els.partName.value.trim());
+    Animotion.partCommands.createPartFromShape(els.partType.value, state.selection, els.partName.value.trim());
     els.partName.value = "";
     clearSelection();
   }
@@ -180,7 +177,7 @@
     const part = Animotion.parts.selectedPart();
     const ready = geometry.shapeIsReady(state.selection, Animotion.imageBounds(), Animotion.config.minShapeSize);
     if (!part || !ready) return;
-    Animotion.parts.applyShapeToPart(part, state.selection);
+    Animotion.partCommands.applyShapeToPart(part, state.selection);
     clearSelection();
   }
 
@@ -211,10 +208,10 @@
     state.startTime = performance.now();
     const missingBridge = !state.cutsceneBridge || !state.cutsceneBridge.primaryPartId;
     if (els.motionTemplate.value === "cutscene" && missingBridge) {
-      state.cutsceneBridge = Animotion.cutsceneControls.preservePanelTransform(
+      Animotion.motionCommands.setCutsceneBridge(Animotion.cutsceneControls.preservePanelTransform(
         Animotion.cutsceneModel.createBridge(state.parts, state.selectedPartId),
         state.cutsceneBridge
-      );
+      ));
       state.currentFrame = state.cutsceneBridge.impactFrame;
     }
     if (timelineLikeMode()) {
@@ -224,17 +221,17 @@
   }
 
   function bindInspectorEvents() {
-    const update = Animotion.ui.updateSelectedPart;
-    els.editName.addEventListener("input", () => update((part) => { part.name = els.editName.value; }));
-    els.editType.addEventListener("change", () => update((part) => { part.type = els.editType.value; }));
-    els.editParent.addEventListener("change", () => update((part) => { part.parentId = els.editParent.value || null; }));
-    els.pivotX.addEventListener("input", () => update((part) => { part.pivot.x = Number(els.pivotX.value) * part.rect.w; }));
-    els.pivotY.addEventListener("input", () => update((part) => { part.pivot.y = Number(els.pivotY.value) * part.rect.h; }));
-    els.jointX.addEventListener("input", () => update((part) => { part.joint.x = Number(els.jointX.value) * part.rect.w; }));
-    els.jointY.addEventListener("input", () => update((part) => { part.joint.y = Number(els.jointY.value) * part.rect.h; }));
-    els.editOrder.addEventListener("input", () => update((part) => { part.order = Number(els.editOrder.value); }));
-    els.editAlpha.addEventListener("input", () => update((part) => { part.alpha = Number(els.editAlpha.value); }));
-    els.editHidden.addEventListener("change", () => update((part) => { part.hidden = els.editHidden.checked; }));
+    const update = updateSelectedPart;
+    els.editName.addEventListener("input", () => update({ name: els.editName.value }));
+    els.editType.addEventListener("change", () => update({ type: els.editType.value }));
+    els.editParent.addEventListener("change", () => update({ parentId: els.editParent.value || null }));
+    els.pivotX.addEventListener("input", () => updatePoint("pivot", "x", Number(els.pivotX.value)));
+    els.pivotY.addEventListener("input", () => updatePoint("pivot", "y", Number(els.pivotY.value)));
+    els.jointX.addEventListener("input", () => updatePoint("joint", "x", Number(els.jointX.value)));
+    els.jointY.addEventListener("input", () => updatePoint("joint", "y", Number(els.jointY.value)));
+    els.editOrder.addEventListener("input", () => update({ order: Number(els.editOrder.value) }));
+    els.editAlpha.addEventListener("input", () => update({ alpha: Number(els.editAlpha.value) }));
+    els.editHidden.addEventListener("change", () => update({ hidden: els.editHidden.checked }));
     els.motionX.addEventListener("input", () => updateMotion("x", els.motionX.value));
     els.motionY.addEventListener("input", () => updateMotion("y", els.motionY.value));
     els.motionRotate.addEventListener("input", () => updateMotion("rotate", els.motionRotate.value));
@@ -246,31 +243,36 @@
     els.deletePart.addEventListener("click", deleteSelectedPart);
   }
 
+  function updateSelectedPart(patch) {
+    if (Animotion.partCommands.updateSelectedPart(patch)) Animotion.ui.refreshUi();
+  }
+
+  function updatePoint(pointKey, axis, ratio) {
+    const part = Animotion.parts.selectedPart();
+    if (!part) return;
+    const sizeKey = axis === "x" ? "w" : "h";
+    updateSelectedPart({ [pointKey]: { ...part[pointKey], [axis]: ratio * part.rect[sizeKey] } });
+  }
+
   function updateMotion(key, value) {
     if (timelineLikeMode()) {
       state.running = false;
       els.playPause.textContent = "재생";
     }
-    Animotion.ui.updateSelectedPart((part) => {
-      part.customMotion = Animotion.motionModel.normalizeCustomMotion(part.customMotion);
-      part.customMotion[key] = Number(value);
-    });
+    updateSelectedPartMotion(key, value);
   }
 
   function resetPartMotion() {
-    Animotion.ui.updateSelectedPart((part) => {
-      part.customMotion = Animotion.motionModel.defaultCustomMotion();
-    });
+    Animotion.partCommands.resetSelectedPartMotion();
+    Animotion.ui.refreshUi();
+  }
+
+  function updateSelectedPartMotion(key, value) {
+    if (Animotion.partCommands.updateSelectedPartMotion(key, value)) Animotion.ui.refreshUi();
   }
 
   function deleteSelectedPart() {
-    const part = Animotion.parts.selectedPart();
-    if (!part) return;
-    state.parts = state.parts
-      .filter((candidate) => candidate.id !== part.id)
-      .map((candidate) => candidate.parentId === part.id ? { ...candidate, parentId: null } : candidate);
-    state.selectedPartId = state.parts[0]?.id || null;
-    Animotion.ui.refreshUi();
+    if (Animotion.partCommands.deleteSelectedPart()) Animotion.ui.refreshUi();
   }
 
   function bindWindowEvents() {
@@ -279,16 +281,32 @@
       Animotion.render.drawPreview();
     });
     window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", (event) => {
-      if (event.code === "Space") state.spaceDown = false;
-    });
+    window.addEventListener("keyup", (event) => { if (event.code === "Space") state.spaceDown = false; });
   }
 
   function onKeyDown(event) {
+    if (handleHistoryShortcut(event)) return;
     if (event.code === "Space" && !Animotion.view.isTypingTarget(event.target)) {
       state.spaceDown = true;
       event.preventDefault();
     }
+  }
+
+  function handleHistoryShortcut(event) {
+    if (!(event.ctrlKey || event.metaKey) || event.altKey || textInputTarget(event.target)) return false;
+    const key = event.key.toLowerCase();
+    if (key !== "z" && key !== "y") return false;
+    const didApply = event.shiftKey || key === "y"
+      ? Animotion.commandHistory?.redo?.()
+      : Animotion.commandHistory?.undo?.();
+    if (didApply) event.preventDefault();
+    return Boolean(didApply);
+  }
+
+  function textInputTarget(target) {
+    if (target instanceof HTMLTextAreaElement) return true;
+    if (!(target instanceof HTMLInputElement)) return false;
+    return ["email", "number", "password", "search", "tel", "text", "url"].includes(target.type);
   }
 
   function timelineLikeMode() {

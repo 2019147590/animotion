@@ -22,22 +22,21 @@
   function syncSelectedPartPoseToFrame() {
     const part = Animotion.parts.selectedPart();
     if (!part || !timelineLikeMode()) return;
-    part.customMotion = Animotion.timeline.evaluatePartAtFrame(part, state.currentFrame);
+    Animotion.motionCommands.syncPartPoseToFrame(part, state.currentFrame);
   }
 
   function insertKeyframe() {
     const part = Animotion.parts.selectedPart();
     if (!part) return;
     const pose = Animotion.motionModel.normalizeCustomMotion(part.customMotion);
-    Animotion.timeline.upsertKeyframe(part, state.currentFrame, pose);
+    Animotion.motionCommands.insertKeyframe(part, state.currentFrame, pose);
     Animotion.ui.refreshUi();
   }
 
   function deleteKeyframe() {
     const part = Animotion.parts.selectedPart();
     if (!part) return;
-    Animotion.timeline.deleteKeyframe(part, state.currentFrame);
-    part.customMotion = Animotion.timeline.evaluatePartAtFrame(part, state.currentFrame);
+    Animotion.motionCommands.deleteKeyframe(part, state.currentFrame);
     Animotion.ui.refreshUi();
   }
 
@@ -47,13 +46,15 @@
     const cutsceneMode = els.motionTemplate.value === "cutscene";
     const previousBridge = Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge);
     if (cutsceneMode || state.nextImage) {
-      state.cutsceneBridge = Animotion.cutsceneControls.preservePanelTransform(
+      Animotion.motionCommands.setCutsceneBridge(Animotion.cutsceneControls.preservePanelTransform(
         Animotion.cutsceneModel.createBridge(state.parts, primary.id),
         previousBridge
-      );
+      ));
     }
     if (state.cutsceneBridge) {
-      state.cutsceneBridge.jointAction = Animotion.jointCoordinates.createJointAction(state.parts, primary.id, state.cutsceneBridge);
+      Animotion.motionCommands.updateJointAction(
+        Animotion.jointCoordinates.createJointAction(state.parts, primary.id, state.cutsceneBridge)
+      );
     }
     const frameLimit = currentFrameLimit();
     const impactFrame = cutsceneMode || state.cutsceneBridge ? state.cutsceneBridge.impactFrame : state.currentFrame;
@@ -63,16 +64,9 @@
       impactFrame,
       frameLimit
     );
-    applyGeneratedTracks(result);
+    Animotion.motionCommands.applyGeneratedTracks(result.tracks);
     els.motionTemplate.value = state.cutsceneBridge ? "cutscene" : "keyframes";
     setCurrentFrame(result.impactFrame);
-  }
-
-  function applyGeneratedTracks(result) {
-    for (const track of result.tracks) {
-      const part = state.parts.find((candidate) => candidate.id === track.partId);
-      if (part) part.keyframes = track.keyframes;
-    }
   }
 
   function clampFrame(frame) {

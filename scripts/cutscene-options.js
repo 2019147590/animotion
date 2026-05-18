@@ -33,10 +33,7 @@
   }
 
   function updateBridge(key, value) {
-    Animotion.state.cutsceneBridge = Animotion.cutsceneModel.normalizeBridge({
-      ...Animotion.state.cutsceneBridge,
-      [key]: value,
-    });
+    Animotion.sessionCommands.updateCutsceneBridge({ [key]: value });
     Animotion.ui?.refreshUi?.();
   }
 

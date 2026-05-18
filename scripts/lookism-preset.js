@@ -19,37 +19,27 @@
   }
 
   function applyPresetState(assets) {
-    resetAppState(assets.ready, assets.impact);
-    state.parts = Animotion.lookismPresetParts.createParts();
-    state.selectedPartId = selectedImpactPartId();
-    state.cutsceneBridge = createBridge();
-    state.lookismPreset = activePreset(assets);
+    const parts = Animotion.lookismPresetParts.createParts();
+    Animotion.sessionCommands.applyLookismPreset({
+      ready: assets.ready,
+      impact: assets.impact,
+      imageName: data.READY_IMAGE,
+      nextImageName: data.ASSETS.impact.src,
+      parts,
+      selectedPartId: selectedImpactPartId(parts),
+      bridge: createBridge(parts),
+      lookismPreset: activePreset(assets),
+    });
     applyControls();
   }
 
-  function resetAppState(ready, impact) {
-    state.image = ready;
-    state.imageName = data.READY_IMAGE;
-    state.nextImage = impact;
-    state.selection = null;
-    state.drag = null;
-    state.previewDrag = null;
-    state.sourceZoom = 1;
-    state.sourcePan = { x: 0, y: 0 };
-    state.running = true;
-    state.pausedTime = 0;
-    state.startTime = performance.now();
-    state.currentFrame = 1;
-    state.separateCharacter = false;
+  function selectedImpactPartId(parts) {
+    return parts.find((part) => part.name === "right_shin")?.id || parts[0]?.id || null;
   }
 
-  function selectedImpactPartId() {
-    return state.parts.find((part) => part.name === "right_shin")?.id || state.parts[0]?.id || null;
-  }
-
-  function createBridge() {
+  function createBridge(parts) {
     return Animotion.cutsceneModel.normalizeBridge({
-      primaryPartId: state.selectedPartId,
+      primaryPartId: selectedImpactPartId(parts),
       durationFrames: FRAME_COUNT,
       impactFrame: IMPACT_FRAME,
       effectDirection: { x: 1, y: -0.25 },

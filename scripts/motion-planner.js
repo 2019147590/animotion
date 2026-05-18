@@ -59,17 +59,14 @@
     ui.status.textContent = statusText(plan, part);
   }
   function currentPlan() {
-    Animotion.state.motionPlan = normalizePlan(Animotion.state.motionPlan);
-    return Animotion.state.motionPlan;
+    return Animotion.motionCommands?.currentMotionPlan?.() || normalizePlan(Animotion.state.motionPlan);
   }
   function updateTemplate() {
-    const plan = currentPlan();
-    plan.template = refs().template.value;
+    Animotion.motionCommands.setMotionPlan({ template: refs().template.value });
     refresh();
   }
   function toggleTargetMode() {
-    const plan = currentPlan();
-    plan.targetMode = !plan.targetMode;
+    const plan = Animotion.motionCommands.setMotionPlan({ targetMode: !currentPlan().targetMode });
     if (plan.targetMode && Animotion.state.running) {
       Object.assign(Animotion.state, { pausedTime: (performance.now() - Animotion.state.startTime) / 1000, running: false });
       Animotion.dom.els.playPause.textContent = "재생";
@@ -81,12 +78,14 @@
     if (!plan.targetMode || !Animotion.state.previewView || !Animotion.state.image) return;
     const point = previewPoint(event);
     const bounds = Animotion.panelEditor?.imageBounds?.("source") || Animotion.imageBounds();
-    plan.target = {
+    Animotion.motionCommands.setMotionPlan({
+      target: {
       x: Math.round(Animotion.geometry.clamp(point.x, 0, bounds.width)),
       y: Math.round(Animotion.geometry.clamp(point.y, 0, bounds.height)),
-    };
-    plan.anchors = [];
-    plan.targetMode = false;
+      },
+      anchors: [],
+      targetMode: false,
+    });
     event.preventDefault();
     event.stopImmediatePropagation();
     refresh();
@@ -100,10 +99,7 @@
       previous
     );
     const result = createPlan(Animotion.state.parts, part.id, bridge, currentPlan());
-    bridge.jointAction = result.jointAction;
-    Animotion.state.cutsceneBridge = bridge;
-    Animotion.state.motionPlan = { ...currentPlan(), target: result.target, anchors: result.anchors };
-    applyPartTracks(result);
+    Animotion.motionCommands.applyMotionPlanResult(bridge, currentPlan(), result);
     Animotion.dom.els.motionTemplate.value = "cutscene";
     Animotion.timelineControls.setCurrentFrame(bridge.impactFrame);
   }
@@ -219,13 +215,6 @@
       pose.y = (beat.pose.head[1] - base.head[1]) * 0.7;
     }
     return { frame: beat.at, pose };
-  }
-
-  function applyPartTracks(result) {
-    for (const track of result.partTracks) {
-      const part = Animotion.state.parts.find((candidate) => candidate.id === track.partId);
-      if (part) part.keyframes = track.keyframes;
-    }
   }
 
   function statusText(plan, part) {

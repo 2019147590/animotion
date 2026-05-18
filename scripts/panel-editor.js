@@ -49,10 +49,7 @@
   }
 
   function setActiveTarget(target) {
-    Animotion.state.panelEditTarget = target === "impact" ? "impact" : "source";
-    Animotion.state.selection = null;
-    Animotion.view?.resetSourceView?.();
-    Animotion.ui?.refreshUi?.();
+    Animotion.panelCommands.setActiveTarget(target);
   }
 
   function imageFor(target = activeTarget()) {
@@ -75,25 +72,21 @@
   function setCropFromSelection() {
     const shape = normalizedSelection();
     if (!shape) return;
-    setupFor().crop = Animotion.geometry.pointsBounds(shape.points, imageBounds());
-    refresh();
+    Animotion.panelCommands.setCropFromSelection(activeTarget(), shape, imageBounds());
   }
 
   function clearCrop() {
-    setupFor().crop = null;
-    refresh();
+    Animotion.panelCommands.setCrop(activeTarget(), null);
   }
 
   function setCharacterMaskFromSelection() {
     const shape = normalizedSelection();
     if (!shape) return;
-    setupFor().characterMask = shape;
-    refresh();
+    Animotion.panelCommands.setCharacterMaskFromSelection(activeTarget(), shape);
   }
 
   function clearCharacterMask() {
-    setupFor().characterMask = null;
-    refresh();
+    Animotion.panelCommands.setCharacterMask(activeTarget(), null);
   }
 
   function normalizedSelection() {
@@ -175,7 +168,9 @@
     ensureSetup();
     const ui = refs();
     if (!ui.target) return;
-    if (activeTarget() === "impact" && !Animotion.state.nextImage) Animotion.state.panelEditTarget = "source";
+    if (activeTarget() === "impact" && !Animotion.state.nextImage) {
+      Animotion.panelCommands.setActiveTarget("source", { refresh: false, resetView: false });
+    }
     const target = activeTarget();
     const image = imageFor(target);
     const ready = Boolean(normalizedSelection());

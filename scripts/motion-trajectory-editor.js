@@ -19,7 +19,7 @@
     const hit = hitBeat(event);
     if (!hit) return;
     freezePlayback();
-    currentPlan().selectedBeatId = hit.beat.id;
+    Animotion.motionCommands.setMotionPlan({ selectedBeatId: hit.beat.id });
     Animotion.state.trajectoryDrag = { beatIndex: hit.index, focusKey: hit.focusKey };
     Animotion.timelineControls?.setCurrentFrame?.(hit.beat.at);
     Animotion.dom.previewCanvas.setPointerCapture(event.pointerId);
@@ -60,7 +60,7 @@
 
   function beginAnchorDrag(event, hit) {
     freezePlayback();
-    currentPlan().selectedBeatId = null;
+    Animotion.motionCommands.setMotionPlan({ selectedBeatId: null });
     Animotion.state.trajectoryDrag = { anchorKey: hit.anchor.key };
     Animotion.dom.previewCanvas.setPointerCapture(event.pointerId);
     event.preventDefault();
@@ -170,10 +170,7 @@
     const primary = plan.anchors.find((anchor) => anchor.key === bridge.jointAction?.focusKey && anchor.role === "primary");
     if (primary?.point) plan.target = { ...primary.point };
     const result = Animotion.motionPlanner.createPlan(state.parts, primaryId, bridge, plan);
-    state.cutsceneBridge = { ...bridge, jointAction: result.jointAction };
-    state.motionPlan = { ...plan, target: result.target, anchors: result.anchors };
-    applyPartTracks(result.partTracks);
-    syncSelectedPartPose();
+    Animotion.motionCommands.applyMotionPlanResult(bridge, plan, result);
   }
 
   function regeneratePrimaryTrack() {
@@ -185,20 +182,8 @@
       .find((candidate) => candidate.partId === primaryId);
     const part = state.parts.find((candidate) => candidate.id === primaryId);
     if (!part || !track) return;
-    part.keyframes = track.keyframes;
-    part.customMotion = Animotion.timeline.evaluatePartAtFrame(part, state.currentFrame);
-  }
-
-  function applyPartTracks(tracks) {
-    for (const track of tracks || []) {
-      const part = Animotion.state.parts.find((candidate) => candidate.id === track.partId);
-      if (part) part.keyframes = track.keyframes;
-    }
-  }
-
-  function syncSelectedPartPose() {
-    const part = Animotion.parts?.selectedPart?.();
-    if (part) part.customMotion = Animotion.timeline.evaluatePartAtFrame(part, Animotion.state.currentFrame);
+    Animotion.motionCommands.setPartKeyframes(part, track.keyframes);
+    Animotion.motionCommands.syncPartPoseToFrame(part, state.currentFrame);
   }
 
   function currentAction() {
@@ -206,8 +191,7 @@
   }
 
   function currentPlan() {
-    Animotion.state.motionPlan = Animotion.motionPlanner.normalizePlan(Animotion.state.motionPlan);
-    return Animotion.state.motionPlan;
+    return Animotion.motionCommands?.currentMotionPlan?.() || Animotion.motionPlanner.normalizePlan(Animotion.state.motionPlan);
   }
 
   function focusPoints(action, focusKey) {

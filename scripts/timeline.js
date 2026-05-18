@@ -42,17 +42,23 @@
     return a + (b - a) * ratio;
   }
 
-  function upsertKeyframe(part, frame, pose) {
-    const keyframes = sortedKeyframes(part).filter((keyframe) => keyframe.frame !== frame);
+  function upsertedKeyframes(part, frame, pose) {
+    const target = normalizedFrame(frame);
+    const keyframes = sortedKeyframes(part).filter((keyframe) => keyframe.frame !== target);
     keyframes.push(normalizeKeyframe({ frame, pose }));
-    part.keyframes = keyframes.sort((a, b) => a.frame - b.frame);
+    return keyframes.sort((a, b) => a.frame - b.frame);
   }
 
-  function deleteKeyframe(part, frame) {
-    part.keyframes = sortedKeyframes(part).filter((keyframe) => keyframe.frame !== frame);
+  function deletedKeyframes(part, frame) {
+    const target = normalizedFrame(frame);
+    return sortedKeyframes(part).filter((keyframe) => keyframe.frame !== target);
   }
 
-  Animotion.timeline = { frameFromTime, evaluatePartAtFrame, upsertKeyframe, deleteKeyframe, sortedKeyframes };
+  function normalizedFrame(frame) {
+    return Math.max(1, Math.round(Number(frame) || 1));
+  }
+
+  Animotion.timeline = { frameFromTime, evaluatePartAtFrame, upsertedKeyframes, deletedKeyframes, sortedKeyframes };
 
   if (typeof module !== "undefined") module.exports = Animotion.timeline;
 }

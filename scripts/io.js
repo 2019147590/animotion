@@ -19,8 +19,7 @@
     const file = event.target.files?.[0];
     if (!file) return;
     try {
-      state.nextImage = await loadImageFromFile(file);
-      state.panelSetup.impact = Animotion.panelEditor.normalizePanel();
+      Animotion.sessionCommands.setImpactImage(await loadImageFromFile(file), file.name);
       Animotion.ui.refreshUi();
     } catch (error) {
       alert(error.message);
@@ -59,16 +58,13 @@
   }
 
   function createRigPayload() {
-    return {
-      version: Animotion.config.rigVersion,
-      imageName: state.imageName,
-      canvas: state.image ? { width: state.image.naturalWidth, height: state.image.naturalHeight } : null,
-      separateCharacter: state.separateCharacter,
-      cutsceneBridge: state.cutsceneBridge ? Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge) : null,
+    const bridge = state.cutsceneBridge ? Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge) : null;
+    return Animotion.projectModel.projectFromEditorState({
+      ...state,
+      cutsceneBridge: bridge,
       panelSetup: Animotion.panelEditor?.ensureSetup?.() || null,
       motionPlan: Animotion.motionPlanner?.normalizePlan?.(state.motionPlan) || null,
-      parts: state.parts.map(({ canvas, ...part }) => part),
-    };
+    });
   }
 
   function deserializeRigPart(part) {
@@ -90,7 +86,7 @@
 
   function saveRig() {
     const blob = new Blob([JSON.stringify(createRigPayload(), null, 2)], { type: "application/json" });
-    downloadUrl(URL.createObjectURL(blob), "animotion-rig.json");
+    downloadUrl(URL.createObjectURL(blob), "animotion-project.json");
   }
 
   async function loadRig(event) {
@@ -99,12 +95,8 @@
     try {
       const currentBridge = state.cutsceneBridge ? Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge) : null;
       const payload = JSON.parse(await file.text());
-      state.parts = rigPartsFromPayload(payload).map(deserializeRigPart);
-      state.separateCharacter = Boolean(payload.separateCharacter);
-      restorePanelSetup(payload.panelSetup);
-      state.motionPlan = Animotion.motionPlanner?.normalizePlan?.(payload.motionPlan) || state.motionPlan;
-      state.cutsceneBridge = Animotion.cutsceneModel.mergePanelTransform(payload.cutsceneBridge, currentBridge);
-      state.selectedPartId = state.parts[0]?.id || null;
+      restorePayload(payload, currentBridge);
+      state.selectedPartId = state.selectedPartId || state.parts[0]?.id || null;
       Animotion.ui.refreshUi();
     } catch (error) {
       alert(`리그 JSON을 불러오지 못했습니다: ${error.message}`);
@@ -112,6 +104,9 @@
   }
 
   function rigPartsFromPayload(payload) {
+    if (Animotion.projectModel?.isProjectPayload?.(payload)) {
+      return Animotion.projectModel.editorPartsFromProject(Animotion.projectModel.normalizeProject(payload));
+    }
     if (Array.isArray(payload.parts)) return payload.parts;
     if (Number(payload.version) === 3) {
       const parts = payload.characters?.[0]?.parts;
@@ -129,12 +124,22 @@
     };
   }
 
-  function restorePanelSetup(panelSetup) {
-    if (!Animotion.panelEditor) return;
-    state.panelSetup = {
-      source: Animotion.panelEditor.normalizePanel(panelSetup?.source),
-      impact: Animotion.panelEditor.normalizePanel(panelSetup?.impact),
-    };
+  function restorePayload(payload, currentBridge) {
+    if (Animotion.projectModel?.isProjectPayload?.(payload)) return restoreProjectPayload(payload, currentBridge);
+    Animotion.sessionCommands.restoreLegacyRig(
+      payload,
+      rigPartsFromPayload(payload).map(deserializeRigPart),
+      currentBridge
+    );
+  }
+
+  function restoreProjectPayload(payload, currentBridge) {
+    const project = Animotion.projectModel.normalizeProject(payload);
+    Animotion.sessionCommands.restoreProject(
+      project,
+      Animotion.projectModel.editorPartsFromProject(project).map(deserializeRigPart),
+      currentBridge
+    );
   }
 
   function normalizePartType(type) {
@@ -156,5 +161,5 @@
     setTimeout(() => URL.revokeObjectURL(url), 500);
   }
 
-  Animotion.io = { handleImageUpload, handleNextImageUpload, createGuideParts, saveRig, loadRig, rigPartsFromPayload, downloadUrl };
+  Animotion.io = { handleImageUpload, handleNextImageUpload, createGuideParts, createRigPayload, saveRig, loadRig, rigPartsFromPayload, downloadUrl };
 }

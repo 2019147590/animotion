@@ -52,22 +52,20 @@
     const tracks = Animotion.poseAssist.solveControlPose(state.parts, partId, delta, state.previewDrag.basePoses);
     for (const track of tracks) {
       const part = state.parts.find((candidate) => candidate.id === track.partId);
-      if (part) part.customMotion = track.pose;
+      if (part) Animotion.partCommands.updatePart(part, { customMotion: track.pose });
     }
   }
 
   function commitControlPose() {
     for (const part of state.parts) {
-      Animotion.timeline.upsertKeyframe(part, state.currentFrame, part.customMotion);
+      Animotion.motionCommands.insertKeyframe(part, state.currentFrame, part.customMotion);
     }
   }
 
   function moveRigPoint(part, point, role) {
     const local = localPointForCurrentPose(part, point);
-    const target = role === "joint" ? part.joint : part.pivot;
     const clamped = Animotion.rigging.localPointFromImagePoint(part.rect, local);
-    target.x = clamped.x;
-    target.y = clamped.y;
+    Animotion.partCommands.updatePart(part, { [role === "joint" ? "joint" : "pivot"]: clamped });
   }
 
   function localPointForCurrentPose(part, point) {

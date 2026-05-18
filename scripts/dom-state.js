@@ -13,6 +13,7 @@
 
   const sourceCanvas = document.querySelector(selectors.sourceCanvas);
   const previewCanvas = document.querySelector(selectors.previewCanvas);
+  const project = Animotion.projectModel.createEmptyProject();
 
   Animotion.dom = {
     sourceCanvas,
@@ -23,13 +24,15 @@
   };
 
   Animotion.state = {
+    project,
     image: null,
     imageName: "",
     nextImage: null,
+    nextImageName: "",
     selection: null,
     drag: null,
     previewDrag: null,
-    parts: [],
+    parts: project.parts,
     selectedPartId: null,
     running: true,
     startTime: performance.now(),

@@ -137,7 +137,8 @@
   function updateSelectedPart(updater) {
     const part = Animotion.parts.selectedPart();
     if (!part) return;
-    updater(part);
+    const patch = typeof updater === "function" ? updater(part) : updater;
+    if (patch) Animotion.partCommands.updatePart(part, patch);
     refreshUi();
   }
 

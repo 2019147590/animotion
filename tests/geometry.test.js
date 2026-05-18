@@ -153,6 +153,20 @@ test("timeline interpolates keyframes like a simple graph editor", () => {
   assert.equal(pose.rotate, 5);
 });
 
+test("timeline keyframe helpers return new arrays without mutating parts", () => {
+  const part = {
+    keyframes: [
+      { frame: 10, pose: { x: 20 } },
+      { frame: 1, pose: { x: 0 } },
+    ],
+  };
+  const inserted = timeline.upsertedKeyframes(part, 5, { x: 8 });
+  const deleted = timeline.deletedKeyframes(part, 10);
+  assert.deepEqual(part.keyframes.map((keyframe) => keyframe.frame), [10, 1]);
+  assert.deepEqual(inserted.map((keyframe) => keyframe.frame), [1, 5, 10]);
+  assert.deepEqual(deleted.map((keyframe) => keyframe.frame), [1]);
+});
+
 test("pose assist treats the uploaded cut as impact and builds anticipation", () => {
   const parts = [
     { id: "body", type: "body", rect: { x: 40, y: 20, w: 20, h: 50 } },

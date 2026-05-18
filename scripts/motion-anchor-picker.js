@@ -61,10 +61,7 @@
     const primary = anchors.find((anchor) => anchor.key === bridge.jointAction?.focusKey && anchor.role === "primary");
     const plan = { ...currentPlan(), anchors, target: primary?.point || currentPlan().target };
     const result = Animotion.motionPlanner.createPlan(state.parts, primaryId, bridge, plan);
-    state.cutsceneBridge = { ...bridge, jointAction: result.jointAction };
-    state.motionPlan = { ...plan, target: result.target, anchors: result.anchors };
-    applyPartTracks(result.partTracks);
-    syncSelectedPartPose();
+    Animotion.motionCommands.applyMotionPlanResult(bridge, plan, result);
     return result;
   }
 
@@ -77,25 +74,12 @@
     } : anchor);
   }
 
-  function applyPartTracks(tracks) {
-    for (const track of tracks || []) {
-      const part = Animotion.state.parts.find((candidate) => candidate.id === track.partId);
-      if (part) part.keyframes = track.keyframes;
-    }
-  }
-
   function currentAnchors() {
     return Animotion.motionAnchors.normalizeAnchors(Animotion.state?.cutsceneBridge?.jointAction?.anchors || currentPlan().anchors);
   }
 
   function currentPlan() {
-    Animotion.state.motionPlan = Animotion.motionPlanner.normalizePlan(Animotion.state.motionPlan);
-    return Animotion.state.motionPlan;
-  }
-
-  function syncSelectedPartPose() {
-    const part = Animotion.parts?.selectedPart?.();
-    if (part) part.customMotion = Animotion.timeline.evaluatePartAtFrame(part, Animotion.state.currentFrame);
+    return Animotion.motionCommands?.currentMotionPlan?.() || Animotion.motionPlanner.normalizePlan(Animotion.state.motionPlan);
   }
 
   function previewPoint(event) {

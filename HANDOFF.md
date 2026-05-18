@@ -40,10 +40,16 @@ The AI/GPU plan remains an input automation layer, not the core renderer. Later 
 - Part mask editing by vertex/edge/move interactions.
 - Part type, name, parent, layer, opacity, pivot, and joint editing.
 - Keyframe insertion/deletion and frame-based interpolation.
+- Part creation, shape edits, inspector updates, deletion, pivot/joint edits, and selected pose updates now go through command helpers instead of ad hoc UI mutation.
+
+Implemented command layer:
+
+- `scripts/part-commands.js`: create/update/delete parts, apply part masks, validate parent updates, sync project parts.
+- `tests/part-commands.test.js`: part creation/project sync, cyclic parent rejection, child parent clearing on delete.
 
 ### Panel Quality Setup
 
-Implemented in `scripts/panel-editor.js`.
+Implemented in `scripts/panel-editor.js` and `scripts/panel-commands.js`.
 
 - A/B panel edit target switch.
 - Manual crop for A cut and B cut.
@@ -54,6 +60,7 @@ Implemented in `scripts/panel-editor.js`.
 - Cropped panel size is preserved relative to the original source image.
 - JSON load preserves an already-adjusted A cut panel transform when the user changed it before import.
 - Preview pointer input and rig/target overlays are converted through the current A cut panel scale/position.
+- Panel target, crop, mask, and panel setup mutation now go through `scripts/panel-commands.js`.
 
 Recent commit:
 
@@ -80,6 +87,7 @@ Implemented in `scripts/motion-planner.js`, `scripts/motion-anchors.js`, `script
 - Target picking freezes playback so the editing reference stays visible.
 - Target point, beat handles, anchors, selected outlines, and rig handles are editing references only; they are hidden during playback/export.
 - Motion plan saved/restored through rig JSON as `motionPlan`.
+- Timeline keyframe edits, generated track application, cutscene bridge updates, motion plan updates, anchor regeneration, and trajectory regeneration now go through `scripts/motion-commands.js`.
 
 Important behavior:
 
@@ -111,12 +119,40 @@ Implemented in `scripts/cutscene-options.js`, `scripts/preview.js`, and `scripts
 - Body/head auxiliary movement is optional through `bodyAssistEnabled`.
 - Default keeps body assist enabled for better motion draft quality.
 - When body assist is disabled, generated and regenerated tracks keep body/head auxiliary movement at zero while the selected part still follows the trajectory.
+- Source/impact panel transform and cutscene option updates now call session/motion command helpers.
 
 Recent commit:
 
 ```text
 5064c57 Add direct motion anchor picking
 ```
+
+### Project Model And Commands
+
+Implemented in this working tree but not yet committed.
+
+- `scripts/project-model.js`: central `AnimotionProject` runtime normalization and project part/editor part conversion.
+- `scripts/project-serialization.js`: converts current editor state into `AnimotionProject`.
+- `scripts/project-model.d.ts`: TypeScript type declarations for `AnimotionProject`, assets, parts, rigs, motions, effects, timeline, and editor metadata.
+- Project JSON now saves as `format: "animotion-project"` with string `version`, metadata, canvas, assets, parts, rigs, motions, effects, timeline, and editor compatibility data.
+- Existing legacy rig JSON with `parts` and AI rig payloads with `version: 3` still import.
+- Save downloads `animotion-project.json` instead of `animotion-rig.json`.
+- `scripts/session-commands.js`: new source image reset, B cut image setup, project/legacy restore, Lookism preset application, cutscene bridge updates, and panel setup restore.
+- `scripts/panel-commands.js`: panel edit target, crop, and character mask state changes.
+- `scripts/part-commands.js`: part-level state changes.
+- `scripts/motion-commands.js`: keyframes, generated tracks, cutscene bridge, motion plan, and planner result application.
+- `scripts/timeline.js`: pure timeline/keyframe utilities. It returns evaluated poses and next keyframe arrays but does not mutate parts.
+- `scripts/command-history.js`: bounded command history scaffold with undo/redo stacks.
+- Part inspector and rig-point updates through `partCommands.updatePart` now record old/new patches for Undo/Redo.
+- `Ctrl+Z`, `Ctrl+Y`, and `Ctrl+Shift+Z` trigger history undo/redo outside text-entry inputs.
+- New image reset, project restore, legacy rig restore, and Lookism preset load clear command history.
+
+Current architecture note:
+
+- Renderers still read runtime editor state such as `state.parts`, `state.cutsceneBridge`, `state.motionPlan`, and `state.panelSetup`.
+- The central project model is currently the save/load and normalization boundary, not yet the single in-memory source of truth.
+- The command layer is an intermediate step toward broad Undo/Redo and eventually making `state.project` the primary editable data store.
+- Undo/Redo currently covers the narrow part update slice only. Part creation/deletion, panel setup, timeline keyframes, generated motion plans, and session-level changes are still not undoable.
 
 ## Current Limits
 
@@ -130,11 +166,22 @@ Recent commit:
 - The generated motion is a draft; anchor editing exists, but detailed anchor/keyframe graph tooling is still limited.
 - Target point placement alone does not generate a trajectory; generation is still an explicit user action.
 - Natural connection into B cut is limited because A/B body-part correspondence and B cut impact anchors are not implemented.
+- Undo/Redo is implemented only for part update commands; most command helpers still centralize mutation without command records.
+- `state.project` is synchronized at save/load and command boundaries, but render/edit code still depends on legacy editor state fields.
 
 ## Important Files
 
 - `index.html`: static app shell and existing controls.
-- `scripts/panel-editor.js`: A/B crop and character mask setup.
+- `scripts/project-model.js`: central project model normalization and project/editor part conversion.
+- `scripts/project-serialization.js`: editor state to `AnimotionProject` save payload.
+- `scripts/project-model.d.ts`: TypeScript declarations for the project format.
+- `scripts/command-history.js`: undo/redo stack and command replay helper.
+- `scripts/session-commands.js`: project/session reset and restore commands.
+- `scripts/part-commands.js`: part creation/update/delete commands.
+- `scripts/motion-commands.js`: keyframe, bridge, motion plan, and generated-track commands.
+- `scripts/timeline.js`: pure keyframe sorting, insertion-result, deletion-result, and frame evaluation helpers.
+- `scripts/panel-commands.js`: panel target/crop/mask commands.
+- `scripts/panel-editor.js`: A/B crop and character mask UI/render helpers.
 - `scripts/motion-anchors.js`: action-anchor generation and normalization.
 - `scripts/motion-planner.js`: target-driven beat and trajectory draft generation.
 - `scripts/motion-anchor-picker.js`: choose and directly place generated action anchors.
@@ -145,7 +192,7 @@ Recent commit:
 - `scripts/cutscene-model.js`: cutscene bridge timing and panel transition values.
 - `scripts/joint-coordinates.js`: joint pose inference from current parts.
 - `scripts/pose-assist.js`: older keyframe anticipation helper.
-- `scripts/io.js`: JSON save/load including `panelSetup` and `motionPlan`.
+- `scripts/io.js`: JSON save/load for `AnimotionProject`, legacy rig JSON, and AI rig payloads.
 - `lookism/`: proof-of-concept Canvas cutscene renderer.
 - `ai-rig-server/`: backend scaffold for future GPU model runners.
 
@@ -174,6 +221,10 @@ node tests\geometry.test.js
 node tests\cutscene-options.test.js
 node tests\ai-rig-import.test.js
 node tests\lookism-preset.test.js
+node tests\part-commands.test.js
+node tests\motion-commands.test.js
+node tests\session-commands.test.js
+node tests\panel-commands.test.js
 node --test lookism\test\cutscene-values.test.mjs
 cd ai-rig-server
 $env:PYTHONPATH='src'; python -m unittest discover -s tests
@@ -181,7 +232,25 @@ $env:PYTHONPATH='src'; python -m unittest discover -s tests
 
 ## Suggested Next Work Unit
 
-Implement manual B cut impact anchoring / A-to-B correspondence, not a new AI feature.
+Extend command history from the proven part-update slice to one more small editor surface before adding more feature surface.
+
+Smallest next scope:
+
+```text
+Choose either part create/delete or panel crop/mask
+-> add old/new command records for that one surface
+-> keep replay side effects behind existing command helpers
+-> add regression tests for undo, redo, and redo-stack clearing
+-> keep project JSON unchanged
+```
+
+Why this is next:
+
+- The codebase now has a working command history core, but only part updates record old/new state.
+- One more small slice will validate that the history model handles non-trivial object updates before timeline/planner history.
+- Keeping this incremental avoids trying to solve full generated-motion undo at once.
+
+After Undo/Redo scaffolding, return to manual B cut impact anchoring / A-to-B correspondence, not a new AI feature.
 
 Smallest next scope:
 
@@ -225,18 +294,24 @@ Latest known commit at handoff time:
 
 ## Current Working Tree Notes
 
-As of this handoff update, implementation work is pushed to `master`; no code changes are pending.
+As of this handoff update, the command/model refactor is implemented in the working tree but not committed.
 
-Recently completed and pushed:
+Recently completed in the working tree:
 
-- B cut reference opacity.
-- A/B panel scale preservation and JSON load behavior.
-- Source transform-aware preview/input coordinates.
-- Trajectory beat handle editing.
-- Editing-reference vs playback/export layer separation.
-- Optional A cut move/zoom.
-- Optional body assist for generated/regenerated trajectory tracks.
-- Multi-anchor motion drafts from a single target.
-- Generated anchor dragging and regeneration.
-- Direct per-anchor picking for generated action anchors.
-- Regression test `tests/cutscene-options.test.js`.
+- Central `AnimotionProject` save/load model and `.d.ts` type declarations.
+- Save/load refactor to project JSON while preserving legacy rig and AI rig imports.
+- Part, motion, session, and panel command layers.
+- Command history scaffold with Undo/Redo for part update commands.
+- Keyboard history shortcuts: `Ctrl+Z`, `Ctrl+Y`, and `Ctrl+Shift+Z`.
+- Timeline keyframe mutation removed from `scripts/timeline.js`; keyframe writes now stay in `scripts/motion-commands.js`.
+- Planner, anchor picker, trajectory editor, timeline controls, preview rig edits, cutscene controls/options, IO restore, and Lookism preset application moved toward command helpers.
+- Regression tests:
+  - `tests/ai-rig-import.test.js`
+  - `tests/part-commands.test.js`
+  - `tests/motion-commands.test.js`
+  - `tests/session-commands.test.js`
+  - `tests/panel-commands.test.js`
+
+Known untracked/planned-context file:
+
+- `animotion_2_5_d_planning_spec.md` is present as an untracked planning document and was used as the source for the project model direction.
