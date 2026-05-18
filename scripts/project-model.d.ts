@@ -42,7 +42,7 @@ export type Asset = {
   guide?: HiddenCompletionMeshGuide;
   generatedResult?: HiddenCompletionGeneratedResult;
   renderMode?: "guideOnly" | "generated" | "manualOverride";
-  patchStatus?: "draft" | "guide" | "missing" | "requested" | "ready";
+  patchStatus?: "draft" | "guide" | "missing" | "queued" | "processing" | "requested" | "ready" | "failed";
   preview?: { label: string | null; color: string; visible: boolean };
 };
 
@@ -228,7 +228,7 @@ export type MotionDraftHiddenCompletion = {
   needed: boolean;
   status: OcclusionMetadata["hiddenCompletion"];
   assetKind: "hiddenCompletionPatch" | "inpaintedPatch" | string;
-  assetStatus: "none" | "missing" | "requested" | "ready";
+  assetStatus: "none" | "missing" | "queued" | "processing" | "requested" | "ready" | "failed";
   assetId: string | null;
   requestId: string | null;
   requestedAt: string | null;

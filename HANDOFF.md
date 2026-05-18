@@ -173,6 +173,8 @@ Implemented on `master`.
 - `scripts/hidden-completion-result.js`: normalizes provider output, stores generated patch texture assets, and writes provenance onto the generated result/patch asset.
 - `scripts/hidden-completion-prompt.js`: shared hidden-completion prompt builder used by provider adapters.
 - `scripts/hidden-completion-stability-provider.js`: server-side Stability image-edit/inpaint adapter. It reads API keys from environment variables only and must not be called from browser code.
+- `scripts/hidden-completion-provider-server.js`: local Node provider server exposing `POST /hidden-completion/generate`; reads Stability credentials from env and returns normalized `HiddenCompletionResult`.
+- `scripts/hidden-completion-client.js`: browser-side local provider client. It posts neutral request/source/mask payloads to the local server and queues hidden completion when the provider is unavailable.
 - `scripts/hidden-completion-local-sd-provider.js`: server-side `local-sd-inpaint` adapter for local/VESSL/RunPod worker validation.
 - `scripts/hidden-completion-local-sd-worker-contract.js`: small validation helpers for the Local SD worker wire request/response contract.
 - `HIDDEN_COMPLETION_REQUEST.md`: provider-neutral request contract and provider separation rules.
@@ -196,9 +198,10 @@ Current architecture note:
 - B cut impact anchors are now stored as normalized image coordinates, but other point-like data such as pivots, joints, generated anchors, and trajectory points still need the same coordinate-space treatment.
 - Occlusion/depth/hidden-completion metadata is preserved as planner/action hints and compiled into non-destructive `motionDraft` data.
 - Motion draft visibility/depth/hidden-completion data is visible and minimally editable in the inspector/timeline, but it does not yet drive renderer opacity, z-order transitions, mesh/proxy deformation, or AI generation.
-- Hidden completion patch assets, guide mesh authoring, provider-neutral request building, source/mask preparation descriptors, provider adapter skeleton, Stability API adapter, Local SD worker adapter, and result/provenance writer are implemented.
-- Stability and Local SD providers are server-side adapters only. The browser app still does not call AI APIs directly, store API keys, load models, or require GPU for normal editing.
-- Provider calls are not wired into an end-user UI/job queue yet. Current provider tests use mocked fetch/worker calls only.
+- Hidden completion patch assets, guide mesh authoring, provider-neutral request building, source/mask preparation descriptors, provider adapter skeleton, Stability API adapter, Local SD worker adapter, local Node provider server, browser local-provider client, and result/provenance writer are implemented.
+- Stability and Local SD providers are server-side adapters only. The browser app does not call Stability directly, store API keys, load models, or require GPU for normal editing.
+- The motion draft `request/generate` control can call the local provider server. If the local server is unavailable, the hidden completion state moves to `queued`.
+- Provider tests use mocked fetch/worker calls only. Manual Stability validation requires starting the local Node provider server with `STABILITY_API_KEY` set.
 - Generated patch images can be stored as texture assets and linked from `hiddenCompletionPatch.generatedResult`, but renderer compositing of generated hidden patches is still future work.
 - Guide mesh preview is currently an editor overlay. It is not a final image patch and should be treated as AI/input guidance only.
 - Time-varying z-order / z-swap editing is not implemented.
@@ -273,6 +276,22 @@ http://localhost:8765/index.html
 
 Port 5500 also works if VS Code Live Server serves the repository root.
 
+Hidden completion provider server:
+
+```powershell
+$env:STABILITY_API_KEY='...'
+node scripts\hidden-completion-provider-server.js
+```
+
+Default endpoint:
+
+```text
+http://127.0.0.1:8787/hidden-completion/generate
+```
+
+The browser client posts only the neutral hidden-completion request plus prepared source/mask images and providerConfig metadata. The server reads the Stability API key from the environment.
+The provider server allows common local static origins by default: `localhost/127.0.0.1` on ports `8765` and `5500`. Override with `ANIMOTION_PROVIDER_ALLOWED_ORIGINS` as a comma-separated allowlist if needed.
+
 ## Verification Commands
 
 Use these before committing behavior changes:
@@ -292,6 +311,8 @@ node tests\hidden-completion-roundtrip.test.js
 node tests\hidden-completion-request.test.js
 node tests\hidden-completion-provider.test.js
 node tests\hidden-completion-stability-provider.test.js
+node tests\hidden-completion-provider-server.test.js
+node tests\hidden-completion-client.test.js
 node tests\hidden-completion-local-sd-provider.test.js
 node --test lookism\test\cutscene-values.test.mjs
 cd ai-rig-server
@@ -300,26 +321,25 @@ $env:PYTHONPATH='src'; python -m unittest discover -s tests
 
 ## Suggested Next Work Unit
 
-Add the server/Node runner boundary for hidden completion provider execution.
+Add robust hidden-completion job/result UX and renderer preview integration.
 
 Smallest next scope:
 
 ```text
-Browser/app builds neutral request and prepared descriptors
--> Node/server runner receives request, source image bytes, mask bytes, and providerConfig
--> runner selects Stability or local-sd-inpaint adapter
--> mocked and manual provider execution return normalized result
--> result writer stores generated texture asset and patch provenance
--> UI/job queue can later call this without exposing API keys
+request/generate starts local provider work
+-> UI shows queued / processing / ready / failed state clearly
+-> generated texture asset is visible as a preview overlay
+-> renderer compositing remains separate from request/provider code
+-> failed jobs preserve enough message/provenance for retry
 ```
 
 Why this is next:
 
-- Request/persistence/provider contracts are now stable enough for a server-side execution boundary.
-- API keys and model/workflow paths must stay outside browser code.
-- Provider adapters are mockable, but there is not yet a real app-to-runner command path.
+- The API key boundary and local server path are now in place.
+- Generated assets can be written, but user-facing status/preview feedback is still minimal.
+- Renderer compositing should consume generated assets without knowing which provider created them.
 
-Do not put provider settings into `HiddenCompletionRequestPayload`, call Stability from browser code, add GPU requirements to normal project loading/editing, or start fine-tuning. Add runner/job orchestration before renderer compositing.
+Do not put provider settings into `HiddenCompletionRequestPayload`, call Stability from browser code, add GPU requirements to normal project loading/editing, or start fine-tuning.
 
 ## GitHub State
 

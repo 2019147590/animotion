@@ -46,9 +46,16 @@
     }));
   }
   function requestHiddenCompletion() {
-    return updateActiveDraft((draft) => Animotion.motionDrafts.requestHiddenCompletion(draft, {
+    const assetId = currentAssetId();
+    const requested = updateActiveDraft((draft) => Animotion.motionDrafts.requestHiddenCompletion(draft, {
+      requestId: assetId,
       requestedAt: new Date().toISOString(),
     }));
+    Animotion.hiddenCompletionClient?.generateActiveHiddenCompletion?.(assetId).then((result) => {
+      if (result?.status === "queued") updateHiddenCompletion({ assetStatus: "queued" });
+      else if (result && assetId) markHiddenCompletionReady(assetId);
+    }).catch((error) => updateHiddenCompletion({ assetStatus: "queued", requestId: error.message }));
+    return requested;
   }
   function markHiddenCompletionReady(assetId = currentAssetId()) {
     if (!assetId) return null;
@@ -164,8 +171,11 @@
         <select id="motionDraftAssetStatus">
           <option value="none">none</option>
           <option value="missing">missing</option>
+          <option value="queued">queued</option>
+          <option value="processing">processing</option>
           <option value="requested">requested</option>
           <option value="ready">ready</option>
+          <option value="failed">failed</option>
         </select>
       </label>
       <label>
@@ -255,7 +265,8 @@
     if (element) element.disabled = disabled;
   }
   function currentAssetId() {
-    return document.querySelector("#motionDraftAssetId")?.value || "";
+    if (typeof document !== "undefined") return document.querySelector("#motionDraftAssetId")?.value || "";
+    return activeDraftContext()?.draft?.hiddenCompletion?.assetId || "";
   }
 
   function numberValue(value) {

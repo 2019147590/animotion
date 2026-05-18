@@ -154,18 +154,23 @@
       status,
       assetKind: normalizeAssetKind(hiddenCompletion.assetKind || legacy?.type),
       assetStatus,
-      assetId: assetStatus === "ready" ? assetId : null,
-      requestId: assetStatus === "requested" ? stringOrNull(hiddenCompletion.requestId) : null,
-      requestedAt: assetStatus === "requested" ? isoOrNull(hiddenCompletion.requestedAt) : null,
+      assetId: assetIdForStatus(assetStatus, assetId),
+      requestId: ["requested", "queued", "processing", "failed"].includes(assetStatus) ? stringOrNull(hiddenCompletion.requestId) : null,
+      requestedAt: ["requested", "queued", "processing"].includes(assetStatus) ? isoOrNull(hiddenCompletion.requestedAt) : null,
       completedAt: assetStatus === "ready" ? isoOrNull(hiddenCompletion.completedAt) : null,
     };
   }
 
   function normalizeAssetStatus(value, needed, assetId = null, assets = null) {
     if (value === "ready") return hasReadyAsset(assetId, assets) ? "ready" : "missing";
+    if (["queued", "processing", "failed"].includes(value)) return value;
     if (value === "requested") return "requested";
     if (value === "missing") return "missing";
     return needed ? "missing" : "none";
+  }
+
+  function assetIdForStatus(status, assetId) {
+    return ["ready", "queued", "processing", "failed"].includes(status) ? assetId : null;
   }
 
   function normalizeAssetKind(kind) {

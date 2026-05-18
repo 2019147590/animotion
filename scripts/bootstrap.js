@@ -8,6 +8,7 @@
     "hidden-completion-prep",
     "hidden-completion-result",
     "hidden-completion-provider",
+    "hidden-completion-client",
     "project-model",
     "project-serialization",
     "correspondence-model",
