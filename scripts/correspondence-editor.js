@@ -139,8 +139,9 @@
 
   function compiledCorrespondenceDraft() {
     const correspondence = Animotion.correspondenceCommands?.selectedCorrespondence?.();
-    if (!correspondence?.impactAnchor || !Animotion.state.previewView) return null;
+    if (!currentImpactAnchor(correspondence) || !Animotion.state.previewView) return null;
     return Animotion.correspondenceModel?.compileForPlanner?.(correspondence, Animotion.state.parts, {
+      impactImageBounds: Animotion.panelEditor?.imageBounds?.("impact"),
       mapImpactPoint: (point) => Animotion.motionPanelMapper?.currentImpactToSourcePoint?.(point),
     });
   }
@@ -149,7 +150,10 @@
     if (!pickMode || !selectedPart() || !Animotion.state.nextImage) return;
     const point = impactPoint(event);
     if (!point) return;
-    saveFromControls({ impactAnchor: point });
+    saveFromControls({
+      impactAnchor: point,
+      bImpact: Animotion.correspondenceModel.normalizedPointFromImagePoint(point, Animotion.panelEditor?.imageBounds?.("impact")),
+    });
     pickMode = false;
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -159,8 +163,9 @@
   function drawOverlay(ctx, view) {
     if (!editingLayerVisible()) return;
     const correspondence = Animotion.correspondenceCommands.selectedCorrespondence();
-    if (!correspondence?.impactAnchor || !Animotion.state.nextImage) return;
-    const screen = impactPointToScreen(correspondence.impactAnchor, view);
+    const anchor = currentImpactAnchor(correspondence);
+    if (!anchor || !Animotion.state.nextImage) return;
+    const screen = impactPointToScreen(anchor, view);
     if (!screen) return;
     ctx.save();
     ctx.lineWidth = 3;
@@ -215,13 +220,21 @@
   function statusText(part, correspondence) {
     if (!part) return "A컷 파츠를 선택하면 2.5D 대응 데이터를 만들 수 있습니다.";
     if (!Animotion.state.nextImage) return "B컷을 업로드하면 대응 anchor를 찍을 수 있습니다.";
-    const point = correspondence?.impactAnchor ? ` · B ${correspondence.impactAnchor.x}, ${correspondence.impactAnchor.y}` : " · B anchor 없음";
+    const anchor = currentImpactAnchor(correspondence);
+    const point = anchor ? ` · B ${anchor.x}, ${anchor.y}` : " · B anchor 없음";
     const policy = targetPolicyMessage ? ` · ${targetPolicyMessage}` : "";
     return `${part.name} -> ${correspondence?.targetPartType || Animotion.correspondenceModel.defaultTargetType(part.type)}${point}${policy}`;
   }
 
   function selectedPart() {
     return Animotion.parts?.selectedPart?.() || Animotion.state.parts.find((part) => part.id === Animotion.state.selectedPartId) || null;
+  }
+
+  function currentImpactAnchor(correspondence) {
+    return Animotion.correspondenceModel?.imagePointFromNormalized?.(
+      correspondence?.bImpact || correspondence?.target?.bImpact,
+      Animotion.panelEditor?.imageBounds?.("impact")
+    ) || correspondence?.impactAnchor || null;
   }
 
   function refs() {

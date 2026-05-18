@@ -140,6 +140,7 @@ export type Correspondence = {
   sourcePartType: string;
   targetPartType: "head" | "chest" | "hip" | "arm" | "hand" | "leg" | "foot" | "hair" | "prop";
   impactAnchor: Vec2 | null;
+  bImpact: NormalizedImagePoint | null;
   occlusion: OcclusionMetadata;
   source: CorrespondenceSource;
   target: CorrespondenceTarget;
@@ -153,7 +154,8 @@ export type CorrespondenceSource = {
 export type CorrespondenceTarget = {
   partType: "head" | "chest" | "hip" | "arm" | "hand" | "leg" | "foot" | "hair" | "prop";
   anchor: Vec2 | null;
-  coordinateSpace: "impactImage" | "sourceImage";
+  coordinateSpace: "impactImage" | "sourceImage" | "normalized-image";
+  bImpact: NormalizedImagePoint | null;
 };
 
 export type PlannerCorrespondenceDraft = {
@@ -227,6 +229,7 @@ export type OcclusionMetadata = {
 };
 
 export type Vec2 = { x: number; y: number };
+export type NormalizedImagePoint = { xNorm: number; yNorm: number; coordinateSpace: "normalized-image" };
 export type Rect = { x: number; y: number; w: number; h: number };
 export type PolygonMask = { points: Vec2[] };
 export type Mesh2D = { vertices: Vec2[]; triangles: [number, number, number][]; uvs?: Vec2[] };

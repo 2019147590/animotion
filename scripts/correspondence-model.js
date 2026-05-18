@@ -7,7 +7,7 @@
   const HIDDEN_COMPLETION = new Set(["none", "candidate", "required"]);
   const SCHEMA_VERSION = "editor-correspondence-v1";
   const SOURCE_KINDS = new Set(["manual", "ai-draft", "imported"]);
-  const COORDINATE_SPACES = new Set(["impactImage", "sourceImage"]);
+  const COORDINATE_SPACES = new Set(["impactImage", "sourceImage", "normalized-image"]);
 
   function normalizeList(correspondences = [], parts = []) {
     return (Array.isArray(correspondences) ? correspondences : [])
@@ -23,6 +23,7 @@
     const sourcePartType = part?.type || stringOrDefault(input.sourcePartType || input.source?.partType, "prop");
     const targetPartType = validSetValue(TARGET_TYPES, input.targetPartType || input.target?.partType, part?.type || "prop");
     const impactAnchor = normalizePoint(input.impactAnchor || input.target?.anchor);
+    const bImpact = normalizeNormalizedPoint(input.bImpact || input.target?.bImpact);
     const occlusion = normalizeOcclusion(input.occlusion);
     return {
       id: String(input.id || `corr-${sourcePartId}-${index + 1}`),
@@ -41,7 +42,9 @@
         partType: targetPartType,
         anchor: impactAnchor,
         coordinateSpace: validSetValue(COORDINATE_SPACES, input.target?.coordinateSpace, "impactImage"),
+        bImpact,
       },
+      bImpact,
     };
   }
 
@@ -68,10 +71,40 @@
     return { x: Math.round(Number(point.x) || Number(point[0]) || 0), y: Math.round(Number(point.y) || Number(point[1]) || 0) };
   }
 
+  function normalizeNormalizedPoint(point) {
+    if (!point) return null;
+    return {
+      xNorm: clamp01(Number(point.xNorm ?? point[0])),
+      yNorm: clamp01(Number(point.yNorm ?? point[1])),
+      coordinateSpace: "normalized-image",
+    };
+  }
+
+  function normalizedPointFromImagePoint(point, bounds) {
+    const anchor = normalizePoint(point);
+    const width = Math.max(1, Math.round(Number(bounds?.width) || Number(bounds?.w) || 1));
+    const height = Math.max(1, Math.round(Number(bounds?.height) || Number(bounds?.h) || 1));
+    if (!anchor) return null;
+    return normalizeNormalizedPoint({ xNorm: anchor.x / width, yNorm: anchor.y / height });
+  }
+
+  function imagePointFromNormalized(point, bounds) {
+    const normalized = normalizeNormalizedPoint(point);
+    if (!normalized) return null;
+    const width = Math.max(1, Math.round(Number(bounds?.width) || Number(bounds?.w) || 1));
+    const height = Math.max(1, Math.round(Number(bounds?.height) || Number(bounds?.h) || 1));
+    return {
+      x: Math.round(normalized.xNorm * width),
+      y: Math.round(normalized.yNorm * height),
+    };
+  }
+
   function compileForPlanner(input, parts = [], options = {}) {
     const correspondence = normalize(input, parts);
-    if (!correspondence?.impactAnchor) return null;
-    const mapped = mapPlannerTarget(correspondence, options);
+    if (!correspondence) return null;
+    const impactPoint = currentImpactPoint(correspondence, options.impactImageBounds);
+    if (!impactPoint) return null;
+    const mapped = mapPlannerTarget(correspondence, options, impactPoint);
     if (!mapped) return null;
     const motionHints = Animotion.motionHints?.fromCorrespondence?.(correspondence) || fallbackMotionHints(correspondence);
     return {
@@ -91,17 +124,21 @@
       }) || null,
       relation: {
         source: correspondence.source,
-        target: correspondence.target,
+        target: { ...correspondence.target, anchor: impactPoint },
         occlusion: correspondence.occlusion,
       },
     };
   }
 
-  function mapPlannerTarget(correspondence, options) {
+  function mapPlannerTarget(correspondence, options, impactPoint) {
     const mapper = typeof options.mapImpactPoint === "function" ? options.mapImpactPoint : null;
     const coordinateSpace = mapper ? "sourceImage" : correspondence.target.coordinateSpace;
-    const point = normalizePoint(mapper ? mapper(correspondence.impactAnchor, correspondence) : correspondence.impactAnchor);
+    const point = normalizePoint(mapper ? mapper(impactPoint, correspondence) : impactPoint);
     return point ? { point, coordinateSpace } : null;
+  }
+
+  function currentImpactPoint(correspondence, bounds) {
+    return imagePointFromNormalized(correspondence.bImpact || correspondence.target?.bImpact, bounds) || correspondence.impactAnchor;
   }
 
   function fallbackMotionHints(correspondence) {
@@ -126,6 +163,11 @@
     return set.has(normalized) ? normalized : fallback;
   }
 
+  function clamp01(value) {
+    const number = Number.isFinite(value) ? value : 0;
+    return Math.min(1, Math.max(0, number));
+  }
+
   function stringOrNull(value) {
     return value === undefined || value === null || value === "" ? null : String(value);
   }
@@ -138,7 +180,7 @@
     return `corr-${partId}-${global.crypto?.randomUUID?.() || Date.now()}`;
   }
 
-  Animotion.correspondenceModel = { normalizeList, normalize, createForPart, normalizePoint, defaultTargetType, compileForPlanner };
+  Animotion.correspondenceModel = { normalizeList, normalize, createForPart, normalizePoint, normalizedPointFromImagePoint, imagePointFromNormalized, defaultTargetType, compileForPlanner };
 
   if (typeof module !== "undefined") module.exports = Animotion.correspondenceModel;
 }

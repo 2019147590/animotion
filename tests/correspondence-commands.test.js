@@ -61,9 +61,32 @@ test("correspondence command creates 2.5D-ready selected part metadata", () => {
   assert.equal(correspondence.target.anchor.x, 42);
   assert.equal(correspondence.target.anchor.y, 80);
   assert.equal(correspondence.target.coordinateSpace, "impactImage");
+  assert.equal(correspondence.target.bImpact, null);
   assert.equal(correspondence.occlusion.status, "partial");
   assert.equal(correspondence.occlusion.hiddenCompletion, "required");
   assert.equal(Animotion.state.project.editor.correspondences.length, 1);
+});
+
+test("correspondence stores normalized B impact coordinates separately from display pixels", () => {
+  const Animotion = loadAnimotion();
+  const normalizedPoint = Animotion.correspondenceModel.normalizedPointFromImagePoint({ x: 500, y: 600 }, {
+    width: 1000,
+    height: 1000,
+  });
+  const correspondence = Animotion.correspondenceCommands.upsertForSelectedPart({
+    targetPartType: "foot",
+    impactAnchor: { x: 500, y: 600 },
+    bImpact: normalizedPoint,
+  });
+  assert.equal(correspondence.bImpact.xNorm, 0.5);
+  assert.equal(correspondence.bImpact.yNorm, 0.6);
+  assert.equal(correspondence.bImpact.coordinateSpace, "normalized-image");
+  const scaled = Animotion.correspondenceModel.imagePointFromNormalized(correspondence.bImpact, {
+    width: 500,
+    height: 500,
+  });
+  assert.equal(scaled.x, 250);
+  assert.equal(scaled.y, 300);
 });
 
 test("correspondence command records undo and redo", () => {
@@ -81,6 +104,7 @@ test("project serialization round-trips editor correspondences", () => {
   Animotion.correspondenceCommands.upsertForSelectedPart({
     targetPartType: "foot",
     impactAnchor: { x: 50, y: 90 },
+    bImpact: { xNorm: 0.5, yNorm: 0.75, coordinateSpace: "normalized-image" },
     occlusion: { status: "hidden" },
   });
   const project = Animotion.projectModel.projectFromEditorState({
@@ -93,6 +117,7 @@ test("project serialization round-trips editor correspondences", () => {
   assert.equal(project.editor.correspondences[0].sourcePartId, "leg-a");
   const normalized = Animotion.projectModel.normalizeProject(project);
   assert.equal(normalized.editor.correspondences[0].impactAnchor.x, 50);
+  assert.equal(normalized.editor.correspondences[0].bImpact.xNorm, 0.5);
 });
 
 test("correspondence normalization drops missing source parts", () => {
@@ -153,6 +178,25 @@ test("correspondence model compiles a planner draft from the relation", () => {
   assert.equal(draft.motionDraft.hiddenCompletion.assetStatus, "missing");
   assert.equal(draft.motionDraft.hiddenCompletion.assetId, null);
   assert.equal(draft.relation.occlusion.hiddenCompletion, "candidate");
+});
+
+test("correspondence model compiles from normalized B impact after image size changes", () => {
+  const Animotion = loadAnimotion();
+  const draft = Animotion.correspondenceModel.compileForPlanner({
+    id: "leg-target",
+    sourcePartId: "leg-a",
+    targetPartType: "foot",
+    bImpact: { xNorm: 0.5, yNorm: 0.6, coordinateSpace: "normalized-image" },
+    target: { bImpact: { xNorm: 0.5, yNorm: 0.6, coordinateSpace: "normalized-image" } },
+  }, Animotion.state.parts, {
+    impactImageBounds: { width: 500, height: 500 },
+    mapImpactPoint: (point) => ({ x: point.x + 10, y: point.y - 20 }),
+  });
+  assert.equal(draft.target.x, 260);
+  assert.equal(draft.target.y, 280);
+  assert.equal(draft.relation.target.anchor.x, 250);
+  assert.equal(draft.relation.target.anchor.y, 300);
+  assert.equal(draft.relation.target.bImpact.xNorm, 0.5);
 });
 
 test("correspondence model refuses to compile without an impact anchor", () => {
