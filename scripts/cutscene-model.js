@@ -136,6 +136,8 @@
       focusKey: action.focusKey ? String(action.focusKey) : null,
       anchors: Animotion.motionAnchors?.normalizeAnchors?.(action.anchors) || [],
       beats: action.beats.map(normalizeBeat).filter(Boolean),
+      ...(action.motionHints ? { motionHints: Animotion.motionHints?.normalize?.(action.motionHints) || action.motionHints } : {}),
+      ...(action.motionDraft ? { motionDraft: Animotion.motionDrafts?.normalize?.(action.motionDraft) || action.motionDraft } : {}),
     };
   }
 

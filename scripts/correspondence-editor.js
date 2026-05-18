@@ -2,6 +2,7 @@
   const global = window;
   const Animotion = global.Animotion;
   let pickMode = false;
+  let targetPolicyMessage = "";
 
   function installControls() {
     if (typeof document === "undefined" || !Animotion.dom?.previewCanvas) return;
@@ -34,6 +35,7 @@
       <div class="button-row">
         <button id="saveCorrespondence" type="button">대응 저장</button>
         <button id="pickImpactAnchor" type="button">B impact 찍기</button>
+        <button id="useCorrespondenceTarget" type="button">motion 목표로 사용</button>
       </div>
       <label>
         가림 상태
@@ -68,6 +70,7 @@
   function bindControls() {
     refs().save.addEventListener("click", saveFromControls);
     refs().pick.addEventListener("click", togglePickMode);
+    refs().useTarget.addEventListener("click", useAsMotionTarget);
   }
 
   function refreshControls() {
@@ -81,6 +84,7 @@
     ui.hidden.value = correspondence?.occlusion?.hiddenCompletion || "none";
     ui.save.disabled = !part || !Animotion.state.nextImage;
     ui.pick.disabled = !part || !Animotion.state.nextImage;
+    ui.useTarget.disabled = !compiledCorrespondenceDraft();
     ui.pick.classList.toggle("active", pickMode);
     ui.status.textContent = statusText(part, correspondence);
   }
@@ -106,6 +110,39 @@
     pickMode = !pickMode;
     freezePlayback();
     refresh();
+  }
+
+  function useAsMotionTarget() {
+    const draft = compiledCorrespondenceDraft();
+    if (!draft) return;
+    const policy = Animotion.motionTargetPolicy.correspondenceApplyPolicy(Animotion.motionCommands.currentMotionPlan(), draft);
+    if (!policy.allowed) {
+      targetPolicyMessage = policy.message;
+      refresh();
+      return;
+    }
+    Animotion.motionCommands.setMotionPlan({
+      target: draft.target,
+      anchors: draft.anchors,
+      targetMode: false,
+      motionHints: draft.motionHints,
+      targetSource: {
+        type: "correspondence",
+        correspondenceId: draft.correspondenceId,
+        targetPartType: draft.targetPartType,
+        coordinateSpace: draft.targetCoordinateSpace,
+      },
+    });
+    targetPolicyMessage = "대응 목표를 motion target으로 적용했습니다.";
+    refresh();
+  }
+
+  function compiledCorrespondenceDraft() {
+    const correspondence = Animotion.correspondenceCommands?.selectedCorrespondence?.();
+    if (!correspondence?.impactAnchor || !Animotion.state.previewView) return null;
+    return Animotion.correspondenceModel?.compileForPlanner?.(correspondence, Animotion.state.parts, {
+      mapImpactPoint: (point) => Animotion.motionPanelMapper?.currentImpactToSourcePoint?.(point),
+    });
   }
 
   function onPreviewPointerDown(event) {
@@ -179,7 +216,8 @@
     if (!part) return "A컷 파츠를 선택하면 2.5D 대응 데이터를 만들 수 있습니다.";
     if (!Animotion.state.nextImage) return "B컷을 업로드하면 대응 anchor를 찍을 수 있습니다.";
     const point = correspondence?.impactAnchor ? ` · B ${correspondence.impactAnchor.x}, ${correspondence.impactAnchor.y}` : " · B anchor 없음";
-    return `${part.name} -> ${correspondence?.targetPartType || Animotion.correspondenceModel.defaultTargetType(part.type)}${point}`;
+    const policy = targetPolicyMessage ? ` · ${targetPolicyMessage}` : "";
+    return `${part.name} -> ${correspondence?.targetPartType || Animotion.correspondenceModel.defaultTargetType(part.type)}${point}${policy}`;
   }
 
   function selectedPart() {
@@ -191,6 +229,7 @@
       targetType: document.querySelector("#correspondenceTargetType"),
       save: document.querySelector("#saveCorrespondence"),
       pick: document.querySelector("#pickImpactAnchor"),
+      useTarget: document.querySelector("#useCorrespondenceTarget"),
       occlusion: document.querySelector("#correspondenceOcclusion"),
       depth: document.querySelector("#correspondenceDepth"),
       hidden: document.querySelector("#correspondenceHiddenCompletion"),
@@ -214,6 +253,6 @@
     Animotion.ui?.refreshUi?.();
   }
 
-  Animotion.correspondenceEditor = { refreshControls, drawOverlay, impactPoint, impactPointToScreen };
+  Animotion.correspondenceEditor = { refreshControls, drawOverlay, impactPoint, impactPointToScreen, compiledCorrespondenceDraft };
   installControls();
 }

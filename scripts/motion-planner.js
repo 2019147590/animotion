@@ -8,17 +8,31 @@
     dash: { label: "돌진", beats: [["ready", 0, 0, 0, 0], ["lean", 0.28, -0.08, 0.04, 0.2], ["launch", 0.62, 0.45, -0.08, 0.58], ["snap", 0.86, 0.82, -0.02, 0.86], ["arrive", 1, 0, 0, 1]] },
   };
   function normalizePlan(plan = {}) {
+    const target = normalizeTarget(plan.target);
     return {
       template: TEMPLATES[plan.template] ? plan.template : "kick",
-      target: normalizeTarget(plan.target),
+      target,
       anchors: Animotion.motionAnchors?.normalizeAnchors?.(plan.anchors) || [],
       targetMode: Boolean(plan.targetMode),
       selectedBeatId: plan.selectedBeatId ? String(plan.selectedBeatId) : null,
+      targetSource: normalizeTargetSource(plan.targetSource, target),
+      motionHints: Animotion.motionHints?.normalize?.(plan.motionHints) || null,
+      motionDraft: Animotion.motionDrafts?.normalize?.(plan.motionDraft) || Animotion.motionDrafts?.compileFromHints?.(plan.motionHints) || null,
     };
   }
   function normalizeTarget(target) {
     if (!target) return null;
     return { x: Math.round(Number(target.x) || 0), y: Math.round(Number(target.y) || 0) };
+  }
+  function normalizeTargetSource(source, target = null) {
+    if (!source) return target ? { type: "manual" } : null;
+    const type = ["correspondence", "manual", "planner-default"].includes(source.type) ? source.type : "manual";
+    return {
+      type,
+      ...(source.correspondenceId ? { correspondenceId: String(source.correspondenceId) } : {}),
+      ...(source.targetPartType ? { targetPartType: String(source.targetPartType) } : {}),
+      ...(source.coordinateSpace ? { coordinateSpace: String(source.coordinateSpace) } : {}),
+    };
   }
   function installControls() {
     if (typeof document === "undefined") return;
@@ -85,6 +99,7 @@
       },
       anchors: [],
       targetMode: false,
+      targetSource: { type: "manual" },
     });
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -116,7 +131,7 @@
       target,
       anchors,
       active,
-      jointAction: { source: `motion-planner-${plan.template}-anchors-v1`, focusKey: active.end, anchors, beats },
+      jointAction: { source: `motion-planner-${plan.template}-anchors-v1`, focusKey: active.end, anchors, beats, motionHints: plan.motionHints, motionDraft: Animotion.motionDrafts?.snapshot?.(plan.motionDraft) || plan.motionDraft },
       partTracks: tracksForParts(parts, primary, beats, base, active, bridge),
     };
   }
@@ -181,11 +196,9 @@
     const normal = bendNormal(baseRoot, baseMid, baseEnd, root, end);
     return { x: root.x + (end.x - root.x) * along + normal.x * height, y: root.y + (end.y - root.y) * along + normal.y * height };
   }
-
   function tracksForParts(parts, primary, beats, base, active, bridge) {
     return parts.map((part) => ({ partId: part.id, keyframes: beats.map((beat) => trackKeyframe(part, primary, beat, base, active, bridge)) }));
   }
-
   function tracksForJointAction(parts, primaryId, action) {
     const base = Animotion.jointCoordinates.inferJointPose(parts);
     const primary = parts.find((part) => part.id === primaryId) || parts[0];
@@ -193,7 +206,6 @@
     const bridge = action?.jointAction ? action : { jointAction: action, bodyAssistEnabled: true };
     return tracksForParts(parts, primary, bridge.jointAction?.beats || [], base, active, bridge);
   }
-
   function trackKeyframe(part, primary, beat, base, active, bridge) {
     const pose = Animotion.motionModel.defaultCustomMotion();
     if (part.id === primary.id) {
@@ -216,12 +228,13 @@
     }
     return { frame: beat.at, pose };
   }
-
   function statusText(plan, part) {
     if (!part) return "파츠를 선택하면 목표점 기반 궤적을 만들 수 있습니다.";
     const target = plan.target ? `목표 ${plan.target.x}, ${plan.target.y}` : "목표점 없음";
+    const source = plan.targetSource?.type === "correspondence" ? " · 대응" : "";
+    const hints = Animotion.motionHints?.statusText?.(plan.motionHints);
     const selected = plan.selectedBeatId ? ` · beat ${plan.selectedBeatId}` : "";
-    return `${TEMPLATES[plan.template].label} · ${target}${plan.anchors.length ? ` · anchors ${plan.anchors.length}` : ""}${selected}`;
+    return `${TEMPLATES[plan.template].label} · ${target}${source}${hints ? ` · ${hints}` : ""}${plan.anchors.length ? ` · anchors ${plan.anchors.length}` : ""}${selected}`;
   }
 
   function autoTarget(start, direction, primary) {
@@ -229,7 +242,6 @@
     const distance = primary?.type === "leg" ? 170 : 120;
     return { x: Math.round(p.x + direction.x * distance), y: Math.round(p.y + direction.y * distance) };
   }
-
   function isBodyPrimary(part) {
     return part?.type === "body" || part?.type === "spine";
   }
@@ -274,7 +286,6 @@
   function rounded(point) {
     return [Math.round(point.x), Math.round(point.y)];
   }
-
   function distance(a, b) {
     return Math.hypot(a.x - b.x, a.y - b.y);
   }

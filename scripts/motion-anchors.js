@@ -16,6 +16,8 @@
       role: String(anchor.role || "draft"),
       point,
       locked: anchor.locked === true,
+      ...(anchor.source ? { source: String(anchor.source) } : {}),
+      ...(anchor.motionHints ? { motionHints: Animotion.motionHints?.normalize?.(anchor.motionHints) || anchor.motionHints } : {}),
     };
   }
 
@@ -29,8 +31,15 @@
 
   function anchorsFromPlan(plan, parts, primary, base, active, direction, target) {
     const existing = normalizeAnchors(plan.anchors);
-    if (existing.length) return mergePrimaryAnchor(existing, active, primary, target);
-    return createAnchors(parts, primary, base, active, direction, target);
+    if (existing.length) return applyPlanHints(mergePrimaryAnchor(existing, active, primary, target), plan, active);
+    return applyPlanHints(createAnchors(parts, primary, base, active, direction, target), plan, active);
+  }
+
+  function applyPlanHints(anchors, plan, active) {
+    if (plan.targetSource?.type !== "correspondence" || !plan.motionHints) return anchors;
+    return anchors.map((candidate) => candidate.key === active.end && candidate.role === "primary"
+      ? { ...candidate, source: "correspondence", motionHints: plan.motionHints }
+      : candidate);
   }
 
   function mergePrimaryAnchor(anchors, active, primary, target) {

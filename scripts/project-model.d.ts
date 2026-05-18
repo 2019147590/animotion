@@ -134,11 +134,87 @@ export type EditorProjectData = {
 
 export type Correspondence = {
   id: string;
+  schemaVersion: "editor-correspondence-v1" | string;
+  kind: "manual" | "ai-draft" | "imported";
   sourcePartId: string;
   sourcePartType: string;
   targetPartType: "head" | "chest" | "hip" | "arm" | "hand" | "leg" | "foot" | "hair" | "prop";
   impactAnchor: Vec2 | null;
   occlusion: OcclusionMetadata;
+  source: CorrespondenceSource;
+  target: CorrespondenceTarget;
+};
+
+export type CorrespondenceSource = {
+  partId: string;
+  partType: string;
+};
+
+export type CorrespondenceTarget = {
+  partType: "head" | "chest" | "hip" | "arm" | "hand" | "leg" | "foot" | "hair" | "prop";
+  anchor: Vec2 | null;
+  coordinateSpace: "impactImage" | "sourceImage";
+};
+
+export type PlannerCorrespondenceDraft = {
+  source: "correspondence-compile-v1";
+  correspondenceId: string;
+  sourcePartId: string;
+  sourcePartType: string;
+  targetPartType: CorrespondenceTarget["partType"];
+  target: Vec2;
+  targetCoordinateSpace: CorrespondenceTarget["coordinateSpace"];
+  anchors: [];
+  motionHints: MotionHints;
+  motionDraft: MotionDraft | null;
+  relation: {
+    source: CorrespondenceSource;
+    target: CorrespondenceTarget;
+    occlusion: OcclusionMetadata;
+  };
+};
+
+export type MotionHints = {
+  source: string;
+  occlusion: OcclusionMetadata["status"];
+  depthOrder: OcclusionMetadata["depthOrder"];
+  hiddenCompletion: OcclusionMetadata["hiddenCompletion"];
+  warnings: string[];
+};
+
+export type MotionDraft = {
+  source: string;
+  partId: string | null;
+  draftKind: "non-destructive-2.5d";
+  draftScope: "plan" | "action-snapshot";
+  compiledFromHintsVersion: number;
+  sourceCorrespondenceId: string | null;
+  sourceTargetId: string | null;
+  generatedFrom: string;
+  visibility: MotionDraftVisibility | null;
+  zOrder: MotionDraftZOrder | null;
+  hiddenCompletion: MotionDraftHiddenCompletion;
+  warnings: string[];
+};
+
+export type MotionDraftVisibility = {
+  property: "opacity";
+  reason: string;
+  keyframes: { frame: number; value: number }[];
+};
+
+export type MotionDraftZOrder = {
+  property: "layerIndex";
+  reason: string;
+  keyframes: { frame: number; value: string }[];
+};
+
+export type MotionDraftHiddenCompletion = {
+  needed: boolean;
+  status: OcclusionMetadata["hiddenCompletion"];
+  assetKind: "inpaintedPatch" | string;
+  assetStatus: "none" | "missing" | "ready";
+  assetId: string | null;
 };
 
 export type OcclusionMetadata = {

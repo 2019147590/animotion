@@ -2,9 +2,13 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 
 require("../scripts/motion-model.js");
+require("../scripts/motion-hints.js");
+require("../scripts/motion-drafts.js");
+const motionTargetPolicy = require("../scripts/motion-target-policy.js");
 require("../scripts/pose-assist.js");
 require("../scripts/joint-coordinates.js");
 require("../scripts/motion-anchors.js");
+const motionPanelMapper = require("../scripts/motion-panel-mapper.js");
 const cutsceneModel = require("../scripts/cutscene-model.js");
 const motionPlanner = require("../scripts/motion-planner.js");
 const trajectoryEditor = require("../scripts/motion-trajectory-editor.js");
@@ -104,8 +108,83 @@ test("anchor picker updates a selected anchor as a locked user point", () => {
   assert.deepEqual(updated.find((anchor) => anchor.key === "rFoot").point, { x: 90, y: 70 });
 });
 
+test("motion planner preserves correspondence target source metadata", () => {
+  const plan = motionPlanner.normalizePlan({
+    template: "kick",
+    target: { x: 80, y: 40 },
+    targetSource: { type: "correspondence", correspondenceId: "corr-1", targetPartType: "foot", coordinateSpace: "sourceImage" },
+  });
+  assert.equal(plan.targetSource.type, "correspondence");
+  assert.equal(plan.targetSource.correspondenceId, "corr-1");
+  assert.equal(plan.targetSource.targetPartType, "foot");
+});
+
+test("motion planner treats missing target source as manual legacy data", () => {
+  const plan = motionPlanner.normalizePlan({
+    template: "kick",
+    target: { x: 80, y: 40 },
+    motionHints: null,
+  });
+  assert.equal(plan.targetSource.type, "manual");
+  assert.equal(plan.motionDraft, null);
+});
+
+test("correspondence target policy protects manual targets", () => {
+  const draft = { target: { x: 20, y: 30 } };
+  assert.equal(motionTargetPolicy.correspondenceApplyPolicy({ target: null }, draft).allowed, true);
+  assert.equal(motionTargetPolicy.correspondenceApplyPolicy({
+    target: { x: 1, y: 2 },
+    targetSource: { type: "correspondence" },
+  }, draft).allowed, true);
+  assert.equal(motionTargetPolicy.correspondenceApplyPolicy({
+    target: { x: 1, y: 2 },
+    targetSource: { type: "planner-default" },
+  }, draft).allowed, true);
+  assert.equal(motionTargetPolicy.correspondenceApplyPolicy({
+    target: { x: 1, y: 2 },
+    targetSource: { type: "manual" },
+  }, draft).allowed, false);
+});
+
+test("motion planner carries correspondence hints into generated actions", () => {
+  const bridge = cutsceneModel.normalizeBridge({ impactFrame: 15 });
+  const plan = motionPlanner.createPlan(sampleParts(), "leg", bridge, {
+    template: "kick",
+    target: { x: 150, y: 70 },
+    targetSource: { type: "correspondence", correspondenceId: "corr-1" },
+    motionHints: { occlusion: "partial", depthOrder: "behind", hiddenCompletion: "required" },
+  });
+  assert.equal(plan.jointAction.motionHints.occlusion, "partial");
+  assert.equal(plan.jointAction.motionHints.depthOrder, "behind");
+  assert.equal(plan.jointAction.motionHints.hiddenCompletion, "required");
+  assert.equal(plan.jointAction.motionDraft.draftScope, "action-snapshot");
+  assert.equal(plan.jointAction.motionDraft.visibility.keyframes[1].value, 0.55);
+  assert.equal(plan.jointAction.motionDraft.zOrder.keyframes[1].value, "behind");
+  assert.equal(plan.jointAction.motionDraft.hiddenCompletion.needed, true);
+  assert.equal(plan.jointAction.motionDraft.hiddenCompletion.assetStatus, "missing");
+  assert.equal(plan.jointAction.motionDraft.hiddenCompletion.assetId, null);
+  assert.equal(cutsceneModel.normalizeBridge({ jointAction: plan.jointAction }).jointAction.motionDraft.hiddenCompletion.status, "required");
+  const primary = plan.jointAction.anchors.find((anchor) => anchor.role === "primary");
+  assert.equal(primary.source, "correspondence");
+  assert.equal(primary.motionHints.hiddenCompletion, "required");
+});
+
+test("motion panel mapper converts B impact coordinates into source coordinates", () => {
+  const target = motionPanelMapper.panelPointToSourceTarget({ x: 60, y: 40 }, {
+    view: { x: 0, y: 0, w: 200, h: 100 },
+    sourceFrame: { x: 0, y: 0, w: 100, h: 50, sourceWidth: 100, sourceHeight: 50 },
+    sourceTransform: { x: 0, y: 0, scale: 1 },
+    impactFrame: { x: 20, y: 10, w: 80, h: 40, sourceWidth: 100, sourceHeight: 50 },
+    impactTransform: { x: 10, y: -4, scale: 1 },
+  });
+  assert.deepEqual(target, { x: 55, y: 33 });
+});
+
 test("anchor picker is loaded after planner before trajectory editor", () => {
   const bootstrap = fs.readFileSync("scripts/bootstrap.js", "utf8");
+  assert.equal(bootstrap.indexOf('"motion-hints"') < bootstrap.indexOf('"motion-planner"'), true);
+  assert.equal(bootstrap.indexOf('"motion-target-policy"') < bootstrap.indexOf('"correspondence-editor"'), true);
+  assert.equal(bootstrap.indexOf('"motion-panel-mapper"') < bootstrap.indexOf('"motion-planner"'), true);
   assert.equal(bootstrap.indexOf('"motion-planner"') < bootstrap.indexOf('"motion-anchor-picker"'), true);
   assert.equal(bootstrap.indexOf('"motion-anchor-picker"') < bootstrap.indexOf('"motion-trajectory-editor"'), true);
 });
