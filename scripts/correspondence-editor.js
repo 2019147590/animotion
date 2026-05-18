@@ -126,6 +126,7 @@
       anchors: draft.anchors,
       targetMode: false,
       motionHints: draft.motionHints,
+      targetDebug: draft.targetDebug,
       targetSource: {
         type: "correspondence",
         correspondenceId: draft.correspondenceId,

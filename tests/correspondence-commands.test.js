@@ -194,6 +194,12 @@ test("correspondence model compiles from normalized B impact after image size ch
   });
   assert.equal(draft.target.x, 260);
   assert.equal(draft.target.y, 280);
+  assert.equal(draft.targetDebug.rawBTarget.x, 250);
+  assert.equal(draft.targetDebug.rawBTarget.y, 300);
+  assert.equal(draft.targetDebug.rawBTarget.coordinateSpace, "impactImage");
+  assert.equal(draft.targetDebug.convertedTarget.x, 260);
+  assert.equal(draft.targetDebug.convertedTarget.y, 280);
+  assert.equal(draft.targetDebug.convertedTarget.coordinateSpace, "sourceImage");
   assert.equal(draft.relation.target.anchor.x, 250);
   assert.equal(draft.relation.target.anchor.y, 300);
   assert.equal(draft.relation.target.bImpact.xNorm, 0.5);

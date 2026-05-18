@@ -137,6 +137,7 @@
       focusKey: action.focusKey ? String(action.focusKey) : null,
       anchors: Animotion.motionAnchors?.normalizeAnchors?.(action.anchors, options) || [],
       beats: action.beats.map((beat) => normalizeBeat(beat, options)).filter(Boolean),
+      ...(action.targetDebug ? { targetDebug: clonePlain(action.targetDebug) } : {}),
       ...(action.motionHints ? { motionHints: Animotion.motionHints?.normalize?.(action.motionHints) || action.motionHints } : {}),
       ...(action.motionDraft ? { motionDraft: Animotion.motionDrafts?.normalize?.(action.motionDraft, { assets: options.assets }) || action.motionDraft } : {}),
     };
@@ -177,6 +178,10 @@
     return Object.fromEntries(Object.entries(pose)
       .map(([key, point]) => [key, Animotion.coordinateSpaces?.normalizedImagePointFromPoint?.(point, bounds)])
       .filter((entry) => entry[1]));
+  }
+
+  function clonePlain(value) {
+    return JSON.parse(JSON.stringify(value));
   }
 
   function smoothstep(value) {

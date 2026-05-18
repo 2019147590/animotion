@@ -179,6 +179,7 @@ export type PlannerCorrespondenceDraft = {
   targetPartType: CorrespondenceTarget["partType"];
   target: Vec2;
   targetCoordinateSpace: CorrespondenceTarget["coordinateSpace"];
+  targetDebug: MotionTargetDebug;
   anchors: [];
   motionHints: MotionHints;
   motionDraft: MotionDraft | null;
@@ -195,6 +196,20 @@ export type MotionHints = {
   depthOrder: OcclusionMetadata["depthOrder"];
   hiddenCompletion: OcclusionMetadata["hiddenCompletion"];
   warnings: string[];
+};
+
+export type MotionScope = "limb-only" | "body-follow" | "full-character";
+
+export type MotionTargetDebug = {
+  rawBTarget?: (Vec2 & { coordinateSpace: "impactImage" }) | null;
+  convertedTarget?: (Vec2 & { coordinateSpace: string }) | null;
+  selectedPartCurrentPosition?: (Vec2 & { coordinateSpace: "sourceImage" }) | null;
+  delta?: (Vec2 & { coordinateSpace: "sourceImage" }) | null;
+  computedDistance?: number;
+  distanceThreshold?: number;
+  requestedMotionScope?: MotionScope;
+  chosenMotionScope?: MotionScope;
+  coordinateSpace?: "sourceImage" | string;
 };
 
 export type MotionDraft = {

@@ -115,6 +115,7 @@
       targetPartType: correspondence.targetPartType,
       target: mapped.point,
       targetCoordinateSpace: mapped.coordinateSpace,
+      targetDebug: correspondenceTargetDebug(impactPoint, mapped),
       anchors: [],
       motionHints,
       motionDraft: Animotion.motionDrafts?.compileFromHints?.(motionHints, {
@@ -127,6 +128,14 @@
         target: { ...correspondence.target, anchor: impactPoint },
         occlusion: correspondence.occlusion,
       },
+    };
+  }
+
+  function correspondenceTargetDebug(impactPoint, mapped) {
+    return {
+      rawBTarget: { ...impactPoint, coordinateSpace: "impactImage" },
+      convertedTarget: { ...mapped.point, coordinateSpace: mapped.coordinateSpace },
+      coordinateSpace: mapped.coordinateSpace,
     };
   }
 

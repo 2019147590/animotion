@@ -23,10 +23,10 @@
     };
   }
 
-  function createAnchors(parts, primary, base, active, direction, target) {
+  function createAnchors(parts, primary, base, active, direction, target, plan = {}) {
     const primaryAnchor = anchor(active.end, primary?.id, "primary", target, true);
-    if (primary?.type === "leg") return legAnchors(parts, primary, base, active, direction, primaryAnchor);
-    if (primary?.type === "arm") return armAnchors(parts, primary, base, active, direction, primaryAnchor);
+    if (primary?.type === "leg") return legAnchors(parts, primary, base, active, primaryAnchor, plan);
+    if (primary?.type === "arm") return armAnchors(parts, primary, base, active, primaryAnchor, plan);
     if (primary?.type === "body" || primary?.type === "spine") return bodyAnchors(parts, primary, base, primaryAnchor);
     return [primaryAnchor, followAnchor(parts, "head", base.head, target, 0.7)].filter(Boolean);
   }
@@ -34,7 +34,7 @@
   function anchorsFromPlan(plan, parts, primary, base, active, direction, target) {
     const existing = normalizeAnchors(plan.anchors);
     if (existing.length) return applyPlanHints(mergePrimaryAnchor(existing, active, primary, target), plan, active);
-    return applyPlanHints(createAnchors(parts, primary, base, active, direction, target), plan, active);
+    return applyPlanHints(createAnchors(parts, primary, base, active, direction, target, plan), plan, active);
   }
 
   function applyPlanHints(anchors, plan, active) {
@@ -51,9 +51,8 @@
     return anchors.map((candidate, candidateIndex) => candidateIndex === index ? withPoint(candidate, target, true) : candidate);
   }
 
-  function legAnchors(parts, primary, base, active, direction, primaryAnchor) {
-    const assist = assistRatio(base[active.end], base[active.root], primaryAnchor.point);
-    const rootShift = { x: direction.x * 18 * assist, y: direction.y * 16 * assist };
+  function legAnchors(parts, primary, base, active, primaryAnchor, plan) {
+    const rootShift = rootShiftFor(plan, base, active, primaryAnchor.point);
     return [
       primaryAnchor,
       anchor(active.mid, primary?.id, "bendHint", kneeHint(base, active, primaryAnchor.point), false),
@@ -63,9 +62,8 @@
     ].filter(Boolean);
   }
 
-  function armAnchors(parts, primary, base, active, direction, primaryAnchor) {
-    const assist = assistRatio(base[active.end], base[active.root], primaryAnchor.point) * 0.75;
-    const rootShift = { x: direction.x * 12 * assist, y: direction.y * 10 * assist };
+  function armAnchors(parts, primary, base, active, primaryAnchor, plan) {
+    const rootShift = rootShiftFor(plan, base, active, primaryAnchor.point);
     return [
       primaryAnchor,
       anchor(active.mid, primary?.id, "bendHint", kneeHint(base, active, primaryAnchor.point), false),
@@ -111,11 +109,22 @@
     return { x: midpoint.x + (current.x - midpoint.x) * 0.55, y: midpoint.y + (current.y - midpoint.y) * 0.55 };
   }
 
-  function assistRatio(startPoint, rootPoint, target) {
-    const start = pointFromArray(startPoint);
-    const root = pointFromArray(rootPoint);
+  function rootShiftFor(plan, base, active, target) {
+    const scope = plan?.targetDebug?.chosenMotionScope || plan?.motionScope || "body-follow";
+    if (scope === "limb-only") return { x: 0, y: 0 };
+    const start = pointFromArray(base[active.end]);
+    const root = pointFromArray(base[active.root] || base.hip);
     const limb = Math.max(1, distance(root, start));
-    return Math.min(1.35, Math.max(0, (distance(start, target) / limb - 0.55) / 0.85));
+    const ratio = scope === "full-character" ? 0.65 : 0.35;
+    return limitedDelta({ x: target.x - start.x, y: target.y - start.y }, ratio, limb * (scope === "full-character" ? 0.9 : 0.55));
+  }
+
+  function limitedDelta(delta, ratio, maxLength) {
+    const scaled = { x: delta.x * ratio, y: delta.y * ratio };
+    const length = distance({ x: 0, y: 0 }, scaled);
+    if (length <= maxLength) return { x: Math.round(scaled.x), y: Math.round(scaled.y) };
+    const scale = maxLength / Math.max(1, length);
+    return { x: Math.round(scaled.x * scale), y: Math.round(scaled.y * scale) };
   }
 
   function bodyPartId(parts) {

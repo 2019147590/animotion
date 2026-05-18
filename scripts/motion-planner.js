@@ -17,6 +17,8 @@
       targetMode: Boolean(plan.targetMode),
       selectedBeatId: plan.selectedBeatId ? String(plan.selectedBeatId) : null,
       targetSource: normalizeTargetSource(plan.targetSource, target),
+      motionScope: Animotion.motionTargetDebug?.normalizeMotionScope?.(plan.motionScope, plan.template) || "body-follow",
+      targetDebug: Animotion.motionTargetDebug?.normalizeTargetDebug?.(plan.targetDebug) || null,
       motionHints: Animotion.motionHints?.normalize?.(plan.motionHints) || null,
       motionDraft: Animotion.motionDrafts?.normalize?.(plan.motionDraft, { assets: options.assets }) || Animotion.motionDrafts?.compileFromHints?.(plan.motionHints) || null,
     };
@@ -128,14 +130,18 @@
     const active = activeKeys(primary, parts);
     const direction = Animotion.cutsceneModel.inferEffectDirection(parts, primaryId);
     const target = plan.target || Animotion.motionAnchors?.anchorPoint?.(plan.anchors, active.end) || autoTarget(base[active.end], direction, primary);
-    const anchors = Animotion.motionAnchors?.anchorsFromPlan?.(plan, parts, primary, base, active, direction, target) || [];
+    const targetDebug = Animotion.motionTargetDebug?.analyzeTarget?.(plan, base, active, target) || null;
+    const scopedPlan = { ...plan, targetDebug };
+    const anchors = Animotion.motionAnchors?.anchorsFromPlan?.(scopedPlan, parts, primary, base, active, direction, target) || [];
     const beats = templateBeats(plan.template, bridge).map((spec) => poseBeat(spec, base, active, target, direction, anchors));
     return {
       target,
+      motionScope: plan.motionScope,
+      targetDebug,
       anchors,
       active,
-      jointAction: { source: `motion-planner-${plan.template}-anchors-v1`, focusKey: active.end, anchors, beats, motionHints: plan.motionHints, motionDraft: Animotion.motionDrafts?.snapshot?.(plan.motionDraft) || plan.motionDraft },
-      partTracks: tracksForParts(parts, primary, beats, base, active, bridge),
+      jointAction: { source: `motion-planner-${plan.template}-anchors-v1`, focusKey: active.end, anchors, beats, targetDebug, motionHints: plan.motionHints, motionDraft: Animotion.motionDrafts?.snapshot?.(plan.motionDraft) || plan.motionDraft },
+      partTracks: tracksForParts(parts, primary, beats, base, active, { ...bridge, jointAction: { targetDebug } }),
     };
   }
   function activeKeys(primary, parts) {
@@ -221,9 +227,12 @@
       }
       return { frame: beat.at, pose };
     }
+    if (bridge.bodyAssistEnabled !== false && motionScopeForBridge(bridge) === "full-character") {
+      Object.assign(pose, { x: beat.pose.hip[0] - base.hip[0], y: beat.pose.hip[1] - base.hip[1] });
+      return { frame: beat.at, pose };
+    }
     if (bridge.bodyAssistEnabled !== false && !isBodyPrimary(primary) && (part.type === "body" || part.type === "spine")) {
-      pose.x = beat.pose.hip[0] - base.hip[0];
-      pose.y = beat.pose.hip[1] - base.hip[1];
+      Object.assign(pose, { x: beat.pose.hip[0] - base.hip[0], y: beat.pose.hip[1] - base.hip[1] });
     }
     if (bridge.bodyAssistEnabled !== false && !isBodyPrimary(primary) && part.type === "head") {
       pose.x = (beat.pose.head[0] - base.head[0]) * 0.7;
@@ -231,22 +240,23 @@
     }
     return { frame: beat.at, pose };
   }
+  function motionScopeForBridge(bridge) { return bridge?.jointAction?.targetDebug?.chosenMotionScope || null; }
   function statusText(plan, part) {
     if (!part) return "파츠를 선택하면 목표점 기반 궤적을 만들 수 있습니다.";
     const target = plan.target ? `목표 ${plan.target.x}, ${plan.target.y}` : "목표점 없음";
     const source = plan.targetSource?.type === "correspondence" ? " · 대응" : "";
     const hints = Animotion.motionHints?.statusText?.(plan.motionHints);
     const selected = plan.selectedBeatId ? ` · beat ${plan.selectedBeatId}` : "";
-    return `${TEMPLATES[plan.template].label} · ${target}${source}${hints ? ` · ${hints}` : ""}${plan.anchors.length ? ` · anchors ${plan.anchors.length}` : ""}${selected}`;
+    const scope = plan.targetDebug?.chosenMotionScope ? ` · ${plan.targetDebug.chosenMotionScope}` : "";
+    const distance = Number.isFinite(plan.targetDebug?.computedDistance) ? ` · d ${Math.round(plan.targetDebug.computedDistance)}` : "";
+    return `${TEMPLATES[plan.template].label} · ${target}${source}${scope}${distance}${hints ? ` · ${hints}` : ""}${plan.anchors.length ? ` · anchors ${plan.anchors.length}` : ""}${selected}`;
   }
   function autoTarget(start, direction, primary) {
     const p = pointFromArray(start || [0, 0]);
     const distance = primary?.type === "leg" ? 170 : 120;
     return { x: Math.round(p.x + direction.x * distance), y: Math.round(p.y + direction.y * distance) };
   }
-  function isBodyPrimary(part) {
-    return part?.type === "body" || part?.type === "spine";
-  }
+  function isBodyPrimary(part) { return part?.type === "body" || part?.type === "spine"; }
   function bendNormal(baseRoot, baseMid, baseEnd, root, end) {
     const sign = Math.sign((baseMid.x - baseRoot.x) * (baseEnd.y - baseRoot.y) - (baseMid.y - baseRoot.y) * (baseEnd.x - baseRoot.x)) || 1;
     const dx = end.x - root.x;
@@ -273,28 +283,18 @@
       Animotion.state.previewSourceTransform
     ) || screen;
   }
-  function pointFromArray(point) {
-    return { x: Number(point?.[0]) || 0, y: Number(point?.[1]) || 0 };
-  }
+  function pointFromArray(point) { return { x: Number(point?.[0]) || 0, y: Number(point?.[1]) || 0 }; }
   function lerpPoint(a, b, ratio) {
     return { x: a.x + (b.x - a.x) * ratio, y: a.y + (b.y - a.y) * ratio };
   }
-  function rounded(point) {
-    return [Math.round(point.x), Math.round(point.y)];
-  }
-  function distance(a, b) {
-    return Math.hypot(a.x - b.x, a.y - b.y);
-  }
-  function normalizedPoint(point, bounds) {
-    return Animotion.coordinateSpaces?.normalizedImagePointFromPoint?.(point, bounds) || null;
-  }
+  function rounded(point) { return [Math.round(point.x), Math.round(point.y)]; }
+  function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+  function normalizedPoint(point, bounds) { return Animotion.coordinateSpaces?.normalizedImagePointFromPoint?.(point, bounds) || null; }
   function sourceBounds() {
     if (Animotion.state?.image) return { width: Animotion.state.image.naturalWidth, height: Animotion.state.image.naturalHeight };
     return typeof Animotion.imageBounds === "function" ? Animotion.imageBounds() : null;
   }
-  function refresh() {
-    Animotion.ui?.refreshUi?.();
-  }
+  function refresh() { Animotion.ui?.refreshUi?.(); }
   Animotion.motionPlanner = { normalizePlan, createPlan, installControls, refreshControls, tracksForJointAction };
   installControls();
   if (typeof module !== "undefined") module.exports = Animotion.motionPlanner;

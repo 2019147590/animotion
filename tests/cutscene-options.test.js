@@ -6,6 +6,7 @@ require("../scripts/coordinate-spaces.js");
 require("../scripts/motion-hints.js");
 require("../scripts/motion-drafts.js");
 const motionTargetPolicy = require("../scripts/motion-target-policy.js");
+require("../scripts/motion-target-debug.js");
 require("../scripts/pose-assist.js");
 require("../scripts/joint-coordinates.js");
 require("../scripts/motion-anchors.js");
@@ -235,6 +236,7 @@ test("anchor picker is loaded after planner before trajectory editor", () => {
   const bootstrap = fs.readFileSync("scripts/bootstrap.js", "utf8");
   assert.equal(bootstrap.indexOf('"motion-hints"') < bootstrap.indexOf('"motion-planner"'), true);
   assert.equal(bootstrap.indexOf('"motion-target-policy"') < bootstrap.indexOf('"correspondence-editor"'), true);
+  assert.equal(bootstrap.indexOf('"motion-target-debug"') < bootstrap.indexOf('"motion-planner"'), true);
   assert.equal(bootstrap.indexOf('"motion-panel-mapper"') < bootstrap.indexOf('"motion-planner"'), true);
   assert.equal(bootstrap.indexOf('"motion-planner"') < bootstrap.indexOf('"motion-anchor-picker"'), true);
   assert.equal(bootstrap.indexOf('"motion-anchor-picker"') < bootstrap.indexOf('"motion-trajectory-editor"'), true);

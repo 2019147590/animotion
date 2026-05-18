@@ -23,6 +23,7 @@
     "motion-hints",
     "motion-drafts",
     "motion-target-policy",
+    "motion-target-debug",
     "joint-coordinates",
     "cutscene-model",
     "motion-anchors",

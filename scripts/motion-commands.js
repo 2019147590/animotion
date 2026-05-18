@@ -39,6 +39,8 @@
       ...plan,
       target: result.target,
       anchors: result.anchors,
+      motionScope: result.motionScope,
+      targetDebug: result.targetDebug,
     });
     applyGeneratedTracks(result.partTracks);
     syncPartPoseToFrame(state.selectedPartId, state.currentFrame);
