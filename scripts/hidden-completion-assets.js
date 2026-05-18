@@ -2,7 +2,9 @@
   const global = typeof window !== "undefined" ? window : globalThis;
   const Animotion = global.Animotion || (global.Animotion = {});
   const TYPE = "hiddenCompletionPatch";
-  const STATUSES = new Set(["draft", "missing", "requested", "ready"]);
+  const PATCH_STATUSES = new Set(["draft", "guide", "missing", "requested", "ready"]);
+  const RESULT_STATUSES = new Set(["none", "requested", "ready", "failed"]);
+  const RENDER_MODES = new Set(["guideOnly", "generated", "manualOverride"]);
 
   function createForPart(part, options = {}) {
     if (!part?.id) return null;
@@ -15,14 +17,18 @@
       sourcePartId: part.id,
       sourceRectNormalized: options.sourceRectNormalized || normalizedRect(part),
       maskVerticesNormalized: options.maskVerticesNormalized || normalizedMask(part),
+      guide: options.guide || defaultGuideForPart(part),
       patchTransform: options.patchTransform,
-      patchStatus: options.patchStatus || "draft",
+      generatedResult: options.generatedResult || { status: "none" },
+      renderMode: options.renderMode || "guideOnly",
+      patchStatus: options.patchStatus || "guide",
       preview: options.preview,
     });
   }
 
   function normalizeAsset(asset = {}) {
     if (asset.type !== TYPE || !asset.id) return null;
+    const guide = normalizeOptionalGuide(asset.guide, asset.maskVerticesNormalized);
     return {
       id: String(asset.id),
       type: TYPE,
@@ -32,6 +38,9 @@
       sourceRectNormalized: normalizeImageRect(asset.sourceRectNormalized),
       maskVerticesNormalized: normalizeLocalPoints(asset.maskVerticesNormalized),
       patchTransform: normalizeTransform(asset.patchTransform),
+      ...(guide ? { guide } : {}),
+      ...(asset.generatedResult ? { generatedResult: normalizeGeneratedResult(asset.generatedResult) } : {}),
+      ...(asset.renderMode ? { renderMode: normalizeRenderMode(asset.renderMode) } : {}),
       patchStatus: normalizeStatus(asset.patchStatus),
       preview: normalizePreview(asset.preview),
     };
@@ -44,6 +53,29 @@
   function findById(assets = [], assetId = null) {
     const id = stringOrNull(assetId);
     return id ? assets.find((asset) => asset.id === id && isPatchAsset(asset)) || null : null;
+  }
+
+  function defaultGuideForPart(part) {
+    const silhouette = normalizedMask(part);
+    const quad = quadPoints();
+    return normalizeGuide({
+      kind: "meshGuide",
+      meshVerticesNormalized: quad,
+      meshFaces: [[0, 1, 2], [0, 2, 3]],
+      silhouetteVerticesNormalized: silhouette.length ? silhouette : quad,
+      guideStrength: 1,
+    });
+  }
+
+  function runtimeGuideMesh(asset, rect) {
+    const normalized = normalizeAsset(asset);
+    if (!normalized) return null;
+    const guide = normalized.guide || normalizeGuide({}, normalized.maskVerticesNormalized);
+    return {
+      meshVertices: toRuntimePoints(guide.meshVerticesNormalized, rect),
+      silhouetteVertices: toRuntimePoints(guide.silhouetteVerticesNormalized, rect),
+      meshFaces: guide.meshFaces,
+    };
   }
 
   function normalizedRect(part) {
@@ -73,6 +105,40 @@
     }));
   }
 
+  function normalizeGuide(guide = {}, fallbackSilhouette = []) {
+    const mesh = normalizeLocalPoints(guide.meshVerticesNormalized);
+    const silhouette = normalizeLocalPoints(guide.silhouetteVerticesNormalized);
+    const fallback = normalizeLocalPoints(fallbackSilhouette);
+    return {
+      kind: "meshGuide",
+      meshVerticesNormalized: mesh.length ? mesh : quadPoints(),
+      meshFaces: normalizeFaces(guide.meshFaces),
+      silhouetteVerticesNormalized: silhouette.length ? silhouette : fallback.length ? fallback : quadPoints(),
+      guideStrength: clamp01(guide.guideStrength ?? 1),
+      coordinateSpace: "part-local-normalized",
+    };
+  }
+
+  function normalizeOptionalGuide(guide, fallbackSilhouette = []) {
+    return guide ? normalizeGuide(guide, fallbackSilhouette) : null;
+  }
+
+  function normalizeFaces(faces = []) {
+    const normalized = (Array.isArray(faces) ? faces : [])
+      .map((face) => Array.isArray(face) ? face.map((index) => Math.max(0, Math.round(Number(index) || 0))).slice(0, 3) : [])
+      .filter((face) => face.length === 3);
+    return normalized.length ? normalized : [[0, 1, 2], [0, 2, 3]];
+  }
+
+  function normalizeGeneratedResult(result = {}) {
+    return {
+      status: RESULT_STATUSES.has(result.status) ? result.status : "none",
+      assetId: stringOrNull(result.assetId),
+      generatedAt: isoOrNull(result.generatedAt),
+      sourceGuideVersion: stringOrNull(result.sourceGuideVersion),
+    };
+  }
+
   function normalizeTransform(transform = {}) {
     return {
       coordinateSpace: "part-local",
@@ -100,7 +166,24 @@
   }
 
   function normalizeStatus(status) {
-    return STATUSES.has(status) ? status : "draft";
+    return PATCH_STATUSES.has(status) ? status : "draft";
+  }
+
+  function normalizeRenderMode(mode) {
+    return RENDER_MODES.has(mode) ? mode : "guideOnly";
+  }
+
+  function quadPoints() {
+    return [
+      { xNorm: 0, yNorm: 0, coordinateSpace: "part-local-normalized" },
+      { xNorm: 1, yNorm: 0, coordinateSpace: "part-local-normalized" },
+      { xNorm: 1, yNorm: 1, coordinateSpace: "part-local-normalized" },
+      { xNorm: 0, yNorm: 1, coordinateSpace: "part-local-normalized" },
+    ];
+  }
+
+  function toRuntimePoints(points, rect) {
+    return Animotion.coordinateSpaces?.pointsFromNormalizedLocalPoints?.(points, rect) || [];
   }
 
   function clamp01(value) {
@@ -121,6 +204,12 @@
     return value === undefined || value === null || value === "" ? String(fallback) : String(value);
   }
 
-  Animotion.hiddenCompletionAssets = { TYPE, createForPart, normalizeAsset, isPatchAsset, findById };
+  function isoOrNull(value) {
+    if (!value) return null;
+    const time = Date.parse(value);
+    return Number.isFinite(time) ? new Date(time).toISOString() : null;
+  }
+
+  Animotion.hiddenCompletionAssets = { TYPE, createForPart, normalizeAsset, isPatchAsset, findById, defaultGuideForPart, runtimeGuideMesh };
   if (typeof module !== "undefined") module.exports = Animotion.hiddenCompletionAssets;
 }

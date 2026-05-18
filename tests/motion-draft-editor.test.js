@@ -114,7 +114,20 @@ test("hidden completion patch asset normalizes project metadata", () => {
     sourcePartId: "leg-a",
     sourceRectNormalized: { xNorm: 0.2, yNorm: 0.3, wNorm: 0.4, hNorm: 0.5 },
     maskVerticesNormalized: [{ xNorm: 1.2, yNorm: -0.5 }],
+    guide: {
+      meshVerticesNormalized: [{ xNorm: 0, yNorm: 0 }, { xNorm: 1, yNorm: 0 }, { xNorm: 1, yNorm: 1 }],
+      meshFaces: [[0, 1, 2], [2, 1, -2, 5]],
+      silhouetteVerticesNormalized: [{ xNorm: 0.25, yNorm: 0.75 }],
+      guideStrength: 0.75,
+    },
     patchTransform: { translationNormalized: { xNorm: 0.2, yNorm: 0.3 }, scaleX: 1.25, rotation: 0.1 },
+    generatedResult: {
+      status: "requested",
+      assetId: "generated-hidden-leg",
+      generatedAt: "2026-05-18T01:00:00+09:00",
+      sourceGuideVersion: "guide-v1",
+    },
+    renderMode: "guideOnly",
     patchStatus: "ready",
     preview: { label: "leg back", visible: false },
   });
@@ -123,10 +136,63 @@ test("hidden completion patch asset normalizes project metadata", () => {
   assert.equal(asset.sourceRectNormalized.coordinateSpace, "normalized-image");
   assert.equal(asset.maskVerticesNormalized[0].xNorm, 1);
   assert.equal(asset.maskVerticesNormalized[0].yNorm, 0);
+  assert.equal(asset.guide.coordinateSpace, "part-local-normalized");
+  assert.equal(asset.guide.meshVerticesNormalized[2].xNorm, 1);
+  assert.equal(asset.guide.meshFaces[1][0], 2);
+  assert.equal(asset.guide.meshFaces[1][1], 1);
+  assert.equal(asset.guide.meshFaces[1][2], 0);
+  assert.equal(asset.guide.silhouetteVerticesNormalized[0].yNorm, 0.75);
+  assert.equal(asset.guide.guideStrength, 0.75);
   assert.equal(asset.patchTransform.coordinateSpace, "part-local");
   assert.equal(asset.patchTransform.translationNormalized.xNorm, 0.2);
+  assert.equal(asset.generatedResult.status, "requested");
+  assert.equal(asset.generatedResult.generatedAt, "2026-05-17T16:00:00.000Z");
+  assert.equal(asset.renderMode, "guideOnly");
   assert.equal(asset.patchStatus, "ready");
   assert.equal(asset.preview.visible, false);
+});
+
+test("hidden completion patch creates and restores a part-local mesh guide", () => {
+  const Animotion = loadAnimotion();
+  Animotion.imageBounds = () => ({ width: 100, height: 80 });
+  const asset = Animotion.hiddenCompletionAssets.createForPart({
+    id: "leg-a",
+    name: "leg",
+    sourceRect: { x: 10, y: 20, w: 30, h: 40 },
+    mask: { points: [{ x: 3, y: 4 }, { x: 12, y: 20 }, { x: 27, y: 36 }] },
+  }, { id: "hidden-leg" });
+  assert.equal(asset.patchStatus, "guide");
+  assert.equal(asset.renderMode, "guideOnly");
+  assert.equal(asset.generatedResult.status, "none");
+  assert.equal(asset.sourceRectNormalized.xNorm, 0.1);
+  assert.equal(asset.guide.meshVerticesNormalized.length, 4);
+  assert.equal(asset.guide.silhouetteVerticesNormalized[1].xNorm, 0.4);
+  assert.equal(asset.guide.silhouetteVerticesNormalized[1].yNorm, 0.5);
+
+  const runtime = Animotion.hiddenCompletionAssets.runtimeGuideMesh(asset, { x: 100, y: 200, w: 60, h: 80 });
+  assert.equal(runtime.meshVertices[2].x, 60);
+  assert.equal(runtime.meshVertices[2].y, 80);
+  assert.equal(runtime.silhouetteVertices[1].x, 24);
+  assert.equal(runtime.silhouetteVertices[1].y, 40);
+  assert.equal(runtime.meshFaces[0][0], 0);
+  assert.equal(runtime.meshFaces[0][1], 1);
+  assert.equal(runtime.meshFaces[0][2], 2);
+});
+
+test("hidden completion patch keeps mesh guide optional for legacy assets", () => {
+  const Animotion = loadAnimotion();
+  const asset = Animotion.hiddenCompletionAssets.normalizeAsset({
+    id: "hidden-legacy",
+    type: "hiddenCompletionPatch",
+    sourcePartId: "leg-a",
+    patchStatus: "ready",
+  });
+  assert.equal(asset.guide, undefined);
+  assert.equal(asset.generatedResult, undefined);
+  assert.equal(asset.renderMode, undefined);
+  const runtime = Animotion.hiddenCompletionAssets.runtimeGuideMesh(asset, { x: 0, y: 0, w: 20, h: 30 });
+  assert.equal(runtime.meshVertices[2].x, 20);
+  assert.equal(runtime.meshVertices[2].y, 30);
 });
 
 test("motion draft ready status requires an asset id", () => {

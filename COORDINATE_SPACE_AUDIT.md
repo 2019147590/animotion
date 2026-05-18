@@ -67,7 +67,26 @@ Patch asset coordinate spaces:
 
 - `sourceRectNormalized`: A/source image normalized rect.
 - `maskVerticesNormalized`: selected part-local normalized vertices.
+- `guide.meshVerticesNormalized`: part-local normalized mesh guide vertices.
+- `guide.silhouetteVerticesNormalized`: part-local normalized guide silhouette vertices.
+- `guide.meshFaces`: index triples into `guide.meshVerticesNormalized`.
 - `patchTransform.translationNormalized`: part-local normalized translation.
 - `patchTransform.scaleX`, `patchTransform.scaleY`, and `patchTransform.rotation`: patch-local transform values.
 
+`guide` and `generatedResult` are separate. The mesh guide is user-authored shape/area/direction data for later AI inpainting or side texture generation, not the final hidden completion image. `renderMode: "guideOnly"` means the patch is a guide asset and should not be treated as generated output.
+
 When project assets are available, a draft can stay `assetStatus: "ready"` only if `hiddenCompletion.assetId` points to a project asset with `type: "hiddenCompletionPatch"`.
+
+## Hidden Completion Mesh Guide Options
+
+1. Store mesh guides as a new top-level asset type.
+   - Pros: clean separation.
+   - Cons: duplicates hidden completion lifecycle and asset references.
+   - Risk: UI and JSON round-trip must manage two linked assets.
+
+2. Add optional guide fields to `hiddenCompletionPatch`.
+   - Pros: keeps the existing `hiddenCompletion.assetId` contract and legacy patch assets valid.
+   - Cons: patch assets can represent either guide-only or generated states.
+   - Risk: code must check `renderMode`/`generatedResult.status` before treating a patch as final generated output.
+
+Decision: choose option 2 for the first implementation. It is the smallest change that preserves old project JSON while giving later AI steps stable guide data.

@@ -93,6 +93,20 @@ test("save payload uses the central AnimotionProject model", () => {
         sourcePartId: "part-arm",
         sourceRectNormalized: { xNorm: 0.1, yNorm: 0.2, wNorm: 0.3, hNorm: 0.4, coordinateSpace: "normalized-image" },
         maskVerticesNormalized: [{ xNorm: 0.5, yNorm: 0.25, coordinateSpace: "part-local-normalized" }],
+        guide: {
+          meshVerticesNormalized: [
+            { xNorm: 0, yNorm: 0, coordinateSpace: "part-local-normalized" },
+            { xNorm: 1, yNorm: 0, coordinateSpace: "part-local-normalized" },
+            { xNorm: 1, yNorm: 1, coordinateSpace: "part-local-normalized" },
+            { xNorm: 0, yNorm: 1, coordinateSpace: "part-local-normalized" },
+          ],
+          meshFaces: [[0, 1, 2], [0, 2, 3]],
+          silhouetteVerticesNormalized: [{ xNorm: 0.5, yNorm: 0.25, coordinateSpace: "part-local-normalized" }],
+          guideStrength: 1,
+          coordinateSpace: "part-local-normalized",
+        },
+        generatedResult: { status: "none", assetId: null, generatedAt: null, sourceGuideVersion: null },
+        renderMode: "guideOnly",
         patchTransform: { translationNormalized: { xNorm: 0.2, yNorm: 0.3 }, scaleX: 1.1, scaleY: 1, rotation: 0.2 },
         patchStatus: "ready",
         preview: { label: "arm back", color: "#8fd3ff", visible: true },
@@ -134,6 +148,9 @@ test("save payload uses the central AnimotionProject model", () => {
   assert.equal(patch.sourcePartId, "part-arm");
   assert.equal(patch.patchStatus, "ready");
   assert.equal(patch.maskVerticesNormalized[0].xNorm, 0.5);
+  assert.equal(patch.guide.meshVerticesNormalized.length, 4);
+  assert.equal(patch.generatedResult.status, "none");
+  assert.equal(patch.renderMode, "guideOnly");
 });
 
 test("project importer restores normalized part coordinates against the current source image size", () => {
@@ -191,6 +208,12 @@ test("project serialization preserves hidden completion patch assets after reloa
       name: "leg hidden",
       uri: "hidden-completion://hidden-leg",
       sourcePartId: "part-leg",
+      guide: {
+        meshVerticesNormalized: [{ xNorm: 0, yNorm: 0 }, { xNorm: 1, yNorm: 0 }, { xNorm: 1, yNorm: 1 }],
+        meshFaces: [[0, 1, 2]],
+        silhouetteVerticesNormalized: [{ xNorm: 0.5, yNorm: 0.5 }],
+      },
+      renderMode: "guideOnly",
       patchStatus: "ready",
     }],
     parts: [{ id: "part-leg", name: "leg", type: "leg", sourceRect: { x: 10, y: 20, w: 30, h: 40 } }],
@@ -205,6 +228,8 @@ test("project serialization preserves hidden completion patch assets after reloa
   const patch = saved.assets.find((asset) => asset.id === "hidden-leg");
   assert.equal(patch.type, "hiddenCompletionPatch");
   assert.equal(patch.patchStatus, "ready");
+  assert.equal(patch.guide.meshFaces[0].length, 3);
+  assert.equal(patch.renderMode, "guideOnly");
 });
 
 test("project importer restores editor part fields from AnimotionProject", () => {

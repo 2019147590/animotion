@@ -39,7 +39,10 @@ export type Asset = {
   sourceRectNormalized?: NormalizedImageRect | null;
   maskVerticesNormalized?: NormalizedLocalPoint[];
   patchTransform?: HiddenCompletionPatchTransform;
-  patchStatus?: "draft" | "missing" | "requested" | "ready";
+  guide?: HiddenCompletionMeshGuide;
+  generatedResult?: HiddenCompletionGeneratedResult;
+  renderMode?: "guideOnly" | "generated" | "manualOverride";
+  patchStatus?: "draft" | "guide" | "missing" | "requested" | "ready";
   preview?: { label: string | null; color: string; visible: boolean };
 };
 
@@ -238,6 +241,22 @@ export type HiddenCompletionPatchTransform = {
   scaleX: number;
   scaleY: number;
   rotation: number;
+};
+
+export type HiddenCompletionMeshGuide = {
+  kind: "meshGuide";
+  meshVerticesNormalized: NormalizedLocalPoint[];
+  meshFaces: [number, number, number][];
+  silhouetteVerticesNormalized: NormalizedLocalPoint[];
+  guideStrength: number;
+  coordinateSpace: "part-local-normalized";
+};
+
+export type HiddenCompletionGeneratedResult = {
+  status: "none" | "requested" | "ready" | "failed";
+  assetId: string | null;
+  generatedAt: string | null;
+  sourceGuideVersion: string | null;
 };
 
 export type OcclusionMetadata = {
