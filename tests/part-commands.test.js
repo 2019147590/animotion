@@ -24,6 +24,7 @@ function loadAnimotion() {
     "scripts/config.js",
     "scripts/geometry.js",
     "scripts/motion-model.js",
+    "scripts/rig-connection.js",
     "scripts/project-model.js",
     "scripts/project-serialization.js",
     "scripts/rigging.js",
@@ -88,6 +89,18 @@ test("part command rejects cyclic parent updates", () => {
   assert.equal(child.parentId, parent.id);
   Animotion.partCommands.updatePart(parent.id, { parentId: child.id });
   assert.equal(parent.parentId, null);
+});
+
+test("part command creates explicit rig connection metadata", () => {
+  const Animotion = loadAnimotion();
+  const torso = Animotion.partCommands.createPart("body", { x: 20, y: 20, w: 40, h: 50 });
+  const head = Animotion.partCommands.createPart("head", { x: 24, y: 0, w: 30, h: 24 });
+  assert.equal(head.parentId, torso.id);
+  assert.equal(head.parentPartId, torso.id);
+  assert.equal(head.attachPointSelf, "neck");
+  assert.equal(head.attachPointParent, "neck");
+  assert.deepEqual(head.rotationPivot, head.pivot);
+  assert.equal(head.followStrength, 1);
 });
 
 test("part command delete removes the part and clears child parents", () => {

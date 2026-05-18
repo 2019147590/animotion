@@ -179,6 +179,72 @@
   display: none;
 }
 
+.edit-target-panel {
+  border: 2px solid var(--line);
+  border-left-width: 8px;
+  border-radius: 7px;
+  background: #fffdf5;
+  padding: 12px;
+}
+
+.edit-target-panel[data-target-kind="pose"] {
+  border-left-color: #e1462e;
+}
+
+.edit-target-panel[data-target-kind="motion-path"] {
+  border-left-color: #0f7f79;
+}
+
+.edit-target-panel[data-target-kind="hidden-guide"] {
+  border-left-color: #f1b83b;
+}
+
+.edit-target-panel[data-target-kind="none"] {
+  border-left-color: #8a8170;
+}
+
+.edit-target-header {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 9px;
+  align-items: start;
+}
+
+.edit-target-swatch {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--line);
+  margin-top: 3px;
+}
+
+.edit-target-kind {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.edit-target-meta {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 5px 8px;
+  font-size: 12px;
+}
+
+.edit-target-meta span {
+  color: var(--muted);
+}
+
+.edit-target-instructions {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 button.active {
   background: var(--accent-3);
 }

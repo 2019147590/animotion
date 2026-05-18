@@ -124,10 +124,10 @@ test("limb joint defaults to the opposite movable side", () => {
   assert.deepEqual(rigging.defaultJointForPart("leg", rightLeg, body), { x: 10.56, y: 33.44 });
 });
 
-test("localPointFromImagePoint clamps dragged rig handles into the part rect", () => {
+test("localPointFromImagePoint preserves rig handles outside the part rect", () => {
   const rect = { x: 20, y: 30, w: 50, h: 60 };
   assert.deepEqual(rigging.localPointFromImagePoint(rect, { x: 45, y: 70 }), { x: 25, y: 40 });
-  assert.deepEqual(rigging.localPointFromImagePoint(rect, { x: 10, y: 120 }), { x: 0, y: 60 });
+  assert.deepEqual(rigging.localPointFromImagePoint(rect, { x: 10, y: 120 }), { x: -10, y: 90 });
 });
 
 test("custom motion returns user-authored sinusoidal transform", () => {

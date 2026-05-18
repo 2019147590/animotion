@@ -10,6 +10,7 @@
     const mask = geometry.shapeToMask(normalized, rect);
     const count = state.parts.filter((part) => part.type === type).length + 1;
     const parent = suggestedParentPart(type);
+    const connection = Animotion.rigConnection?.metadataForPart?.({ type, rect, name }, parent) || {};
     const part = editorPartFromProject({
       id: crypto.randomUUID(),
       name: name || `${type}_${String(count).padStart(2, "0")}`,
@@ -19,6 +20,10 @@
       pivot: Animotion.rigging.defaultPivotForPart(type, rect, parent?.rect || null),
       joint: Animotion.rigging.defaultJointForPart(type, rect, parent?.rect || null),
       parentId: parent?.id || null,
+      parentPartId: parent?.id || null,
+      attachPointSelf: connection.attachPointSelf,
+      attachPointParent: connection.attachPointParent,
+      followStrength: connection.followStrength,
       layerIndex: state.parts.length + 1,
       opacity: 1,
       visible: true,
@@ -140,10 +145,14 @@
   function normalizedPatch(part, patch) {
     const next = { ...patch };
     if (hasOwn(next, "parentId")) next.parentId = validParentId(part.id, next.parentId);
+    if (hasOwn(next, "parentPartId")) next.parentId = validParentId(part.id, next.parentPartId);
+    if (hasOwn(next, "parentId")) next.parentPartId = next.parentId;
+    if (hasOwn(next, "pivot")) next.rotationPivot = next.pivot;
     if (hasOwn(next, "order")) next.order = Math.max(1, Math.round(Number(next.order) || part.order));
     if (hasOwn(next, "alpha")) next.alpha = geometry.clamp(Number(next.alpha) || 0, 0, 1);
     if (hasOwn(next, "hidden")) next.hidden = Boolean(next.hidden);
     if (hasOwn(next, "customMotion")) next.customMotion = Animotion.motionModel.normalizeCustomMotion(next.customMotion);
+    Object.assign(next, Animotion.rigConnection?.metadataForPart?.({ ...part, ...next }, findPart(next.parentId ?? part.parentId)) || {});
     return next;
   }
 

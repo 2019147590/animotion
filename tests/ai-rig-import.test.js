@@ -153,6 +153,33 @@ test("save payload uses the central AnimotionProject model", () => {
   assert.equal(patch.renderMode, "guideOnly");
 });
 
+test("project save and load preserves outside-rect rig point coordinates", () => {
+  const Animotion = loadAnimotion();
+  Object.assign(Animotion.state, {
+    imageName: "panel.png",
+    image: { naturalWidth: 100, naturalHeight: 80 },
+    currentFrame: 1,
+    project: { assets: [] },
+    parts: [{
+      id: "part-cloth",
+      name: "cloth",
+      type: "clothes",
+      rect: { x: 20, y: 10, w: 30, h: 40 },
+      pivot: { x: -6, y: 12 },
+      joint: { x: 45, y: -8 },
+      order: 1,
+      alpha: 1,
+      customMotion: {},
+      keyframes: [],
+    }],
+  });
+  const saved = Animotion.io.createRigPayload();
+  const loaded = Animotion.projectModel.editorPartsFromProject(Animotion.projectModel.normalizeProject(saved, { imageBounds: { width: 100, height: 80 } }));
+  assert.equal(saved.parts[0].pivotNormalized.xNorm, -0.2);
+  assert.equal(saved.parts[0].jointNormalized.xNorm, 1.5);
+  assert.equal(`${loaded[0].pivot.x},${loaded[0].pivot.y}`, "-6,12");
+  assert.equal(`${loaded[0].joint.x},${loaded[0].joint.y}`, "45,-8");
+});
 test("project importer restores normalized part coordinates against the current source image size", () => {
   const Animotion = loadAnimotion();
   Animotion.state.image = { naturalWidth: 200, naturalHeight: 160 };

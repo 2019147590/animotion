@@ -6,7 +6,6 @@
   const PROJECT_VERSION = "1.0.0";
   const DEFAULT_CANVAS = { width: 1, height: 1, fps: 24, durationFrames: 120, backgroundColor: "#f7f0df" };
   const PART_TYPES = new Set(["head", "body", "spine", "arm", "leg", "hand", "hair", "eye", "mouth", "clothes", "prop", "background"]);
-
   function createEmptyProject(options = {}) {
     const now = isoNow();
     const canvas = normalizeCanvas(options.canvas);
@@ -29,7 +28,6 @@
       editor: {},
     };
   }
-
   function normalizeProject(payload, options = {}) {
     const project = createEmptyProject({
       name: payload?.metadata?.name,
@@ -48,21 +46,17 @@
     project.editor = normalizeEditor(payload?.editor, project.parts);
     return project;
   }
-
   function editorPartsFromProject(project) {
     const motionByPart = partKeyframesFromMotions(project.motions || []);
     return (project.parts || []).map((part, index) => editorPartFromProjectPart(part, motionByPart, index));
   }
-
   function attachEditorParts(project, parts) {
     project.parts = parts || [];
     return project;
   }
-
   function isProjectPayload(payload) {
     return payload?.format === PROJECT_FORMAT || (payload?.metadata && payload?.canvas && Array.isArray(payload?.assets));
   }
-
   function normalizeProjectPart(part = {}, index = 0, options = {}) {
     const id = stringOrDefault(part.id, `part-${index + 1}`);
     const imageBounds = options.imageBounds || canvasBounds(options.canvas);
@@ -71,13 +65,18 @@
     const layerIndex = intOrDefault(part.order, intOrDefault(part.layerIndex, index + 1));
     const pivot = localPointForCurrentRect(part.pivotNormalized, part.pivot, rect);
     const joint = localPointForCurrentRect(part.jointNormalized, part.joint, rect);
+    const connection = Animotion.rigConnection?.metadataForPart?.({ ...part, rect, pivot, joint }) || { parentPartId: part.parentPartId || part.parentId || null };
     return {
       id,
       name: stringOrDefault(part.name, `part_${index + 1}`),
       type: PART_TYPES.has(part.type) ? part.type : "prop",
       assetId: stringOrDefault(part.assetId, `asset-${id}`),
       sourceAssetId: stringOrDefault(part.sourceAssetId, "source-image"),
-      parentId: part.parentId || null,
+      parentId: connection.parentPartId,
+      parentPartId: connection.parentPartId,
+      attachPointSelf: connection.attachPointSelf,
+      attachPointParent: connection.attachPointParent,
+      rotationPivot: connection.rotationPivot, followStrength: connection.followStrength,
       layerIndex,
       visible: part.hidden !== undefined ? part.hidden !== true : part.visible !== false,
       opacity: clampNumber(part.alpha ?? part.opacity, 0, 1, 1),

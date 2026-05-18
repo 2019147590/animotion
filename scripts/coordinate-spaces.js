@@ -31,8 +31,8 @@
     const source = normalizePoint(point);
     const safeRect = normalizeRect(rect);
     return {
-      xNorm: clamp01(source.x / safeRect.w),
-      yNorm: clamp01(source.y / safeRect.h),
+      xNorm: source.x / safeRect.w,
+      yNorm: source.y / safeRect.h,
       coordinateSpace: "part-local-normalized",
     };
   }
@@ -41,8 +41,8 @@
     if (!point) return null;
     const safeRect = normalizeRect(rect);
     return {
-      x: Math.round(clamp01(normalizedValue(point, "xNorm", "x", 0)) * safeRect.w),
-      y: Math.round(clamp01(normalizedValue(point, "yNorm", "y", 1)) * safeRect.h),
+      x: Math.round(normalizedValue(point, "xNorm", "x", 0) * safeRect.w),
+      y: Math.round(normalizedValue(point, "yNorm", "y", 1) * safeRect.h),
     };
   }
 

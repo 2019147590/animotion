@@ -123,12 +123,14 @@
   function drawPivot(ctx, view, x, y, selected, role = "anchor") {
     const px = view.x + x * view.scale;
     const py = view.y + y * view.scale;
+    const style = pointStyle(role, selected);
     ctx.save();
-    ctx.strokeStyle = selected ? "#151515" : "#e1462e";
-    ctx.fillStyle = role === "joint" ? "#8fd3ff" : selected ? "#f1b83b" : "#fff";
+    ctx.strokeStyle = style.stroke;
+    ctx.fillStyle = style.fill;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(px, py, selected ? 6 : 4, 0, Math.PI * 2);
+    if (style.square) ctx.rect(px - 5, py - 5, 10, 10);
+    else ctx.arc(px, py, selected ? 6 : 4, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     ctx.beginPath();
@@ -138,6 +140,15 @@
     ctx.lineTo(px, py + 9);
     ctx.stroke();
     ctx.restore();
+  }
+
+  function pointStyle(role, selected) {
+    if (role === "joint") return { fill: "#8fd3ff", stroke: "#151515" };
+    if (role === "connection" || role === "parentConnection") return { fill: "#0f7f79", stroke: "#151515", square: true };
+    if (role === "bodyRoot") return { fill: "#151515", stroke: "#f1b83b" };
+    if (role === "trajectory") return { fill: "#e1462e", stroke: "#fffaf0" };
+    if (role === "hiddenGuide") return { fill: "#f1b83b", stroke: "#151515" };
+    return { fill: selected ? "#f1b83b" : "#fff", stroke: selected ? "#151515" : "#e1462e" };
   }
 
   function drawPreview(now = performance.now()) {

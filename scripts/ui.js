@@ -36,6 +36,7 @@
     renderKeyframeStatus();
     renderPartsList();
     renderInspector();
+    Animotion.editTargetInspector?.refreshControls?.();
   }
 
   function renderKeyframeStatus() {

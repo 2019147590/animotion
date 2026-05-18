@@ -6,28 +6,33 @@
   function install() {
     if (typeof document === "undefined" || !Animotion.dom?.previewCanvas) return;
     const canvas = Animotion.dom.previewCanvas;
-    canvas.addEventListener("pointerdown", onPointerDown, true);
     canvas.addEventListener("pointermove", onPointerMove);
     canvas.addEventListener("pointerup", onPointerUp);
     canvas.addEventListener("pointercancel", onPointerUp);
     Animotion.motionPlanner.drawOverlay = drawOverlay;
   }
-
-  function onPointerDown(event) {
+  function hitTarget(event) {
     const anchorHit = hitAnchor(event);
-    if (anchorHit) return beginAnchorDrag(event, anchorHit);
+    if (anchorHit) return { type: "anchor", label: "궤적 조정점", hit: anchorHit };
     const hit = hitBeat(event);
-    if (!hit) return;
+    return hit ? { type: "beat", label: "이동 경로점", hit } : null;
+  }
+  function beginDragFromTarget(event, target) {
+    const hit = target?.hit || target;
+    if (hit?.type === "anchor") return beginAnchorDrag(event, hit.hit);
+    if (hit?.type === "beat") return beginBeatDrag(event, hit.hit);
+    return false;
+  }
+  function beginBeatDrag(event, hit) {
     freezePlayback();
     Animotion.motionCommands.setMotionPlan({ selectedBeatId: hit.beat.id });
+    Animotion.state.selectedEditPoint = { kind: "trajectory", role: "이동 경로점", label: hit.beat.id };
     Animotion.state.trajectoryDrag = { beatIndex: hit.index, focusKey: hit.focusKey };
     Animotion.timelineControls?.setCurrentFrame?.(hit.beat.at);
     Animotion.dom.previewCanvas.setPointerCapture(event.pointerId);
-    event.preventDefault();
-    event.stopImmediatePropagation();
     refresh();
+    return true;
   }
-
   function onPointerMove(event) {
     const drag = Animotion.state?.trajectoryDrag;
     if (!drag || !Animotion.state.previewView) return;
@@ -38,7 +43,6 @@
     event.preventDefault();
     refresh();
   }
-
   function onPointerUp(event) {
     const canvas = Animotion.dom?.previewCanvas;
     if (canvas?.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
@@ -46,7 +50,6 @@
     Animotion.state.trajectoryDrag = null;
     refresh();
   }
-
   function drawOverlay(ctx, view, cutscene) {
     if (!editingLayerVisible()) return;
     const action = cutscene?.bridge?.jointAction;
@@ -58,15 +61,14 @@
     drawActionAnchors(ctx, view, action);
     drawTarget(ctx, view);
   }
-
   function beginAnchorDrag(event, hit) {
     freezePlayback();
     Animotion.motionCommands.setMotionPlan({ selectedBeatId: null });
+    Animotion.state.selectedEditPoint = { kind: "trajectory", role: "궤적 조정점", label: `${hit.anchor.key} · ${hit.anchor.role}` };
     Animotion.state.trajectoryDrag = { anchorKey: hit.anchor.key };
     Animotion.dom.previewCanvas.setPointerCapture(event.pointerId);
-    event.preventDefault();
-    event.stopImmediatePropagation();
     refresh();
+    return true;
   }
 
   function drawBeatHandles(ctx, view, action, focusKey) {
@@ -289,7 +291,7 @@
     Animotion.ui?.refreshUi?.();
   }
 
-  Animotion.trajectoryEditor = { drawOverlay, editBeatPoint, editAnchorPoint, trajectorySamples };
+  Animotion.trajectoryEditor = { drawOverlay, editBeatPoint, editAnchorPoint, trajectorySamples, hitTarget, beginDragFromTarget };
   install();
 
   if (typeof module !== "undefined") module.exports = Animotion.trajectoryEditor;

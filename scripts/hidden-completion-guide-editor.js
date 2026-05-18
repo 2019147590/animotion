@@ -61,10 +61,18 @@
     if (!editingLayerVisible()) return false;
     const hit = hitGuideVertex(event);
     if (!hit) return false;
+    return beginDragFromTarget(event, { hit });
+  }
+  function hitTarget(event) {
+    return editingLayerVisible() ? hitGuideVertex(event) : null;
+  }
+  function beginDragFromTarget(event, target) {
+    const hit = target?.hit || target;
+    if (!hit) return false;
     freezePlayback();
     Animotion.state.previewDrag = { kind: DRAG_KIND, assetId: hit.asset.id, vertexIndex: hit.index };
+    Animotion.state.selectedEditPoint = { kind: "hiddenGuide", role: "보완 가이드 점", label: `${hit.asset.id} · vertex ${hit.index + 1}` };
     Animotion.dom.previewCanvas.setPointerCapture(event.pointerId);
-    event.preventDefault();
     return true;
   }
   function updateDrag(event) {
@@ -283,16 +291,7 @@
   function refresh() {
     Animotion.ui?.refreshUi?.();
   }
-  Animotion.hiddenCompletionGuideEditor = {
-    installControls,
-    refreshControls,
-    createGuideFromSelectedPart,
-    updateSelectedGuideVertexFromImagePoint,
-    drawOverlay,
-    beginDrag,
-    updateDrag,
-    endDrag,
-  };
+  Animotion.hiddenCompletionGuideEditor = { installControls, refreshControls, createGuideFromSelectedPart, updateSelectedGuideVertexFromImagePoint, drawOverlay, beginDrag, hitTarget, beginDragFromTarget, updateDrag, endDrag };
   installControls();
   if (typeof module !== "undefined") module.exports = Animotion.hiddenCompletionGuideEditor;
 }

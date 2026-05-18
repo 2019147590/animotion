@@ -12,7 +12,6 @@ export type AnimotionProject = {
   timeline: Timeline;
   editor?: EditorProjectData;
 };
-
 export type ProjectMetadata = {
   name: string;
   createdAt: string;
@@ -53,6 +52,11 @@ export type Part = {
   assetId: string;
   sourceAssetId?: string;
   parentId?: string | null;
+  parentPartId?: string | null;
+  attachPointSelf?: "neck" | "shoulder" | "elbow" | "wrist" | "hip" | "none" | string;
+  attachPointParent?: "neck" | "shoulder" | "elbow" | "wrist" | "hip" | "none" | string;
+  rotationPivot?: Vec2;
+  followStrength?: number;
   layerIndex: number;
   visible: boolean;
   opacity: number;
@@ -133,7 +137,6 @@ export type TimelineTrack = {
   targetType: "part" | "bone" | "camera" | "effect";
   keyframeIds: string[];
 };
-
 export type EditorProjectData = {
   imageName: string;
   nextImageName: string;

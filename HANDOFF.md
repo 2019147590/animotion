@@ -276,6 +276,11 @@ Current architecture note:
 - `scripts/motion-anchor-picker.js`: choose and directly place generated action anchors.
 - `scripts/motion-trajectory-editor.js`: editable beat handles and trajectory overlay.
 - `scripts/cutscene-options.js`: A cut source-motion and body-assist option controls.
+- `scripts/rig-connection.js`: explicit parent/child attach point metadata and rig preview point roles.
+- `scripts/edit-target-inspector.js`: selected/hovered edit target inspector for pose, motion path, and hidden guide points.
+- `scripts/preview-coordinate.js`: preview/client/image/part-local coordinate conversion helpers for direct manipulation.
+- `scripts/preview-hit-test.js`: selected part rig point hit tests shared by preview pointer arbitration.
+- `scripts/preview-pointer-arbitration.js`: preview pointerdown target arbitration and debug state.
 - `scripts/preview-transform.js`: coordinate conversion for A cut panel scale/position.
 - `scripts/preview.js`: Canvas preview rendering and trajectory overlays.
 - `scripts/cutscene-model.js`: cutscene bridge timing and panel transition values.
@@ -334,6 +339,11 @@ node tests\correspondence-commands.test.js
 node tests\motion-draft-editor.test.js
 node tests\motion-target-propagation.test.js
 node tests\motion-target-state.test.js
+node tests\rig-connection.test.js
+node tests\edit-target-inspector.test.js
+node tests\preview-coordinate.test.js
+node tests\preview-hit-test.test.js
+node tests\preview-pointer-arbitration.test.js
 node tests\hidden-completion-roundtrip.test.js
 node tests\hidden-completion-request.test.js
 node tests\hidden-completion-provider.test.js
@@ -394,6 +404,27 @@ As of this handoff update, the latest motion-target/root-delta work has been com
 
 Recently completed in the working tree:
 
+- Motion/cutscene terminology cleanup:
+  - Added `MOTION_TERMINOLOGY.md`.
+  - User-facing Korean labels now distinguish A/B correspondence/reference data, B cut reference parts, active/manual/generated motion targets, character root anchors/deltas, trajectory samples, and trajectory control points.
+  - `activeMotionTarget` debug data now records source, point, coordinate space, and whether the B reference currently drives motion.
+- Edit target inspector:
+  - Added a preview inspector/help panel that reports whether the current target is pose, motion path, or hidden completion guide.
+  - Hovered/clicked rig/trajectory/guide points populate user-facing labels and role descriptions.
+- Rig connection UX:
+  - Parts now carry explicit connection metadata: parent part, self attach point, parent attach point, rotation pivot, and follow strength.
+  - Rig preview distinguishes connection points, rotation centers, joints, trajectory points, guide points, and body root points with user-facing labels.
+  - Parent/child root motion propagation avoids double-applying character root delta to connected children.
+- Preview direct manipulation:
+  - Rig point dragging now creates a drag session on pointerdown and keeps the selected point fixed until pointerup.
+  - Pointer moves use a single coordinate path and frozen start transforms, so rig points follow the pointer 1:1 across zoom levels.
+  - Rig points can now move outside the selected part rectangle when authored outside the visual bounds. Joint, connection, and rotation pivot local coordinates are preserved even when outside `0..rect.w/h`.
+  - Part-local normalized rig points may be outside `0..1` and round-trip through save/load without silent clamping.
+- Preview pointer arbitration:
+  - Added central pointerdown arbitration with the priority order documented in `PREVIEW_POINTER_POLICY.md`.
+  - Preview editors now expose `hitTarget(event)` and `beginDragFromTarget(event, target)` instead of competing with capture-phase `stopImmediatePropagation()`.
+  - The latest target decision is stored in `Animotion.state.previewPointerArbitrationDebug`; console logging can be enabled with `Animotion.state.debugPreviewPointerArbitration = true` or `localStorage.debugPreviewPointerArbitration = "1"`.
+  - Stale preview/trajectory drag state is cleared when the canvas no longer owns pointer capture, preventing old trajectory drags from blocking later rig handle drags.
 - Central `AnimotionProject` save/load model and `.d.ts` type declarations.
 - Save/load refactor to project JSON while preserving legacy rig and AI rig imports.
 - Part, motion, session, and panel command layers.

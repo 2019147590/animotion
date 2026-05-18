@@ -20,7 +20,6 @@
     anchor.after(box);
     refs().select.addEventListener("change", () => { selectedKey = refs().select.value || null; });
     refs().pick.addEventListener("click", togglePickMode);
-    Animotion.dom.previewCanvas.addEventListener("pointerdown", onPreviewPointerDown, true);
   }
 
   function refreshControls() {
@@ -42,15 +41,20 @@
     refresh();
   }
 
-  function onPreviewPointerDown(event) {
-    if (!pickMode || !selectedKey || !isCutsceneEditable()) return;
+  function hitTarget(event) {
+    if (!pickMode || !selectedKey || !isCutsceneEditable()) return null;
     const point = previewPoint(event);
-    if (!point) return;
-    setAnchorAndRegenerate(selectedKey, point);
+    return point ? { label: "궤적 조정점", point, selectedKey } : null;
+  }
+
+  function beginDragFromTarget(event, target) {
+    const point = target?.hit?.point || target?.point || previewPoint(event);
+    const key = target?.hit?.selectedKey || target?.selectedKey || selectedKey;
+    if (!point || !key) return false;
+    setAnchorAndRegenerate(key, point);
     pickMode = false;
-    event.preventDefault();
-    event.stopImmediatePropagation();
     refresh();
+    return true;
   }
 
   function setAnchorAndRegenerate(anchorKey, point) {
@@ -134,7 +138,7 @@
     Animotion.ui?.refreshUi?.();
   }
 
-  Animotion.motionAnchorPicker = { refreshControls, updateAnchorPoint, setAnchorAndRegenerate };
+  Animotion.motionAnchorPicker = { refreshControls, updateAnchorPoint, setAnchorAndRegenerate, hitTarget, beginDragFromTarget };
   installControls();
 
   if (typeof module !== "undefined") module.exports = Animotion.motionAnchorPicker;

@@ -13,31 +13,47 @@
   }
 
   function onPreviewPointerDown(event) {
+    const arbitration = Animotion.previewPointerArbitration?.beginPointerDown?.(event);
+    if (arbitration) return;
+    const target = hitTarget(event);
+    if (target && beginDragFromTarget(event, target)) event.preventDefault();
+  }
+
+  function hitTarget(event) {
     const part = Animotion.parts.selectedPart();
-    if (!part || !state.previewView) return;
-    if (Animotion.hiddenCompletionGuideEditor?.beginDrag?.(event)) return;
+    if (!part || !state.previewView) return null;
     const point = previewPoint(event);
-    if (!point) return;
-    const role = hitRigRole(part, point) || selectedRole();
-    const mode = dragMode(role);
+    if (!point) return null;
+    const hit = hitRigPoint(part, point);
+    if (!hit || !editableRole(hit.role)) return null;
+    return { kind: "selected-part-rigging-point", partId: part.id, role: hit.role, label: hit.label, hit };
+  }
+
+  function beginDragFromTarget(event, target) {
+    const part = state.parts.find((candidate) => candidate.id === target.partId);
+    if (!part) return false;
+    state.selectedEditPoint = editPointSelection(target.role, target.label);
+    const mode = dragMode(target.role);
     freezePlayback();
-    state.previewDrag = { partId: part.id, role, mode, startPoint: point, basePoses: snapshotPoses() };
-    els.pivotEditTarget.value = role;
+    state.previewDrag = dragSession(event, part, target.role, mode, target.hit);
+    els.pivotEditTarget.value = target.role === "joint" ? "joint" : "anchor";
     if (mode === "pose") updateControlPose(part.id, { x: 0, y: 0 });
-    else moveRigPoint(part, point, role);
     previewCanvas.setPointerCapture(event.pointerId);
-    event.preventDefault();
     Animotion.ui.refreshUi();
+    return true;
   }
 
   function onPreviewPointerMove(event) {
     if (Animotion.hiddenCompletionGuideEditor?.updateDrag?.(event)) return;
-    if (!state.previewDrag || !state.previewView) return;
+    if (!state.previewDrag || !state.previewView) return updateHover(event);
     const part = state.parts.find((candidate) => candidate.id === state.previewDrag.partId);
-    const point = previewPoint(event);
-    if (!part || !point) return;
-    if (state.previewDrag.mode === "pose") updateControlPose(part.id, dragDelta(point));
-    else moveRigPoint(part, point, state.previewDrag.role);
+    if (!part) return;
+    if (state.previewDrag.mode === "pose") {
+      const point = previewPoint(event);
+      if (!point) return;
+      updateControlPose(part.id, dragDelta(point));
+    }
+    else moveRigPoint(part, previewPointer(event));
     event.preventDefault();
     Animotion.ui.refreshUi();
   }
@@ -48,6 +64,7 @@
       previewCanvas.releasePointerCapture(event.pointerId);
     }
     if (state.previewDrag?.mode === "pose") commitControlPose();
+    if (state.previewDrag?.mode === "rig") commitRigPointDrag();
     state.previewDrag = null;
   }
 
@@ -65,41 +82,115 @@
     }
   }
 
-  function moveRigPoint(part, point, role) {
-    const local = localPointForCurrentPose(part, point);
-    const clamped = Animotion.rigging.localPointFromImagePoint(part.rect, local);
-    Animotion.partCommands.updatePart(part, { [role === "joint" ? "joint" : "pivot"]: clamped });
+  function moveRigPoint(part, pointerPreviewPosition) {
+    const local = Animotion.previewCoordinate.dragLocalPoint(state.previewDrag, pointerPreviewPosition);
+    if (!local) return;
+    const key = pointField(state.previewDrag.draggedPointKind);
+    part[key] = local;
+    if (key === "pivot") part.rotationPivot = local;
   }
 
-  function localPointForCurrentPose(part, point) {
+  function frozenPartMatrix(part) {
     const t = state.running ? (performance.now() - state.startTime) / 1000 : state.pausedTime;
-    const matrix = Animotion.preview.worldMatrix(part, t, new Map());
-    const localPoint = new DOMPoint(point.x, point.y).matrixTransform(matrix.inverse());
-    return { x: localPoint.x, y: localPoint.y };
+    return Animotion.preview.worldMatrix(part, t, new Map());
   }
 
-  function hitRigRole(part, point) {
-    const t = state.running ? (performance.now() - state.startTime) / 1000 : state.pausedTime;
-    const matrix = Animotion.preview.worldMatrix(part, t, new Map());
+  function dragSession(event, part, role, mode, hit) {
+    const pointer = previewPointer(event);
+    const partMatrix = frozenPartMatrix(part);
+    const base = dragContext(part, partMatrix);
+    const startPointLocal = rigPointLocal(part, hit || { role, localPoint: pointLocal(part, role) });
+    const pointerLocal = Animotion.previewCoordinate.previewToPartLocalPoint(pointer, base);
+    return {
+      draggedPointId: `${part.id}:${role}`,
+      draggedPointKind: role,
+      sourcePartId: part.id,
+      partId: part.id,
+      role,
+      mode,
+      coordinateSpace: "part-local",
+      startPointerPreviewPosition: pointer,
+      startPointerLocalPosition: { ...(pointerLocal || startPointLocal) },
+      startPoint: previewPoint(event),
+      startPointLocalPosition: { ...startPointLocal },
+      startPointNormalizedPosition: Animotion.previewCoordinate.partLocalToNormalizedPoint(startPointLocal, part),
+      grabOffset: {
+        x: (pointerLocal || startPointLocal).x - startPointLocal.x,
+        y: (pointerLocal || startPointLocal).y - startPointLocal.y,
+      },
+      basePoses: snapshotPoses(),
+      ...base,
+    };
+  }
+
+  function dragContext(part, partMatrix) {
+    return {
+      part,
+      partMatrix,
+      view: state.previewView,
+      sourceFrame: state.previewSourceFrame,
+      sourceTransform: state.previewSourceTransform,
+    };
+  }
+
+  function commitRigPointDrag() {
+    const drag = state.previewDrag;
+    const part = state.parts.find((candidate) => candidate.id === drag.partId);
+    if (!part) return;
+    const key = pointField(drag.draggedPointKind);
+    const finalPoint = { ...part[key] };
+    part[key] = { ...drag.startPointLocalPosition };
+    if (key === "pivot") part.rotationPivot = part[key];
+    Animotion.partCommands.updatePart(part, { [key]: finalPoint });
+  }
+
+  function updateHover(event) {
+    if (!state.previewView) return;
+    const part = Animotion.parts.selectedPart();
+    const point = part ? previewPoint(event) : null;
+    const hit = point ? hitRigPoint(part, point) : null;
+    const hadHover = Boolean(state.hoveredEditPoint);
+    state.hoveredEditPoint = hit ? editPointSelection(hit.role, hit.label) : null;
+    if (hit || hadHover) Animotion.ui.refreshUi();
+  }
+
+  function hitRigPoint(part, point) {
+    const matrix = frozenPartMatrix(part);
     const tolerance = Animotion.config.hitTolerancePx / sourceScale();
-    const hits = ["joint", "anchor"]
-      .map((role) => ({ role, distance: geometry.distance(point, rigPoint(part, role, matrix)) }))
+    const hits = rigPointSpecs(part)
+      .map((spec) => ({ ...spec, distance: geometry.distance(point, rigPoint(part, spec, matrix)) }))
       .filter((hit) => hit.distance <= tolerance)
       .sort((a, b) => a.distance - b.distance);
-    return hits[0]?.role || null;
+    return hits[0] || null;
   }
 
-  function rigPoint(part, role, matrix) {
-    const local = rigPointLocal(part, role);
+  function rigPoint(part, spec, matrix) {
+    const local = rigPointLocal(part, spec);
     const point = new DOMPoint(part.rect.x + local.x, part.rect.y + local.y).matrixTransform(matrix);
     return { x: point.x, y: point.y };
   }
 
-  function rigPointLocal(part, role) {
-    if (role !== "joint") return part.pivot;
+  function rigPointLocal(part, spec) {
+    if (spec.role !== "joint") return spec.localPoint || part.pivot;
     const motion = Animotion.motionModel.normalizeCustomMotion(part.customMotion);
     if (!timelineLikeMode()) return part.joint;
     return { x: part.joint.x + motion.jointX, y: part.joint.y + motion.jointY };
+  }
+
+  function rigPointSpecs(part) {
+    const parent = state.parts.find((candidate) => candidate.id === part.parentId);
+    return Animotion.rigConnection?.previewPoints?.(part, parent) || [
+      { role: "rotationPivot", localPoint: part.pivot, label: "회전 중심" },
+      { role: "joint", localPoint: part.joint, label: "관절점" },
+    ];
+  }
+
+  function editableRole(role) {
+    return role === "joint" || role === "rotationPivot" || role === "anchor";
+  }
+
+  function editPointSelection(role, label) {
+    return { kind: role, role: Animotion.rigConnection?.labelForRole?.(role) || label || "편집점", label: label || "" };
   }
 
   function dragMode(role) {
@@ -142,7 +233,19 @@
   }
 
   function selectedRole() {
-    return els.pivotEditTarget.value === "joint" ? "joint" : "anchor";
+    return els.pivotEditTarget.value === "joint" ? "joint" : "rotationPivot";
+  }
+
+  function pointField(role) {
+    return role === "joint" ? "joint" : "pivot";
+  }
+
+  function pointLocal(part, role) {
+    return role === "joint" ? rigPointLocal(part, { role: "joint" }) : part.pivot;
+  }
+
+  function previewPointer(event) {
+    return Animotion.previewCoordinate.clientToPreviewPoint(event, previewCanvas);
   }
 
   function freezePlayback() {
@@ -156,5 +259,5 @@
     return els.motionTemplate.value === "keyframes" || els.motionTemplate.value === "cutscene";
   }
 
-  Animotion.previewEvents = { bindPreviewCanvasEvents };
+  Animotion.previewEvents = { bindPreviewCanvasEvents, hitTarget, beginDragFromTarget };
 }

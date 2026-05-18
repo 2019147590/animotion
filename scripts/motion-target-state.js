@@ -2,6 +2,11 @@
   const global = typeof window !== "undefined" ? window : globalThis;
   const Animotion = global.Animotion || (global.Animotion = {});
   const SOURCES = new Set(["manual", "correspondence", "generated"]);
+  const SOURCE_LABELS = {
+    manual: "수동 움직임 목표",
+    correspondence: "B컷 참조",
+    generated: "생성된 움직임 목표",
+  };
 
   function normalizeTargetState(plan = {}, bounds = null) {
     const target = pointFrom(plan.target, bounds);
@@ -63,10 +68,30 @@
 
   function statusText(plan = {}) {
     const active = plan.activeMotionTarget;
-    if (!active && plan.correspondenceAnchor) return "B correspondence is saved but not driving motion.";
-    if (active?.source === "manual" && plan.correspondenceAnchor) return "Manual target is active. B correspondence is saved but not driving motion.";
-    if (active?.source) return `Active motion target: ${active.source}`;
-    return "No active motion target.";
+    if (!active && plan.correspondenceAnchor) return "B컷 참조 위치는 저장되어 있지만 현재 모션에는 사용하지 않습니다.";
+    if (active?.source === "manual" && plan.correspondenceAnchor) return "현재 움직임 목표는 수동 목표입니다. B컷 참조 위치는 저장되어 있지만 현재 모션에는 사용하지 않습니다.";
+    if (active?.source) return `현재 움직임 목표: ${SOURCE_LABELS[active.source] || active.source}`;
+    return "현재 움직임 목표가 없습니다.";
+  }
+
+  function activeMotionTargetDebug(plan = {}) {
+    const active = targetObject(plan.activeMotionTarget, plan.activeMotionTarget?.source);
+    if (!active) return {
+      source: null,
+      point: null,
+      coordinateSpace: null,
+      bReferenceUsedForMotion: false,
+    };
+    return {
+      source: active.source,
+      point: active.point,
+      coordinateSpace: active.coordinateSpace,
+      bReferenceUsedForMotion: active.source === "correspondence",
+    };
+  }
+
+  function generatedTarget(point) {
+    return targetObject({ point, source: "generated" }, "generated");
   }
 
   function trajectorySamples(beats = [], focusKey = "hip") {
@@ -127,6 +152,7 @@
 
   function normalizeSource(source, target) {
     if (!target) return null;
+    if (source === "planner-default") return "generated";
     return SOURCES.has(source) ? String(source) : "manual";
   }
 
@@ -137,6 +163,8 @@
     correspondenceTargetPatch,
     clearManualTargetPatch,
     statusText,
+    activeMotionTargetDebug,
+    generatedTarget,
     trajectorySamples,
     isReferenceTarget,
   };

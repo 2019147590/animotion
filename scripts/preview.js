@@ -5,7 +5,6 @@
   const state = Animotion.state;
   const geometry = Animotion.geometry;
   const { pathFromShape } = Animotion.path;
-
   function drawPreview(now, drawEmpty, drawPivot) {
     Animotion.view.resizeCanvas(previewCanvas);
     const dpr = window.devicePixelRatio || 1;
@@ -41,7 +40,6 @@
     Animotion.hiddenCompletionGuideEditor?.drawOverlay?.(previewCtx, view);
     previewCtx.restore();
   }
-
   function drawBackground(view, w, h, cutscene) {
     previewCtx.fillStyle = "#f7f0df";
     previewCtx.fillRect(0, 0, w, h);
@@ -56,7 +54,6 @@
     }
     previewCtx.globalAlpha = 1;
   }
-
   function drawSourcePanel(view, cutscene, baseAlpha) {
     const transform = sourceTransformFor(cutscene);
     const alpha = baseAlpha * (cutscene.active && cutscene.bridge.sourceMotionEnabled ? cutscene.values.sourceAlpha : 1);
@@ -64,7 +61,6 @@
     if (cutscene.active && cutscene.bridge.sourceMotionEnabled) drawSourcePanelGhosts(image, view, cutscene, baseAlpha);
     Animotion.cutsceneEffects.drawPanelImage(previewCtx, image, view, alpha, transform);
   }
-
   function drawSourcePanelGhosts(image, view, cutscene, baseAlpha) {
     const values = cutscene.values;
     if (values.launch <= 0.02 || values.sourceAlpha <= 0.02) return;
@@ -81,7 +77,6 @@
       Animotion.cutsceneEffects.drawPanelImage(previewCtx, image, view, alpha, transform);
     }
   }
-
   function sourcePanelImage() {
     if (Animotion.panelEditor) {
       const plate = Animotion.panelEditor.createPanelCanvas("source", { removeCharacter: state.separateCharacter });
@@ -101,7 +96,6 @@
     ctx.globalCompositeOperation = "source-over";
     return plate;
   }
-
   function erasePartsFromPanel(plate) {
     if (!plate || !state.parts.length) return;
     const crop = Animotion.panelEditor.setupFor("source").crop || { x: 0, y: 0 };
@@ -112,11 +106,9 @@
     }
     ctx.globalCompositeOperation = "source-over";
   }
-
   function impactPanelImage() {
     return Animotion.panelEditor?.createPanelCanvas("impact") || state.nextImage;
   }
-
   function drawParts(view, now, cutscene) {
     const t = state.running ? (now - state.startTime) / 1000 : state.pausedTime;
     syncTimelineFrame(t);
@@ -132,7 +124,6 @@
       : null;
     return matrixCache;
   }
-
   function drawGhostParts(view, now, cutscene) {
     if (!cutscene.active || cutscene.values.ghostAlpha <= 0.01) return;
     const t = state.running ? (now - state.startTime) / 1000 : state.pausedTime;
@@ -141,7 +132,6 @@
     for (const delay of [0.12, 0.07]) drawGhostPass(t - delay, cutscene.values.ghostAlpha);
     previewCtx.restore();
   }
-
   function drawGhostPass(t, alpha) {
     if (t < 0) return;
     const matrixCache = new Map();
@@ -149,14 +139,12 @@
       if (!part.hidden) drawPart(part, t, matrixCache, state.previewView, alpha);
     }
   }
-
   function syncTimelineFrame(t) {
     if (!state.running || !timelineLikeMode()) return;
     state.currentFrame = currentMotionFrame(t);
     els.currentFrame.value = String(state.currentFrame);
     els.frameLabel.textContent = String(state.currentFrame);
   }
-
   function drawPart(part, t, matrixCache, view, alpha = 1) {
     const matrix = worldMatrix(part, t, matrixCache);
     previewCtx.save();
@@ -170,27 +158,32 @@
     }
     previewCtx.restore();
   }
-
   function drawSelectedRigPoints(view, now, matrixCache, drawPivot) {
     const part = Animotion.parts.selectedPart();
     if (!editingLayerVisible() || !part) return;
+    state.renderedPointDebug = [];
     const t = state.running ? (now - state.startTime) / 1000 : state.pausedTime;
     const matrix = worldMatrix(part, t, matrixCache);
-    drawRigPoint(part, part.pivot, matrix, view, drawPivot, "anchor");
-    drawRigPoint(part, displayedJoint(part), matrix, view, drawPivot, "joint");
+    for (const point of rigPointsFor(part)) drawRigPoint(part, point.localPoint, matrix, view, drawPivot, point.role);
+    const root = Animotion.rigConnection?.bodyRootPoint?.(state.parts);
+    if (root) drawRigPoint(root.part, root.localPoint, worldMatrix(root.part, t, matrixCache), view, drawPivot, root.role);
   }
-
+  function rigPointsFor(part) {
+    const parent = state.parts.find((candidate) => candidate.id === part.parentId);
+    return (Animotion.rigConnection?.previewPoints?.(part, parent) || [
+      { role: "rotationPivot", localPoint: part.pivot },
+      { role: "joint", localPoint: displayedJoint(part) },
+    ]).map((point) => point.role === "joint" ? { ...point, localPoint: displayedJoint(part) } : point);
+  }
   function displayedJoint(part) {
     if (!timelineLikeMode()) return part.joint;
     const motion = displayedJointMotion(part);
     return { x: part.joint.x + motion.jointX, y: part.joint.y + motion.jointY };
   }
-
   function displayedJointMotion(part) {
     if (state.running) return Animotion.timeline.evaluatePartAtFrame(part, state.currentFrame);
     return Animotion.motionModel.normalizeCustomMotion(part.customMotion);
   }
-
   function cutsceneValues(now) {
     if (els.motionTemplate.value !== "cutscene") return { active: false, shake: 0 };
     const bridge = state.cutsceneBridge || Animotion.cutsceneModel.createBridge(state.parts, state.selectedPartId);
@@ -198,14 +191,12 @@
     const values = Animotion.cutsceneModel.bridgeValues(t, bridge, Animotion.config.timelineFps);
     return { active: true, bridge, values, shake: values.shake };
   }
-
   function drawCutsceneEffects(view, w, h, cutscene) {
     if (!cutscene.active) return;
     const size = { w, h };
     Animotion.cutsceneEffects.drawSpeedLines(previewCtx, size, cutscene.bridge.effectDirection, cutscene.values.speedPower);
     Animotion.cutsceneEffects.drawInkField(previewCtx, size, cutscene.bridge.effectDirection, cutscene.values.speedPower);
   }
-
   function drawImpactLayers(view, w, h, cutscene) {
     if (!cutscene.active) return;
     const size = { w, h };
@@ -225,13 +216,11 @@
       rotation: values.sourceRotation,
     };
   }
-
   function sourceTransformFor(cutscene) {
     if (cutscene.active && cutscene.bridge.sourceMotionEnabled) return sourceTransition(cutscene);
     const bridge = Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge);
     return { x: bridge.sourceX, y: bridge.sourceY, scale: bridge.sourceScale };
   }
-
   function impactTransition(cutscene) {
     const values = cutscene.values;
     return {
@@ -241,7 +230,6 @@
       rotation: values.impactRotation,
     };
   }
-
   function currentMotionFrame(t) {
     if (els.motionTemplate.value === "cutscene") {
       const bridge = state.cutsceneBridge || Animotion.cutsceneModel.createBridge(state.parts, state.selectedPartId);
@@ -249,21 +237,34 @@
     }
     return Animotion.timeline.frameFromTime(t, Animotion.config.timelineFrames, Animotion.config.timelineFps);
   }
-
   function timelineLikeMode() {
     return els.motionTemplate.value === "keyframes" || els.motionTemplate.value === "cutscene";
   }
-
   function drawRigPoint(part, localPoint, matrix, view, drawPivot, role) {
     const point = new DOMPoint(part.rect.x + localPoint.x, part.rect.y + localPoint.y).matrixTransform(matrix);
     const screen = Animotion.previewTransform.imagePointToScreen(point, view, state.previewSourceFrame, state.previewSourceTransform);
+    recordPointDebug(part, localPoint, role, screen);
     drawPivot(previewCtx, { x: 0, y: 0, scale: 1 }, screen.x, screen.y, true, role);
+    if (state.showPointDebugLabels) drawPointDebugLabel(screen, `${part.id}:${role}`);
   }
-
+  function recordPointDebug(part, localPoint, role, screen) {
+    state.renderedPointDebug.push({
+      pointId: `${part.id}:${role}`,
+      pointKind: role,
+      coordinateSpace: "part-local",
+      stored: { x: localPoint.x, y: localPoint.y },
+      rendered: screen,
+    });
+  }
+  function drawPointDebugLabel(screen, label) {
+    previewCtx.save();
+    previewCtx.font = "700 11px Aptos, sans-serif";
+    previewCtx.fillStyle = "#151515";
+    previewCtx.fillText(label, screen.x + 9, screen.y - 8);
+    previewCtx.restore();
+  }
   function sourceScale(view) { return Animotion.previewTransform.sourceScale(view, state.previewSourceFrame, state.previewSourceTransform); }
-
   function applyMatrix(ctx, matrix) { ctx.transform(matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f); }
-
   function worldMatrix(part, t, cache) {
     if (cache.has(part.id)) return cache.get(part.id);
     const local = localMatrix(part, t);
@@ -272,7 +273,6 @@
     cache.set(part.id, matrix);
     return matrix;
   }
-
   function localMatrix(part, t) {
     const transform = Animotion.motion.motionFor(part, t);
     const pivotX = part.rect.x + part.pivot.x;
@@ -284,7 +284,6 @@
       .scale(transform.scaleX, transform.scaleY)
       .translate(-pivotX, -pivotY);
   }
-
   function jointRotation(part, transform) {
     if (!part.joint || (!transform.jointX && !transform.jointY)) return 0;
     const base = { x: part.joint.x - part.pivot.x, y: part.joint.y - part.pivot.y };

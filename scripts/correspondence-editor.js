@@ -13,13 +13,12 @@
     box.innerHTML = controlsMarkup();
     anchor.after(box);
     bindControls();
-    Animotion.dom.previewCanvas.addEventListener("pointerdown", onPreviewPointerDown, true);
   }
 
   function controlsMarkup() {
     return `
       <label>
-        B컷 대응 파츠
+        B컷 참조 파츠
         <select id="correspondenceTargetType">
           <option value="head">머리</option>
           <option value="chest">가슴</option>
@@ -33,10 +32,10 @@
         </select>
       </label>
       <div class="button-row">
-        <button id="saveCorrespondence" type="button">대응 저장</button>
-        <button id="pickImpactAnchor" type="button">B impact 찍기</button>
-        <button id="useCorrespondenceTarget" type="button">Use B correspondence as motion target</button>
-        <button id="clearManualTarget" type="button">Clear manual target</button>
+        <button id="saveCorrespondence" type="button">A/B 대응 정보 저장</button>
+        <button id="pickImpactAnchor" type="button">B컷 참조 위치 찍기</button>
+        <button id="useCorrespondenceTarget" type="button">B컷 참조를 움직임 목표로 사용</button>
+        <button id="clearManualTarget" type="button">수동 움직임 목표 지우기</button>
       </div>
       <label>
         가림 상태
@@ -64,7 +63,7 @@
           <option value="required">필수</option>
         </select>
       </label>
-      <p id="correspondenceStatus" class="hint">A/B 파츠 대응과 B컷 도착/가림 정보를 저장합니다.</p>
+      <p id="correspondenceStatus" class="hint">A/B 대응 정보와 B컷 참조 위치/가림 정보를 저장합니다.</p>
     `;
   }
 
@@ -127,14 +126,14 @@
       return;
     }
     Animotion.motionCommands.setMotionPlan(Animotion.motionTargetState.correspondenceTargetPatch(draft));
-    targetPolicyMessage = "대응 목표를 motion target으로 적용했습니다.";
+    targetPolicyMessage = "B컷 참조 위치를 움직임 목표로 적용했습니다.";
     refresh();
   }
 
   function clearManualTarget() {
     const plan = Animotion.motionCommands.currentMotionPlan();
     Animotion.motionCommands.setMotionPlan(Animotion.motionTargetState.clearManualTargetPatch(plan));
-    targetPolicyMessage = "Manual target cleared.";
+    targetPolicyMessage = "수동 움직임 목표를 지웠습니다.";
     refresh();
   }
 
@@ -147,18 +146,22 @@
     });
   }
 
-  function onPreviewPointerDown(event) {
-    if (!pickMode || !selectedPart() || !Animotion.state.nextImage) return;
+  function hitTarget(event) {
+    if (!pickMode || !selectedPart() || !Animotion.state.nextImage) return null;
     const point = impactPoint(event);
-    if (!point) return;
+    return point ? { label: "B컷 참조 위치", point } : null;
+  }
+
+  function beginDragFromTarget(event, target) {
+    const point = target?.hit?.point || target?.point || impactPoint(event);
+    if (!point) return false;
     saveFromControls({
       impactAnchor: point,
       bImpact: Animotion.correspondenceModel.normalizedPointFromImagePoint(point, Animotion.panelEditor?.imageBounds?.("impact")),
     });
     pickMode = false;
-    event.preventDefault();
-    event.stopImmediatePropagation();
     refresh();
+    return true;
   }
 
   function drawOverlay(ctx, view) {
@@ -219,10 +222,10 @@
   }
 
   function statusText(part, correspondence) {
-    if (!part) return "A컷 파츠를 선택하면 2.5D 대응 데이터를 만들 수 있습니다.";
-    if (!Animotion.state.nextImage) return "B컷을 업로드하면 대응 anchor를 찍을 수 있습니다.";
+    if (!part) return "A컷 파츠를 선택하면 A/B 대응 정보를 만들 수 있습니다.";
+    if (!Animotion.state.nextImage) return "B컷을 업로드하면 B컷 참조 위치를 찍을 수 있습니다.";
     const anchor = currentImpactAnchor(correspondence);
-    const point = anchor ? ` · B ${anchor.x}, ${anchor.y}` : " · B anchor 없음";
+    const point = anchor ? ` · B컷 참조 ${anchor.x}, ${anchor.y}` : " · B컷 참조 위치 없음";
     const target = ` · ${Animotion.motionTargetState?.statusText?.(currentPlan()) || ""}`;
     const policy = targetPolicyMessage ? ` · ${targetPolicyMessage}` : "";
     return `${part.name} -> ${correspondence?.targetPartType || Animotion.correspondenceModel.defaultTargetType(part.type)}${point}${target}${policy}`;
@@ -273,6 +276,6 @@
     return Animotion.motionCommands?.currentMotionPlan?.() || Animotion.motionPlanner.normalizePlan(Animotion.state.motionPlan);
   }
 
-  Animotion.correspondenceEditor = { refreshControls, drawOverlay, impactPoint, impactPointToScreen, compiledCorrespondenceDraft, useAsMotionTarget, clearManualTarget };
+  Animotion.correspondenceEditor = { refreshControls, drawOverlay, impactPoint, impactPointToScreen, compiledCorrespondenceDraft, useAsMotionTarget, clearManualTarget, hitTarget, beginDragFromTarget };
   installControls();
 }

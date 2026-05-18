@@ -8,8 +8,10 @@
     const root = rootPart(parts);
     const rootDelta = beatRootDelta(base, impactBeat(beats));
     const tuning = targetDebug.rootMotionTuning || plan.rootMotionTuning || {};
+    const characterRootDelta = { ...rootDelta, coordinateSpace: "sourceImage" };
     return {
-      rootDelta: { ...rootDelta, coordinateSpace: "sourceImage" },
+      rootDelta: characterRootDelta,
+      characterRootDelta,
       bodyFollowStrength: scope === "limb-only" ? 0 : Number(tuning.bodyFollowStrength ?? 1),
       primaryPartId: primary?.id || null,
       bodyRootPartId: root?.id || null,
@@ -36,6 +38,7 @@
     return {
       motionScope: targetDebug.chosenMotionScope || "limb-only",
       rootDelta,
+      characterRootDelta: rootDelta,
       bodyFollowStrength: targetDebug.bodyFollowStrength ?? 0,
       primaryPartId: bridge.primaryPartId || targetDebug.primaryPartId || null,
       bodyRootPartId: targetDebug.bodyRootPartId || rootPart(parts)?.id || null,
@@ -62,7 +65,7 @@
   }
 
   function receivesRootDelta(part) {
-    return part?.hidden !== true && CHARACTER_TYPES.has(part?.type);
+    return part?.hidden !== true && !part?.parentId && CHARACTER_TYPES.has(part?.type);
   }
 
   function rootPart(parts = []) {

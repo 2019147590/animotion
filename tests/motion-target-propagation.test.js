@@ -124,6 +124,25 @@ test("body-follow mode applies rootDelta to unparented character parts", () => {
   assert.deepEqual({ x: arm.x, y: arm.y }, { x: debug.rootDelta.x, y: debug.rootDelta.y });
 });
 
+test("parented parts inherit root motion through parent connection", () => {
+  const bridge = cutsceneModel.normalizeBridge({ impactFrame: 15 });
+  const parts = [
+    { id: "body", type: "body", rect: { x: 40, y: 20, w: 20, h: 50 }, pivot: { x: 10, y: 25 }, joint: { x: 10, y: 40 } },
+    { id: "head", type: "head", parentId: "body", rect: { x: 38, y: 4, w: 24, h: 20 }, pivot: { x: 12, y: 10 }, joint: { x: 12, y: 16 } },
+    { id: "leg", type: "leg", rect: { x: 67, y: 60, w: 18, h: 45 }, pivot: { x: 2, y: 6 }, joint: { x: 16, y: 40 } },
+  ];
+  const plan = motionPlanner.createPlan(parts, "leg", bridge, { template: "kick", target: { x: 150, y: 70 } });
+  const debug = characterRootMotion.evaluationDebug(partsWithTracks(parts, plan), 15, {
+    ...bridge,
+    primaryPartId: "leg",
+    jointAction: plan.jointAction,
+  });
+  const head = debug.parts.find((part) => part.id === "head");
+  assert.equal(debug.rootDeltaPartIds.includes("body"), true);
+  assert.equal(debug.rootDeltaPartIds.includes("head"), false);
+  assert.deepEqual({ x: head.x, y: head.y }, { x: 0, y: 0 });
+});
+
 test("primary part leads more strongly than torso in kick body-follow mode", () => {
   const bridge = cutsceneModel.normalizeBridge({ impactFrame: 15 });
   const parts = sampleParts();

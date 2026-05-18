@@ -42,13 +42,9 @@
 
   function localPointFromImagePoint(rect, point) {
     return {
-      x: clamp(point.x - rect.x, 0, rect.w),
-      y: clamp(point.y - rect.y, 0, rect.h),
+      x: point.x - rect.x,
+      y: point.y - rect.y,
     };
-  }
-
-  function clamp(value, min, max) {
-    return Math.min(max, Math.max(min, value));
   }
 
   Animotion.rigging = { defaultPivotForPart, defaultJointForPart, localPointFromImagePoint };
