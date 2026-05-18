@@ -88,6 +88,15 @@ Implemented in `scripts/motion-planner.js`, `scripts/motion-anchors.js`, `script
 - Target point, beat handles, anchors, selected outlines, and rig handles are editing references only; they are hidden during playback/export.
 - Motion plan saved/restored through rig JSON as `motionPlan`.
 - Timeline keyframe edits, generated track application, cutscene bridge updates, motion plan updates, anchor regeneration, and trajectory regeneration now go through `scripts/motion-commands.js`.
+- B correspondence anchors, manual motion targets, active motion targets, character root anchors, and trajectory points are separated in state/debug.
+- `activeMotionTarget.source` records whether motion generation is driven by `manual`, `correspondence`, or `generated` input.
+- If a manual target is active, B correspondence is preserved but shown as not driving the current motion. The UI now exposes `Use B correspondence as motion target` and `Clear manual target`.
+- Kick/cutscene bridge motion no longer treats chest/hip/head correspondence as the default attack target. Those anchors are reference/alignment data unless the user explicitly applies them as the active motion target.
+- Motion target debug data exposes raw B target, converted target, current selected part position, computed distance, chosen `motionScope`, root delta, follow strengths, primary part, body/root part, parts receiving root delta, and final evaluated part transforms.
+- `motionScope` supports limb-only, body-follow, and full-character behavior. Full-character mode applies the same character root delta to visible character parts.
+- Character root delta is applied during cutscene motion evaluation so parts without reliable parent linkage still travel coherently with the character group.
+- Root motion tuning fields exist for `bodyFollowStrength`, `maxRootDeltaRatio`, `primaryLeadStrength`, and `secondaryFollowStrength`.
+- Trajectory samples are treated as evaluated path samples by default. Editable anchors/control points are tracked separately from samples.
 
 Important behavior:
 
@@ -105,6 +114,9 @@ Recent commits:
 ff72e63 Add multi-anchor motion planner drafts
 5044e0e Allow dragging generated motion anchors
 5064c57 Add direct motion anchor picking
+fc0c961 Fix motion target body follow propagation
+62ea451 Apply character root delta during cutscene motion
+fcf63a4 Separate motion target semantics
 ```
 
 ### Cutscene Preview Options
@@ -150,6 +162,9 @@ Implemented on `master`.
 - `scripts/motion-drafts.js`: compiles correspondence motion hints into non-destructive 2.5D motion drafts and manages hidden-completion placeholder lifecycle metadata.
 - `scripts/motion-draft-editor.js`: surfaces motion draft visibility/depth/hidden-completion data in the inspector/timeline and provides minimal safe editing controls.
 - `scripts/motion-target-policy.js`: guards correspondence target application so manual motion targets are not overwritten without a future confirm UI.
+- `scripts/motion-target-state.js`: separates correspondence anchors, manual targets, active targets, root anchors, and trajectory sample/control semantics.
+- `scripts/motion-target-debug.js`: computes and exposes source-space target delta, distance, scope, root delta, and follow tuning/debug information.
+- `scripts/character-root-motion.js`: evaluates explicit character root delta and applies it to visible character parts during cutscene preview.
 - `scripts/command-history.js`: bounded command history scaffold with undo/redo stacks.
 - Part inspector and rig-point updates through `partCommands.updatePart` now record old/new patches for Undo/Redo.
 - Panel crop and character-mask updates through `panelCommands.setCrop` and `panelCommands.setCharacterMask` now record old/new patches for Undo/Redo.
@@ -180,6 +195,10 @@ Implemented on `master`.
 - `HIDDEN_COMPLETION_REQUEST.md`: provider-neutral request contract and provider separation rules.
 - `LOCAL_SD_WORKER_CONTRACT.md`: provider-specific Local SD worker endpoint request/response contract.
 - Correspondence target overwrite policy is explicit: no target, correspondence target, and planner-default target can be overwritten; manual target overwrite is blocked until a confirm UI is added.
+- Motion target ownership is explicit: manual targets can override correspondence only when active, and the UI/debug text shows which source is currently driving motion generation.
+- B correspondence can be saved as reference data without silently becoming the attack target. Applying it as the active motion target is an explicit user action.
+- The current body-follow/full-character bridge uses `characterRootDelta` so the A character visibly travels before the B impact snap instead of only twisting selected limbs.
+- Kick/body-follow generation gives the primary part lead motion while torso/root and connected or unparented visible parts receive shared character root movement according to tuning.
 - New image reset, project restore, legacy rig restore, and Lookism preset load clear command history.
 
 Current architecture note:
@@ -209,6 +228,9 @@ Current architecture note:
 - The generated motion is a draft; anchor editing exists, but detailed anchor/keyframe graph tooling is still limited.
 - Target point placement alone does not generate a trajectory; generation is still an explicit user action.
 - Natural connection into B cut is improved by explicit correspondence target application, but motion still remains template/rule based.
+- The previous issue where A only jittered/twisted toward the target is reduced by character root delta propagation. Remaining attack quality work is motion design/timing/readability, not provider/request work.
+- B impact flashing caused by looping the short cutscene preview duration is known and intentionally out of scope for the current motion-target fix.
+- Target semantics are now separated, but visual overlays and tuning controls still need refinement so users can clearly distinguish correspondence anchors, active targets, root anchors, editable control points, and evaluated trajectory samples.
 - Undo/Redo is implemented for part updates and panel crop/mask edits; several command helpers still centralize mutation without command records.
 - `state.project` is synchronized at save/load and command boundaries, but render/edit code still depends on legacy editor state fields.
 
@@ -230,6 +252,9 @@ Current architecture note:
 - `scripts/motion-hints.js`: motion hint normalization and status text for correspondence-derived occlusion/depth/hidden-completion.
 - `scripts/motion-drafts.js`: non-destructive 2.5D motion draft compilation and hidden-completion lifecycle helpers.
 - `scripts/motion-draft-editor.js`: motion draft inspector/timeline controls.
+- `scripts/motion-target-state.js`: active/manual/correspondence target state and trajectory sample/control normalization.
+- `scripts/motion-target-debug.js`: target conversion, distance/scope, root delta, and evaluated transform debug helpers.
+- `scripts/character-root-motion.js`: character root delta evaluation and propagation for cutscene motion.
 - `scripts/hidden-completion-assets.js`: hidden-completion patch asset normalization, guide mesh model, and runtime guide mesh restoration.
 - `scripts/hidden-completion-guide-editor.js`: guide-only patch creation, preview overlay, and guide vertex dragging.
 - `scripts/hidden-completion-request.js`: provider-neutral hidden-completion request builder.
@@ -307,6 +332,8 @@ node tests\session-commands.test.js
 node tests\panel-commands.test.js
 node tests\correspondence-commands.test.js
 node tests\motion-draft-editor.test.js
+node tests\motion-target-propagation.test.js
+node tests\motion-target-state.test.js
 node tests\hidden-completion-roundtrip.test.js
 node tests\hidden-completion-request.test.js
 node tests\hidden-completion-provider.test.js
@@ -321,25 +348,25 @@ $env:PYTHONPATH='src'; python -m unittest discover -s tests
 
 ## Suggested Next Work Unit
 
-Add robust hidden-completion job/result UX and renderer preview integration.
+Refine cutscene attack motion semantics, visual debugging, and root-motion tuning.
 
 Smallest next scope:
 
 ```text
-request/generate starts local provider work
--> UI shows queued / processing / ready / failed state clearly
--> generated texture asset is visible as a preview overlay
--> renderer compositing remains separate from request/provider code
--> failed jobs preserve enough message/provenance for retry
+show correspondence/manual/active/root targets with distinct overlay styles
+-> expose current active target source and motion scope in one clear debug panel
+-> tune bodyFollowStrength / maxRootDeltaRatio / primaryLeadStrength / secondaryFollowStrength from UI
+-> improve kick anticipation, travel, impact timing, and primary-limb lead
+-> keep B impact snap loop timing separate from target/root motion debugging
 ```
 
 Why this is next:
 
-- The API key boundary and local server path are now in place.
-- Generated assets can be written, but user-facing status/preview feedback is still minimal.
-- Renderer compositing should consume generated assets without knowing which provider created them.
+- The character now receives shared root travel, so the remaining issue is readability and authoring semantics.
+- Correspondence, manual target, active target, root anchor, and trajectory sample concepts are separated in state, but the UI still needs stronger visual distinction.
+- Root motion tuning exists in data/debug and should become an explicit authoring surface before adding more motion-generation complexity.
 
-Do not put provider settings into `HiddenCompletionRequestPayload`, call Stability from browser code, add GPU requirements to normal project loading/editing, or start fine-tuning.
+Do not change `HiddenCompletionRequestPayload`, hidden-completion provider contracts, Stability/Local SD provider logic, or B impact snap timing while doing this motion pass.
 
 ## GitHub State
 
@@ -358,12 +385,12 @@ master
 Latest known committed baseline before this handoff update:
 
 ```text
-126ed55 Create hidden completion guide editor
+fcf63a4 Separate motion target semantics
 ```
 
 ## Current Working Tree Notes
 
-As of this handoff update, the hidden-completion request/provider contract work is ready to commit and push on `master`.
+As of this handoff update, the latest motion-target/root-delta work has been committed and pushed on `master`.
 
 Recently completed in the working tree:
 
@@ -396,6 +423,15 @@ Recently completed in the working tree:
 - Server-side Stability image-edit/inpaint adapter with env-only API key handling and mocked tests.
 - Server-side Local Stable Diffusion worker adapter with mocked tests.
 - Local Stable Diffusion worker endpoint contract documentation and validation helpers.
+- Local Node hidden completion provider server and browser local-provider client.
+- Motion target debug tracing for converted B target, target delta, distance, scope, root delta, follow strength, and evaluated transforms.
+- Body-follow/full-character motion scopes with root/body translation keyframes for long targets.
+- Character root delta propagation during cutscene evaluation so visible character parts move coherently even without reliable parent hierarchy.
+- Separate target semantics for `correspondenceAnchor`, `manualMotionTarget`, `activeMotionTarget`, `characterRootAnchor`, and `trajectoryPoints`.
+- UI controls for `Use B correspondence as motion target` and `Clear manual target`.
+- Kick mode avoids using chest/hip/head correspondence as the default attack target unless explicitly applied.
+- Root motion tuning fields for body follow, max root delta, primary lead, and secondary follow.
+- Trajectory sample semantics separated from editable anchors/control points.
 - B impact anchors saved as normalized image coordinates and restored against the current image size.
 - Keyboard history shortcuts: `Ctrl+Z`, `Ctrl+Y`, and `Ctrl+Shift+Z`.
 - Timeline keyframe mutation removed from `scripts/timeline.js`; keyframe writes now stay in `scripts/motion-commands.js`.
@@ -412,5 +448,9 @@ Recently completed in the working tree:
   - `tests/hidden-completion-request.test.js`
   - `tests/hidden-completion-provider.test.js`
   - `tests/hidden-completion-stability-provider.test.js`
+  - `tests/hidden-completion-provider-server.test.js`
+  - `tests/hidden-completion-client.test.js`
   - `tests/hidden-completion-local-sd-provider.test.js`
+  - `tests/motion-target-propagation.test.js`
+  - `tests/motion-target-state.test.js`
   - `tests/cutscene-options.test.js`
