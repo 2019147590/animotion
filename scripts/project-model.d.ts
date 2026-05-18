@@ -213,8 +213,11 @@ export type MotionDraftHiddenCompletion = {
   needed: boolean;
   status: OcclusionMetadata["hiddenCompletion"];
   assetKind: "inpaintedPatch" | string;
-  assetStatus: "none" | "missing" | "ready";
+  assetStatus: "none" | "missing" | "requested" | "ready";
   assetId: string | null;
+  requestId: string | null;
+  requestedAt: string | null;
+  completedAt: string | null;
 };
 
 export type OcclusionMetadata = {

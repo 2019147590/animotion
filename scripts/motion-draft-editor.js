@@ -17,7 +17,6 @@
     renderTimeline(context);
     renderInspector(context);
   }
-
   function activeDraftContext() {
     const action = Animotion.state?.cutsceneBridge?.jointAction;
     if (action?.motionDraft) return { scope: "action-snapshot", draft: Animotion.motionDrafts.normalize(action.motionDraft) };
@@ -25,21 +24,18 @@
     if (plan?.motionDraft) return { scope: "plan", draft: Animotion.motionDrafts.normalize(plan.motionDraft) };
     return null;
   }
-
   function updateVisibilityImpactValue(value) {
     return updateActiveDraft((draft) => ({
       ...draft,
       visibility: updateLastKeyframe(draft.visibility, numberValue(value)),
     }));
   }
-
   function updateZOrderImpactValue(value) {
     return updateActiveDraft((draft) => ({
       ...draft,
       zOrder: updateLastKeyframe(draft.zOrder, String(value || "current")),
     }));
   }
-
   function updateHiddenCompletion(patch = {}) {
     return updateActiveDraft((draft) => ({
       ...draft,
@@ -48,6 +44,20 @@
         ...patch,
       },
     }));
+  }
+  function requestHiddenCompletion() {
+    return updateActiveDraft((draft) => Animotion.motionDrafts.requestHiddenCompletion(draft, {
+      requestedAt: new Date().toISOString(),
+    }));
+  }
+  function markHiddenCompletionReady(assetId = currentAssetId()) {
+    if (!assetId) return null;
+    return updateActiveDraft((draft) => Animotion.motionDrafts.markHiddenCompletionReady(draft, assetId, {
+      completedAt: new Date().toISOString(),
+    }));
+  }
+  function removeHiddenCompletionAsset() {
+    return updateActiveDraft((draft) => Animotion.motionDrafts.removeHiddenCompletionAsset(draft));
   }
 
   function draftRows(context = activeDraftContext()) {
@@ -77,7 +87,6 @@
     if (!action) return;
     Animotion.motionCommands.updateJointAction({ ...action, motionDraft: { ...draft, draftScope: "action-snapshot" } });
   }
-
   function updateLastKeyframe(track, value) {
     if (!track?.keyframes?.length) return track;
     const keyframes = track.keyframes.map((keyframe, index) => (
@@ -85,7 +94,6 @@
     ));
     return { ...track, keyframes };
   }
-
   function renderTimeline(context) {
     const box = document.querySelector("#motionDraftTimeline");
     if (!box) return;
@@ -96,7 +104,6 @@
     setInputValue("#motionDraftVisibilityValue", lastValue(context.draft.visibility, 1));
     setInputValue("#motionDraftZOrderValue", lastValue(context.draft.zOrder, "current"));
   }
-
   function renderInspector(context) {
     const box = document.querySelector("#motionDraftInspector");
     if (!box) return;
@@ -107,8 +114,10 @@
     setInputValue("#motionDraftHiddenStatus", context.draft.hiddenCompletion.status);
     setInputValue("#motionDraftAssetStatus", context.draft.hiddenCompletion.assetStatus);
     setInputValue("#motionDraftAssetId", context.draft.hiddenCompletion.assetId || "");
+    setButtonState("#requestHiddenCompletion", context.draft.hiddenCompletion.assetStatus === "requested");
+    setButtonState("#markHiddenCompletionReady", !currentAssetId());
+    setButtonState("#removeHiddenCompletionAsset", context.draft.hiddenCompletion.assetStatus !== "ready");
   }
-
   function timelineMarkup() {
     const box = document.createElement("div");
     box.id = "motionDraftTimeline";
@@ -135,7 +144,6 @@
     `;
     return box;
   }
-
   function inspectorMarkup() {
     const box = document.createElement("div");
     box.id = "motionDraftInspector";
@@ -156,6 +164,7 @@
         <select id="motionDraftAssetStatus">
           <option value="none">none</option>
           <option value="missing">missing</option>
+          <option value="requested">requested</option>
           <option value="ready">ready</option>
         </select>
       </label>
@@ -163,18 +172,24 @@
         asset id
         <input id="motionDraftAssetId" type="text" placeholder="asset id" />
       </label>
+      <div class="button-row">
+        <button id="requestHiddenCompletion" type="button">request/generate</button>
+        <button id="markHiddenCompletionReady" type="button">mark ready / replace</button>
+      </div>
+      <button id="removeHiddenCompletionAsset" type="button">remove ready asset</button>
     `;
     return box;
   }
-
   function bindControls() {
     bindInput("#motionDraftVisibilityValue", (event) => updateVisibilityImpactValue(event.target.value));
     bindInput("#motionDraftZOrderValue", (event) => updateZOrderImpactValue(event.target.value));
     bindInput("#motionDraftHiddenStatus", (event) => updateHiddenCompletion({ status: event.target.value }));
     bindInput("#motionDraftAssetStatus", (event) => updateHiddenCompletion({ assetStatus: event.target.value }));
-    bindInput("#motionDraftAssetId", (event) => updateHiddenCompletion({ assetId: event.target.value }));
+    bindInput("#motionDraftAssetId", (event) => setButtonState("#markHiddenCompletionReady", !event.target.value));
+    bindClick("#requestHiddenCompletion", requestHiddenCompletion);
+    bindClick("#markHiddenCompletionReady", () => markHiddenCompletionReady());
+    bindClick("#removeHiddenCompletionAsset", removeHiddenCompletionAsset);
   }
-
   function bindInput(selector, handler) {
     const element = document.querySelector(selector);
     if (element && !element.dataset.motionDraftBound) {
@@ -182,7 +197,13 @@
       element.dataset.motionDraftBound = "true";
     }
   }
-
+  function bindClick(selector, handler) {
+    const element = document.querySelector(selector);
+    if (element && !element.dataset.motionDraftBound) {
+      element.addEventListener("click", handler);
+      element.dataset.motionDraftBound = "true";
+    }
+  }
   function selectedPartMatches(draft) {
     const selected = Animotion.parts?.selectedPart?.() || null;
     return !draft.partId || !selected || selected.id === draft.partId;
@@ -194,19 +215,16 @@
     row.replaceChildren(textSpan(label), textStrong(value || "-"));
     return row;
   }
-
   function textSpan(value) {
     const span = document.createElement("span");
     span.textContent = value;
     return span;
   }
-
   function textStrong(value) {
     const strong = document.createElement("strong");
     strong.textContent = value;
     return strong;
   }
-
   function sourceLabel(draft) {
     return [draft.source, draft.sourceCorrespondenceId, draft.sourceTargetId].filter(Boolean).join(" · ");
   }
@@ -215,7 +233,6 @@
     if (!track?.keyframes?.length) return "none";
     return track.keyframes.map((keyframe) => `${keyframe.frame}:${keyframe.value}`).join(", ");
   }
-
   function hiddenLabel(hidden) {
     if (!hidden?.needed) return "none";
     return `${hidden.status} · ${hidden.assetStatus}${hidden.assetId ? ` · ${hidden.assetId}` : ""}`;
@@ -229,30 +246,27 @@
     const element = document.querySelector(selector);
     if (element) element.textContent = value;
   }
-
   function setInputValue(selector, value) {
     const element = document.querySelector(selector);
     if (element) element.value = String(value);
+  }
+  function setButtonState(selector, disabled) {
+    const element = document.querySelector(selector);
+    if (element) element.disabled = disabled;
+  }
+  function currentAssetId() {
+    return document.querySelector("#motionDraftAssetId")?.value || "";
   }
 
   function numberValue(value) {
     const number = Number(value);
     return Number.isFinite(number) ? Math.min(1, Math.max(0, number)) : 1;
   }
-
   function refresh() {
     Animotion.ui?.refreshUi?.();
   }
 
-  Animotion.motionDraftEditor = {
-    installControls,
-    refreshControls,
-    activeDraftContext,
-    updateVisibilityImpactValue,
-    updateZOrderImpactValue,
-    updateHiddenCompletion,
-    draftRows,
-  };
+  Animotion.motionDraftEditor = { installControls, refreshControls, activeDraftContext, updateVisibilityImpactValue, updateZOrderImpactValue, updateHiddenCompletion, requestHiddenCompletion, markHiddenCompletionReady, removeHiddenCompletionAsset, draftRows };
   installControls();
 
   if (typeof module !== "undefined") module.exports = Animotion.motionDraftEditor;

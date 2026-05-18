@@ -77,6 +77,62 @@ test("motion draft editor edits action snapshots without touching the plan draft
   assert.equal(Animotion.state.motionPlan.motionDraft.hiddenCompletion.assetStatus, "missing");
 });
 
+test("motion draft hidden completion follows request ready replace remove lifecycle", () => {
+  const Animotion = loadAnimotion();
+  const draft = Animotion.motionDrafts.compileFromHints({
+    source: "correspondence",
+    hiddenCompletion: "required",
+  }, { partId: "leg-a" });
+  const requested = Animotion.motionDrafts.requestHiddenCompletion(draft, {
+    requestId: "request-1",
+    requestedAt: "2026-05-18T00:00:00+09:00",
+  });
+  assert.equal(requested.hiddenCompletion.assetStatus, "requested");
+  assert.equal(requested.hiddenCompletion.assetId, null);
+  assert.equal(requested.hiddenCompletion.requestedAt, "2026-05-17T15:00:00.000Z");
+  const ready = Animotion.motionDrafts.markHiddenCompletionReady(requested, "asset-hidden-leg", {
+    completedAt: "2026-05-18T01:00:00+09:00",
+  });
+  assert.equal(ready.hiddenCompletion.assetStatus, "ready");
+  assert.equal(ready.hiddenCompletion.assetId, "asset-hidden-leg");
+  assert.equal(ready.hiddenCompletion.completedAt, "2026-05-17T16:00:00.000Z");
+  const replaced = Animotion.motionDrafts.markHiddenCompletionReady(ready, "asset-hidden-leg-v2");
+  assert.equal(replaced.hiddenCompletion.assetId, "asset-hidden-leg-v2");
+  const removed = Animotion.motionDrafts.removeHiddenCompletionAsset(replaced);
+  assert.equal(removed.hiddenCompletion.assetStatus, "missing");
+  assert.equal(removed.hiddenCompletion.assetId, null);
+});
+
+test("motion draft ready status requires an asset id", () => {
+  const Animotion = loadAnimotion();
+  const draft = Animotion.motionDrafts.compileFromHints({
+    source: "correspondence",
+    hiddenCompletion: "required",
+  }, { partId: "leg-a" });
+  const normalized = Animotion.motionDrafts.normalize({
+    ...draft,
+    hiddenCompletion: { ...draft.hiddenCompletion, assetStatus: "ready", assetId: "" },
+  });
+  assert.equal(normalized.hiddenCompletion.assetStatus, "missing");
+  assert.equal(normalized.hiddenCompletion.assetId, null);
+});
+
+test("motion draft editor lifecycle buttons update the active snapshot", () => {
+  const Animotion = loadAnimotion();
+  const planDraft = Animotion.motionDrafts.compileFromHints({
+    source: "correspondence",
+    hiddenCompletion: "required",
+  }, { partId: "leg-a" });
+  Animotion.state.cutsceneBridge = { jointAction: { motionDraft: Animotion.motionDrafts.snapshot(planDraft) } };
+  const requested = Animotion.motionDraftEditor.requestHiddenCompletion();
+  assert.equal(requested.hiddenCompletion.assetStatus, "requested");
+  const ready = Animotion.motionDraftEditor.markHiddenCompletionReady("asset-hidden-leg");
+  assert.equal(ready.hiddenCompletion.assetStatus, "ready");
+  assert.equal(ready.hiddenCompletion.assetId, "asset-hidden-leg");
+  const removed = Animotion.motionDraftEditor.removeHiddenCompletionAsset();
+  assert.equal(removed.hiddenCompletion.assetStatus, "missing");
+});
+
 test("motion draft editor is loaded after ui refresh hooks are available", () => {
   const bootstrap = fs.readFileSync("scripts/bootstrap.js", "utf8");
   assert.equal(bootstrap.indexOf('"ui"') < bootstrap.indexOf('"motion-draft-editor"'), true);
