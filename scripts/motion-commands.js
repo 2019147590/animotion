@@ -41,6 +41,8 @@
       anchors: result.anchors,
       motionScope: result.motionScope,
       targetDebug: result.targetDebug,
+      activeMotionTarget: result.activeMotionTarget,
+      trajectoryPoints: result.trajectoryPoints,
     });
     applyGeneratedTracks(result.partTracks);
     syncPartPoseToFrame(state.selectedPartId, state.currentFrame);

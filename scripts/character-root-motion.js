@@ -7,9 +7,10 @@
     const scope = targetDebug.chosenMotionScope || plan.motionScope || "body-follow";
     const root = rootPart(parts);
     const rootDelta = beatRootDelta(base, impactBeat(beats));
+    const tuning = targetDebug.rootMotionTuning || plan.rootMotionTuning || {};
     return {
       rootDelta: { ...rootDelta, coordinateSpace: "sourceImage" },
-      bodyFollowStrength: scope === "limb-only" ? 0 : 1,
+      bodyFollowStrength: scope === "limb-only" ? 0 : Number(tuning.bodyFollowStrength ?? 1),
       primaryPartId: primary?.id || null,
       bodyRootPartId: root?.id || null,
       rootDeltaPartIds: rootDeltaPartIds(parts, scope),
@@ -19,6 +20,7 @@
   function applyToTransform(transform, part, context = {}) {
     const scope = context.targetDebug?.chosenMotionScope || "limb-only";
     if (scope === "limb-only" || !receivesRootDelta(part)) return transform;
+    if (part.id === context.targetDebug?.primaryPartId && (part.type === "body" || part.type === "spine")) return transform;
     const rootDelta = context.rootDelta || rootDeltaForFrame(context.parts, context.frame);
     const desired = scaled(rootDelta, context.targetDebug?.bodyFollowStrength ?? 1);
     return {

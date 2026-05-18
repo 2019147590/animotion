@@ -51,7 +51,8 @@
     if (!editingLayerVisible()) return;
     const action = cutscene?.bridge?.jointAction;
     const focusKey = action?.focusKey || "hip";
-    const points = focusPoints(action, focusKey);
+    const samples = trajectorySamples(action, focusKey);
+    const points = samples.map((sample) => sample.point);
     if (points.length >= 2 && cutscene?.active) drawTrajectory(ctx, view, points, cutscene.values.n);
     drawBeatHandles(ctx, view, action, focusKey);
     drawActionAnchors(ctx, view, action);
@@ -196,8 +197,10 @@
     return Animotion.motionCommands?.currentMotionPlan?.() || Animotion.motionPlanner.normalizePlan(Animotion.state.motionPlan);
   }
 
-  function focusPoints(action, focusKey) {
-    return (action?.beats || []).map((beat) => beat.pose?.[focusKey]).filter(Boolean);
+  function trajectorySamples(action, focusKey) {
+    return Animotion.motionTargetState?.trajectorySamples?.(action?.beats || [], focusKey)
+      || (action?.beats || []).map((beat) => beat.pose?.[focusKey]).filter(Boolean)
+        .map((point, index) => ({ id: `sample-${index}`, kind: "sample", editable: false, point: pointFrom(point) }));
   }
 
   function drawTrajectory(ctx, view, points, progress) {
@@ -286,7 +289,7 @@
     Animotion.ui?.refreshUi?.();
   }
 
-  Animotion.trajectoryEditor = { drawOverlay, editBeatPoint, editAnchorPoint };
+  Animotion.trajectoryEditor = { drawOverlay, editBeatPoint, editAnchorPoint, trajectorySamples };
   install();
 
   if (typeof module !== "undefined") module.exports = Animotion.trajectoryEditor;

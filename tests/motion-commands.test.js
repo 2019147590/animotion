@@ -20,6 +20,7 @@ function loadAnimotion() {
     "scripts/geometry.js",
     "scripts/motion-model.js",
     "scripts/timeline.js",
+    "scripts/motion-target-state.js",
     "scripts/motion-target-debug.js",
     "scripts/cutscene-model.js",
     "scripts/motion-planner.js",

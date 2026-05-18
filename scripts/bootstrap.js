@@ -23,6 +23,7 @@
     "motion-hints",
     "motion-drafts",
     "motion-target-policy",
+    "motion-target-state",
     "motion-target-debug",
     "character-root-motion",
     "joint-coordinates",

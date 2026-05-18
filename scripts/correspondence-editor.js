@@ -35,7 +35,8 @@
       <div class="button-row">
         <button id="saveCorrespondence" type="button">대응 저장</button>
         <button id="pickImpactAnchor" type="button">B impact 찍기</button>
-        <button id="useCorrespondenceTarget" type="button">motion 목표로 사용</button>
+        <button id="useCorrespondenceTarget" type="button">Use B correspondence as motion target</button>
+        <button id="clearManualTarget" type="button">Clear manual target</button>
       </div>
       <label>
         가림 상태
@@ -71,6 +72,7 @@
     refs().save.addEventListener("click", saveFromControls);
     refs().pick.addEventListener("click", togglePickMode);
     refs().useTarget.addEventListener("click", useAsMotionTarget);
+    refs().clearManual.addEventListener("click", clearManualTarget);
   }
 
   function refreshControls() {
@@ -85,6 +87,7 @@
     ui.save.disabled = !part || !Animotion.state.nextImage;
     ui.pick.disabled = !part || !Animotion.state.nextImage;
     ui.useTarget.disabled = !compiledCorrespondenceDraft();
+    ui.clearManual.disabled = currentPlan().activeMotionTarget?.source !== "manual";
     ui.pick.classList.toggle("active", pickMode);
     ui.status.textContent = statusText(part, correspondence);
   }
@@ -101,6 +104,8 @@
         hiddenCompletion: ui.hidden.value,
       },
     });
+    const draft = compiledCorrespondenceDraft();
+    if (draft) Animotion.motionCommands.setMotionPlan(Animotion.motionTargetState.correspondenceAnchorPatch(draft));
     refresh();
     return correspondence;
   }
@@ -115,26 +120,21 @@
   function useAsMotionTarget() {
     const draft = compiledCorrespondenceDraft();
     if (!draft) return;
-    const policy = Animotion.motionTargetPolicy.correspondenceApplyPolicy(Animotion.motionCommands.currentMotionPlan(), draft);
+    const policy = Animotion.motionTargetPolicy.correspondenceApplyPolicy(Animotion.motionCommands.currentMotionPlan(), draft, { explicit: true });
     if (!policy.allowed) {
       targetPolicyMessage = policy.message;
       refresh();
       return;
     }
-    Animotion.motionCommands.setMotionPlan({
-      target: draft.target,
-      anchors: draft.anchors,
-      targetMode: false,
-      motionHints: draft.motionHints,
-      targetDebug: draft.targetDebug,
-      targetSource: {
-        type: "correspondence",
-        correspondenceId: draft.correspondenceId,
-        targetPartType: draft.targetPartType,
-        coordinateSpace: draft.targetCoordinateSpace,
-      },
-    });
+    Animotion.motionCommands.setMotionPlan(Animotion.motionTargetState.correspondenceTargetPatch(draft));
     targetPolicyMessage = "대응 목표를 motion target으로 적용했습니다.";
+    refresh();
+  }
+
+  function clearManualTarget() {
+    const plan = Animotion.motionCommands.currentMotionPlan();
+    Animotion.motionCommands.setMotionPlan(Animotion.motionTargetState.clearManualTargetPatch(plan));
+    targetPolicyMessage = "Manual target cleared.";
     refresh();
   }
 
@@ -223,8 +223,9 @@
     if (!Animotion.state.nextImage) return "B컷을 업로드하면 대응 anchor를 찍을 수 있습니다.";
     const anchor = currentImpactAnchor(correspondence);
     const point = anchor ? ` · B ${anchor.x}, ${anchor.y}` : " · B anchor 없음";
+    const target = ` · ${Animotion.motionTargetState?.statusText?.(currentPlan()) || ""}`;
     const policy = targetPolicyMessage ? ` · ${targetPolicyMessage}` : "";
-    return `${part.name} -> ${correspondence?.targetPartType || Animotion.correspondenceModel.defaultTargetType(part.type)}${point}${policy}`;
+    return `${part.name} -> ${correspondence?.targetPartType || Animotion.correspondenceModel.defaultTargetType(part.type)}${point}${target}${policy}`;
   }
 
   function selectedPart() {
@@ -244,6 +245,7 @@
       save: document.querySelector("#saveCorrespondence"),
       pick: document.querySelector("#pickImpactAnchor"),
       useTarget: document.querySelector("#useCorrespondenceTarget"),
+      clearManual: document.querySelector("#clearManualTarget"),
       occlusion: document.querySelector("#correspondenceOcclusion"),
       depth: document.querySelector("#correspondenceDepth"),
       hidden: document.querySelector("#correspondenceHiddenCompletion"),
@@ -267,6 +269,10 @@
     Animotion.ui?.refreshUi?.();
   }
 
-  Animotion.correspondenceEditor = { refreshControls, drawOverlay, impactPoint, impactPointToScreen, compiledCorrespondenceDraft };
+  function currentPlan() {
+    return Animotion.motionCommands?.currentMotionPlan?.() || Animotion.motionPlanner.normalizePlan(Animotion.state.motionPlan);
+  }
+
+  Animotion.correspondenceEditor = { refreshControls, drawOverlay, impactPoint, impactPointToScreen, compiledCorrespondenceDraft, useAsMotionTarget, clearManualTarget };
   installControls();
 }

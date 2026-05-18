@@ -13,6 +13,15 @@
     return JSON.parse(JSON.stringify(debug));
   }
 
+  function normalizeRootMotionTuning(tuning = {}) {
+    return {
+      bodyFollowStrength: numberInRange(tuning.bodyFollowStrength, 0, 1, 1),
+      maxRootDeltaRatio: numberInRange(tuning.maxRootDeltaRatio, 0.05, 2, 0.55),
+      primaryLeadStrength: numberInRange(tuning.primaryLeadStrength, 0, 2, 1),
+      secondaryFollowStrength: numberInRange(tuning.secondaryFollowStrength, 0, 1, 1),
+    };
+  }
+
   function analyzeTarget(plan = {}, base = {}, active = {}, target = {}) {
     const current = pointFromArray(base[active.end] || base.head);
     const root = pointFromArray(base[active.root] || base.hip);
@@ -29,8 +38,15 @@
       distanceThreshold: roundNumber(threshold),
       requestedMotionScope: requested,
       chosenMotionScope: chosenMotionScope(requested, distanceValue, threshold),
+      rootMotionTuning: normalizeRootMotionTuning(plan.rootMotionTuning),
       coordinateSpace: "sourceImage",
     };
+  }
+
+  function primaryLeadTarget(plan = {}, startPoint, target = {}) {
+    const strength = normalizeRootMotionTuning(plan.rootMotionTuning).primaryLeadStrength;
+    const start = pointFromArray(startPoint);
+    return { x: Math.round(start.x + (target.x - start.x) * strength), y: Math.round(start.y + (target.y - start.y) * strength) };
   }
 
   function chosenMotionScope(scope, distanceValue, threshold) {
@@ -54,7 +70,12 @@
     return Math.round(value * 100) / 100;
   }
 
-  Animotion.motionTargetDebug = { normalizeMotionScope, normalizeTargetDebug, analyzeTarget };
+  function numberInRange(value, min, max, fallback) {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+  }
+
+  Animotion.motionTargetDebug = { normalizeMotionScope, normalizeTargetDebug, normalizeRootMotionTuning, analyzeTarget, primaryLeadTarget };
 
   if (typeof module !== "undefined") module.exports = Animotion.motionTargetDebug;
 }

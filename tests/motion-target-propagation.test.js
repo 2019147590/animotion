@@ -5,6 +5,7 @@ require("../scripts/timeline.js");
 require("../scripts/coordinate-spaces.js");
 require("../scripts/motion-hints.js");
 require("../scripts/motion-drafts.js");
+require("../scripts/motion-target-state.js");
 require("../scripts/motion-target-debug.js");
 const characterRootMotion = require("../scripts/character-root-motion.js");
 require("../scripts/pose-assist.js");

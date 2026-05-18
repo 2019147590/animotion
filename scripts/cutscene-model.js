@@ -138,6 +138,8 @@
       anchors: Animotion.motionAnchors?.normalizeAnchors?.(action.anchors, options) || [],
       beats: action.beats.map((beat) => normalizeBeat(beat, options)).filter(Boolean),
       ...(action.targetDebug ? { targetDebug: clonePlain(action.targetDebug) } : {}),
+      ...(action.activeMotionTarget ? { activeMotionTarget: clonePlain(action.activeMotionTarget) } : {}),
+      ...(action.trajectoryPoints ? { trajectoryPoints: clonePlain(action.trajectoryPoints) } : {}),
       ...(action.motionHints ? { motionHints: Animotion.motionHints?.normalize?.(action.motionHints) || action.motionHints } : {}),
       ...(action.motionDraft ? { motionDraft: Animotion.motionDrafts?.normalize?.(action.motionDraft, { assets: options.assets }) || action.motionDraft } : {}),
     };

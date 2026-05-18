@@ -57,8 +57,8 @@
       primaryAnchor,
       anchor(active.mid, primary?.id, "bendHint", kneeHint(base, active, primaryAnchor.point), false),
       anchor("hip", bodyPartId(parts), "root", add(base.hip, rootShift), false),
-      anchor("chest", bodyPartId(parts), "balance", add(base.chest, { x: rootShift.x * 0.9, y: rootShift.y * 0.8 }), false),
-      followAnchor(parts, "head", base.head, add(base.head, { x: rootShift.x * 0.7, y: rootShift.y * 0.6 }), 1),
+      anchor("chest", bodyPartId(parts), "balance", add(base.chest, scaled(rootShift, 0.9, secondaryFollow(plan))), false),
+      followAnchor(parts, "head", base.head, add(base.head, scaled(rootShift, 0.7, secondaryFollow(plan))), 1),
     ].filter(Boolean);
   }
 
@@ -68,7 +68,7 @@
       primaryAnchor,
       anchor(active.mid, primary?.id, "bendHint", kneeHint(base, active, primaryAnchor.point), false),
       anchor("chest", bodyPartId(parts), "balance", add(base.chest, rootShift), false),
-      followAnchor(parts, "head", base.head, add(base.head, { x: rootShift.x * 0.5, y: rootShift.y * 0.4 }), 1),
+      followAnchor(parts, "head", base.head, add(base.head, scaled(rootShift, 0.5, secondaryFollow(plan))), 1),
     ].filter(Boolean);
   }
 
@@ -115,8 +115,17 @@
     const start = pointFromArray(base[active.end]);
     const root = pointFromArray(base[active.root] || base.hip);
     const limb = Math.max(1, distance(root, start));
-    const ratio = scope === "full-character" ? 0.65 : 0.35;
-    return limitedDelta({ x: target.x - start.x, y: target.y - start.y }, ratio, limb * (scope === "full-character" ? 0.9 : 0.55));
+    const tuning = plan?.rootMotionTuning || plan?.targetDebug?.rootMotionTuning || {};
+    const ratio = (scope === "full-character" ? 0.65 : 0.35) * Number(tuning.bodyFollowStrength ?? 1);
+    return limitedDelta({ x: target.x - start.x, y: target.y - start.y }, ratio, limb * Number(tuning.maxRootDeltaRatio ?? (scope === "full-character" ? 0.9 : 0.55)));
+  }
+
+  function secondaryFollow(plan) {
+    return Number(plan?.rootMotionTuning?.secondaryFollowStrength ?? plan?.targetDebug?.rootMotionTuning?.secondaryFollowStrength ?? 1);
+  }
+
+  function scaled(delta, amount, strength) {
+    return { x: delta.x * amount * strength, y: delta.y * amount * strength };
   }
 
   function limitedDelta(delta, ratio, maxLength) {

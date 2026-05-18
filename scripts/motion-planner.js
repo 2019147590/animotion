@@ -9,6 +9,8 @@
   function normalizePlan(plan = {}, options = {}) {
     const bounds = options.imageBounds || sourceBounds();
     const target = normalizeTarget(plan.target, plan.targetNormalized, bounds);
+    const targetSource = normalizeTargetSource(plan.targetSource, target);
+    const targetState = Animotion.motionTargetState?.normalizeTargetState?.({ ...plan, target, targetSource }, bounds) || {};
     return {
       template: TEMPLATES[plan.template] ? plan.template : "kick",
       target,
@@ -16,8 +18,10 @@
       anchors: Animotion.motionAnchors?.normalizeAnchors?.(plan.anchors, { imageBounds: bounds }) || [],
       targetMode: Boolean(plan.targetMode),
       selectedBeatId: plan.selectedBeatId ? String(plan.selectedBeatId) : null,
-      targetSource: normalizeTargetSource(plan.targetSource, target),
+      targetSource,
+      ...targetState,
       motionScope: Animotion.motionTargetDebug?.normalizeMotionScope?.(plan.motionScope, plan.template) || "body-follow",
+      rootMotionTuning: Animotion.motionTargetDebug?.normalizeRootMotionTuning?.(plan.rootMotionTuning) || null,
       targetDebug: Animotion.motionTargetDebug?.normalizeTargetDebug?.(plan.targetDebug) || null,
       motionHints: Animotion.motionHints?.normalize?.(plan.motionHints) || null,
       motionDraft: Animotion.motionDrafts?.normalize?.(plan.motionDraft, { assets: options.assets }) || Animotion.motionDrafts?.compileFromHints?.(plan.motionHints) || null,
@@ -97,15 +101,10 @@
     if (!plan.targetMode || !Animotion.state.previewView || !Animotion.state.image) return;
     const point = previewPoint(event);
     const bounds = Animotion.panelEditor?.imageBounds?.("source") || Animotion.imageBounds();
-    Animotion.motionCommands.setMotionPlan({
-      target: {
+    Animotion.motionCommands.setMotionPlan(Animotion.motionTargetState?.manualTargetPatch?.({
       x: Math.round(Animotion.geometry.clamp(point.x, 0, bounds.width)),
       y: Math.round(Animotion.geometry.clamp(point.y, 0, bounds.height)),
-      },
-      anchors: [],
-      targetMode: false,
-      targetSource: { type: "manual" },
-    });
+      }) || { target: point, anchors: [], targetMode: false, targetSource: { type: "manual" } });
     event.preventDefault();
     event.stopImmediatePropagation();
     refresh();
@@ -129,7 +128,8 @@
     const primary = parts.find((part) => part.id === primaryId) || parts[0];
     const active = activeKeys(primary, parts);
     const direction = Animotion.cutsceneModel.inferEffectDirection(parts, primaryId);
-    const target = plan.target || Animotion.motionAnchors?.anchorPoint?.(plan.anchors, active.end) || autoTarget(base[active.end], direction, primary);
+    const rawTarget = activeTargetPoint(plan) || Animotion.motionAnchors?.anchorPoint?.(plan.anchors, active.end) || autoTarget(base[active.end], direction, primary);
+    const target = Animotion.motionTargetDebug?.primaryLeadTarget?.(plan, base[active.end], rawTarget) || rawTarget;
     const targetDebug = Animotion.motionTargetDebug?.analyzeTarget?.(plan, base, active, target) || {};
     const scopedPlan = { ...plan, targetDebug };
     const anchors = Animotion.motionAnchors?.anchorsFromPlan?.(scopedPlan, parts, primary, base, active, direction, target) || [];
@@ -139,9 +139,11 @@
       target,
       motionScope: plan.motionScope,
       targetDebug,
+      activeMotionTarget: plan.activeMotionTarget,
+      trajectoryPoints: Animotion.motionTargetState?.trajectorySamples?.(beats, active.end) || [],
       anchors,
       active,
-      jointAction: { source: `motion-planner-${plan.template}-anchors-v1`, focusKey: active.end, anchors, beats, targetDebug, motionHints: plan.motionHints, motionDraft: Animotion.motionDrafts?.snapshot?.(plan.motionDraft) || plan.motionDraft },
+      jointAction: { source: `motion-planner-${plan.template}-anchors-v1`, focusKey: active.end, anchors, beats, targetDebug, activeMotionTarget: plan.activeMotionTarget, trajectoryPoints: Animotion.motionTargetState?.trajectorySamples?.(beats, active.end) || [], motionHints: plan.motionHints, motionDraft: Animotion.motionDrafts?.snapshot?.(plan.motionDraft) || plan.motionDraft },
       partTracks: tracksForParts(parts, primary, beats, base, active, { ...bridge, jointAction: { targetDebug } }),
     };
   }
@@ -244,7 +246,7 @@
   function statusText(plan, part) {
     if (!part) return "파츠를 선택하면 목표점 기반 궤적을 만들 수 있습니다.";
     const target = plan.target ? `목표 ${plan.target.x}, ${plan.target.y}` : "목표점 없음";
-    const source = plan.targetSource?.type === "correspondence" ? " · 대응" : "";
+    const source = plan.activeMotionTarget?.source ? ` · active ${plan.activeMotionTarget.source}` : "";
     const hints = Animotion.motionHints?.statusText?.(plan.motionHints);
     const selected = plan.selectedBeatId ? ` · beat ${plan.selectedBeatId}` : "";
     const scope = plan.targetDebug?.chosenMotionScope ? ` · ${plan.targetDebug.chosenMotionScope}` : "";
@@ -256,6 +258,7 @@
     const distance = primary?.type === "leg" ? 170 : 120;
     return { x: Math.round(p.x + direction.x * distance), y: Math.round(p.y + direction.y * distance) };
   }
+  function activeTargetPoint(plan) { return plan.activeMotionTarget?.point || plan.target || null; }
   function isBodyPrimary(part) { return part?.type === "body" || part?.type === "spine"; }
   function bendNormal(baseRoot, baseMid, baseEnd, root, end) {
     const sign = Math.sign((baseMid.x - baseRoot.x) * (baseEnd.y - baseRoot.y) - (baseMid.y - baseRoot.y) * (baseEnd.x - baseRoot.x)) || 1;
@@ -290,10 +293,7 @@
   function rounded(point) { return [Math.round(point.x), Math.round(point.y)]; }
   function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
   function normalizedPoint(point, bounds) { return Animotion.coordinateSpaces?.normalizedImagePointFromPoint?.(point, bounds) || null; }
-  function sourceBounds() {
-    if (Animotion.state?.image) return { width: Animotion.state.image.naturalWidth, height: Animotion.state.image.naturalHeight };
-    return typeof Animotion.imageBounds === "function" ? Animotion.imageBounds() : null;
-  }
+  function sourceBounds() { return Animotion.state?.image ? { width: Animotion.state.image.naturalWidth, height: Animotion.state.image.naturalHeight } : typeof Animotion.imageBounds === "function" ? Animotion.imageBounds() : null; }
   function refresh() { Animotion.ui?.refreshUi?.(); }
   Animotion.motionPlanner = { normalizePlan, createPlan, installControls, refreshControls, tracksForJointAction };
   installControls();
