@@ -78,12 +78,16 @@
 
   function applyPanelDrift(part, motion, phase, t, strength) {
     const depth = 1 + part.order * 0.16;
-    if (!part.parentId) {
+    if (!parentIdFor(part)) {
       motion.x = Math.sin(t * 0.85) * depth * 2.2 * strength;
       motion.y = Math.cos(t * 0.7) * depth * 1.4 * strength;
     }
     if (part.type === "hair" || part.type === "arm") motion.rotate = 1.8 * phase * strength;
     if (part.type === "leg") motion.rotate = 0.9 * phase * strength;
+  }
+
+  function parentIdFor(part) {
+    return Animotion.rigConnection?.parentIdFor?.(part) || null;
   }
 
   Animotion.motion = { motionFor };

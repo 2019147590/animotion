@@ -11,20 +11,24 @@
     }, { recordHistory: false });
   }
 
-  function insertKeyframe(partOrId, frame = state.currentFrame, pose = null) {
+  function insertKeyframe(partOrId, frame = state.currentFrame, pose = null, options = {}) {
     const part = findPart(partOrId);
     if (!part) return null;
+    const before = partSnapshot(part);
     part.keyframes = Animotion.timeline.upsertedKeyframes(part, frame, pose || part.customMotion);
     syncProjectParts();
+    recordKeyframeUpdate(part.id, before, partSnapshot(part), options);
     return part;
   }
 
-  function deleteKeyframe(partOrId, frame = state.currentFrame) {
+  function deleteKeyframe(partOrId, frame = state.currentFrame, options = {}) {
     const part = findPart(partOrId);
     if (!part) return null;
+    const before = partSnapshot(part);
     part.keyframes = Animotion.timeline.deletedKeyframes(part, frame);
     syncPartPoseToFrame(part, frame);
     syncProjectParts();
+    recordKeyframeUpdate(part.id, before, partSnapshot(part), options);
     return part;
   }
 
@@ -71,6 +75,31 @@
     return part;
   }
 
+  function recordKeyframeUpdate(partId, before, after, options) {
+    if (options.recordHistory === false || sameValue(before, after)) return;
+    Animotion.commandHistory?.record?.({
+      label: "keyframe",
+      undo: () => applyPartSnapshot(partId, before),
+      redo: () => applyPartSnapshot(partId, after),
+    });
+  }
+
+  function applyPartSnapshot(partId, snapshot) {
+    const part = findPart(partId);
+    if (!part) return null;
+    setPartKeyframes(part, cloneValue(snapshot.keyframes || []));
+    applyCustomMotion(part, snapshot.customMotion);
+    syncProjectParts();
+    return part;
+  }
+
+  function applyCustomMotion(part, customMotion) {
+    const patch = { customMotion: cloneValue(customMotion) };
+    if (Animotion.partCommands?.updatePart) return Animotion.partCommands.updatePart(part, patch, { recordHistory: false });
+    Object.assign(part, patch);
+    return part;
+  }
+
   function setCutsceneBridge(bridge) {
     state.cutsceneBridge = bridge ? Animotion.cutsceneModel.normalizeBridge(bridge, { assets: projectAssets() }) : null;
     return state.cutsceneBridge;
@@ -104,6 +133,21 @@
 
   function hasOwn(value, key) {
     return Object.prototype.hasOwnProperty.call(value, key);
+  }
+
+  function partSnapshot(part) {
+    return {
+      customMotion: cloneValue(Animotion.motionModel.normalizeCustomMotion(part.customMotion)),
+      keyframes: cloneValue(keyframesForTrack(part.keyframes || [])),
+    };
+  }
+
+  function sameValue(left, right) {
+    return JSON.stringify(left) === JSON.stringify(right);
+  }
+
+  function cloneValue(value) {
+    return JSON.parse(JSON.stringify(value));
   }
 
   function projectAssets() {

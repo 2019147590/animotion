@@ -21,6 +21,7 @@ function loadAnimotion() {
     "scripts/timeline.js",
     "scripts/pose-assist.js",
     "scripts/preview-coordinate.js",
+    "scripts/preview-rig-points.js",
     "scripts/command-history.js",
     "scripts/pose-drag-history.js",
   ]) runScript(context, path);
@@ -45,17 +46,14 @@ function loadAnimotion() {
     running: false,
     project: { parts: [] },
   };
-  Animotion.preview = { worldMatrix: () => identity() };
+  Animotion.preview = { worldMatrix: poseMatrix };
+  Animotion.previewTransform = { sourceScale: () => 1 };
   Animotion.parts = { selectedPart: () => Animotion.state.parts.find((part) => part.id === Animotion.state.selectedPartId) };
   Animotion.ui = { refreshUi() {} };
+  Animotion.config = { hitTolerancePx: 12 };
   Animotion.imageBounds = () => ({ width: 100, height: 80 });
   Animotion.previewPointerArbitration = { setActiveDragOwner() {}, clearActiveDragOwner() {} };
-  Animotion.partCommands = {
-    updatePart(part, patch) {
-      Object.assign(part, patch);
-      return part;
-    },
-  };
+  runScript(context, "scripts/part-commands.js");
   runScript(context, "scripts/motion-commands.js");
   runScript(context, "scripts/preview-events.js");
   return Animotion;
@@ -100,6 +98,50 @@ function identity() {
   return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
 }
 
+function poseMatrix(part) {
+  const motion = normalizeMotion(part.customMotion);
+  const angle = jointRotation(part, motion);
+  const pivot = { x: part.rect.x + (part.pivot?.x || 0), y: part.rect.y + (part.pivot?.y || 0) };
+  return multiply(translate(pivot.x, pivot.y), rotate(angle), translate(-pivot.x, -pivot.y));
+}
+
+function normalizeMotion(motion = {}) {
+  return {
+    jointX: Number(motion.jointX) || 0,
+    jointY: Number(motion.jointY) || 0,
+  };
+}
+
+function jointRotation(part, motion) {
+  if (!part.joint || (!motion.jointX && !motion.jointY)) return 0;
+  const pivot = part.pivot || { x: 0, y: 0 };
+  const base = { x: part.joint.x - pivot.x, y: part.joint.y - pivot.y };
+  const target = { x: base.x + motion.jointX, y: base.y + motion.jointY };
+  if (Math.hypot(base.x, base.y) < 1 || Math.hypot(target.x, target.y) < 1) return 0;
+  return Math.atan2(target.y, target.x) - Math.atan2(base.y, base.x);
+}
+
+function multiply(...matrices) {
+  return matrices.reduce((left, right) => ({
+    a: left.a * right.a + left.c * right.b,
+    b: left.b * right.a + left.d * right.b,
+    c: left.a * right.c + left.c * right.d,
+    d: left.b * right.c + left.d * right.d,
+    e: left.a * right.e + left.c * right.f + left.e,
+    f: left.b * right.e + left.d * right.f + left.f,
+  }), identity());
+}
+
+function translate(x, y) {
+  return { a: 1, b: 0, c: 0, d: 1, e: x, f: y };
+}
+
+function rotate(radians) {
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  return { a: cos, b: sin, c: -sin, d: cos, e: 0, f: 0 };
+}
+
 test("cutscene joint pose drag keeps following pointer outside source bounds", () => {
   const Animotion = loadAnimotion();
   assert.equal(beginJointDrag(Animotion), true);
@@ -117,6 +159,26 @@ test("selected joint pose drag does not add extra selected-part translation or r
   assert.equal(arm.customMotion.x, 0);
   assert.equal(arm.customMotion.y, 0);
   assert.equal(arm.customMotion.rotate, 0);
+});
+
+test("pose joint hit target stays under the pointer after crossing the pivot", () => {
+  const Animotion = loadAnimotion();
+  beginJointDrag(Animotion);
+  Animotion.previewEvents.updateDrag(pointer(-5, -5));
+  const arm = Animotion.state.parts.find((part) => part.id === "arm");
+  assert.equal(arm.customMotion.jointX, -10);
+  assert.equal(arm.customMotion.jointY, -10);
+  const hit = Animotion.previewEvents.hitTarget(pointer(-5, -5));
+  assert.equal(hit?.role, "joint");
+});
+
+test("pose drag does not record transient movement history before commit", () => {
+  const Animotion = loadAnimotion();
+  beginJointDrag(Animotion);
+  Animotion.previewEvents.updateDrag(pointer(155, 5));
+  assert.equal(Animotion.commandHistory.canUndo(), false);
+  Animotion.previewEvents.endDrag(pointer(155, 5));
+  assert.equal(Animotion.commandHistory.canUndo(), true);
 });
 
 test("pose drag commit can be undone back to the pre-drag pose and keyframes", () => {

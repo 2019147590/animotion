@@ -220,6 +220,7 @@
   }
   function trackKeyframe(part, primary, beat, base, active, bridge) {
     const pose = Animotion.motionModel.defaultCustomMotion();
+    const parentId = parentIdFor(part);
     if (part.id === primary.id) {
       if (active.motion === "translate") {
         pose.x = beat.pose[active.end][0] - base[active.end][0];
@@ -230,14 +231,14 @@
       }
       return { frame: beat.at, pose };
     }
-    if (!part.parentId && bridge.bodyAssistEnabled !== false && bridge?.jointAction?.targetDebug?.chosenMotionScope === "full-character") {
+    if (!parentId && bridge.bodyAssistEnabled !== false && bridge?.jointAction?.targetDebug?.chosenMotionScope === "full-character") {
       Object.assign(pose, { x: beat.pose.hip[0] - base.hip[0], y: beat.pose.hip[1] - base.hip[1] });
       return { frame: beat.at, pose };
     }
-    if (!part.parentId && bridge.bodyAssistEnabled !== false && !isBodyPrimary(primary) && (part.type === "body" || part.type === "spine")) {
+    if (!parentId && bridge.bodyAssistEnabled !== false && !isBodyPrimary(primary) && (part.type === "body" || part.type === "spine")) {
       Object.assign(pose, { x: beat.pose.hip[0] - base.hip[0], y: beat.pose.hip[1] - base.hip[1] });
     }
-    if (!part.parentId && bridge.bodyAssistEnabled !== false && !isBodyPrimary(primary) && part.type === "head") {
+    if (!parentId && bridge.bodyAssistEnabled !== false && !isBodyPrimary(primary) && part.type === "head") {
       pose.x = (beat.pose.head[0] - base.head[0]) * 0.7;
       pose.y = (beat.pose.head[1] - base.head[1]) * 0.7;
     }
@@ -263,6 +264,7 @@
   function motionTargetForPlan(plan, point) { return plan.activeMotionTarget ? { ...plan.activeMotionTarget, point } : Animotion.motionTargetState?.generatedTarget?.(point) || null; }
   function sourceLabel(source) { return ({ manual: "수동", correspondence: "B컷 참조", generated: "자동 생성" })[source] || source; }
   function isBodyPrimary(part) { return part?.type === "body" || part?.type === "spine"; }
+  function parentIdFor(part) { return Animotion.rigConnection?.parentIdFor?.(part) || null; }
   function bendNormal(baseRoot, baseMid, baseEnd, root, end) {
     const sign = Math.sign((baseMid.x - baseRoot.x) * (baseEnd.y - baseRoot.y) - (baseMid.y - baseRoot.y) * (baseEnd.x - baseRoot.x)) || 1;
     const dx = end.x - root.x;

@@ -88,14 +88,14 @@
     const tracks = Animotion.poseAssist.solveControlPose(state.parts, partId, delta, state.previewDrag.basePoses);
     for (const track of tracks) {
       const part = state.parts.find((candidate) => candidate.id === track.partId);
-      if (part) Animotion.partCommands.updatePart(part, { customMotion: track.pose });
+      if (part) Animotion.partCommands.updatePart(part, { customMotion: track.pose }, { recordHistory: false });
     }
   }
 
   function commitControlPose() {
     const before = state.previewDrag?.poseHistorySnapshot;
     for (const part of state.parts) {
-      Animotion.motionCommands.insertKeyframe(part, state.currentFrame, part.customMotion);
+      Animotion.motionCommands.insertKeyframe(part, state.currentFrame, part.customMotion, { recordHistory: false });
     }
     Animotion.poseDragHistory?.record?.(before, Animotion.poseDragHistory.snapshot(state.parts));
   }
@@ -117,7 +117,7 @@
     const pointer = previewPointer(event);
     const partMatrix = frozenPartMatrix(part);
     const base = dragContext(part, partMatrix);
-    const startPointLocal = rigPointLocal(part, hit || { role, localPoint: pointLocal(part, role) });
+    const startPointLocal = Animotion.previewRigPoints.localPoint(part, hit || { role, localPoint: pointLocal(part, role) }, { timelineLike: timelineLikeMode() });
     const pointerLocal = Animotion.previewCoordinate.previewToPartLocalPoint(pointer, base);
     return {
       draggedPointId: `${part.id}:${role}`,
@@ -178,31 +178,27 @@
     const matrix = frozenPartMatrix(part);
     const tolerance = Animotion.config.hitTolerancePx / sourceScale();
     const hits = rigPointSpecs(part)
-      .map((spec) => ({ ...spec, distance: geometry.distance(point, rigPoint(part, spec, matrix)) }))
+      .map((spec) => ({ ...spec, distance: geometry.distance(point, rigPointImagePoint(part, spec, matrix)) }))
       .filter((hit) => hit.distance <= tolerance)
       .sort((a, b) => a.distance - b.distance);
     return hits[0] || null;
   }
 
-  function rigPoint(part, spec, matrix) {
-    const local = rigPointLocal(part, spec);
-    const point = new DOMPoint(part.rect.x + local.x, part.rect.y + local.y).matrixTransform(matrix);
-    return { x: point.x, y: point.y };
-  }
-
-  function rigPointLocal(part, spec) {
-    if (spec.role !== "joint") return spec.localPoint || part.pivot;
-    const motion = Animotion.motionModel.normalizeCustomMotion(part.customMotion);
-    if (!timelineLikeMode()) return part.joint;
-    return { x: part.joint.x + motion.jointX, y: part.joint.y + motion.jointY };
+  function rigPointImagePoint(part, spec, matrix) {
+    return Animotion.previewRigPoints.imagePoint(part, spec, matrix, { timelineLike: timelineLikeMode() });
   }
 
   function rigPointSpecs(part) {
-    const parent = state.parts.find((candidate) => candidate.id === part.parentId);
+    const parent = parentPart(part);
     return Animotion.rigConnection?.previewPoints?.(part, parent) || [
       { role: "rotationPivot", localPoint: part.pivot, label: "회전 중심" },
       { role: "joint", localPoint: part.joint, label: "관절점" },
     ];
+  }
+
+  function parentPart(part) {
+    const parentId = Animotion.rigConnection?.parentIdFor?.(part);
+    return state.parts.find((candidate) => candidate.id === parentId) || null;
   }
 
   function editableRole(role) {
@@ -242,7 +238,7 @@
   }
 
   function pointLocal(part, role) {
-    return role === "joint" ? rigPointLocal(part, { role: "joint" }) : part.pivot;
+    return Animotion.previewRigPoints.localPoint(part, { role, localPoint: part.pivot }, { timelineLike: timelineLikeMode() });
   }
 
   function previewPointer(event) {

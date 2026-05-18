@@ -5,6 +5,7 @@
   const state = Animotion.state;
   const geometry = Animotion.geometry;
   const { pathFromShape } = Animotion.path;
+  let lastCutsceneGhostTime = 0;
   function drawPreview(now, drawEmpty, drawPivot) {
     Animotion.view.resizeCanvas(previewCanvas);
     const dpr = window.devicePixelRatio || 1;
@@ -35,6 +36,7 @@
     const matrixCache = drawParts(view, now, cutscene);
     drawImpactLayers(view, w, h, cutscene);
     drawSelectedRigPoints(view, now, matrixCache, drawPivot);
+    lastCutsceneGhostTime = cutscene.time || 0;
     Animotion.correspondenceEditor?.drawOverlay?.(previewCtx, view);
     Animotion.motionPlanner?.drawOverlay?.(previewCtx, view, cutscene);
     Animotion.hiddenCompletionGuideEditor?.drawOverlay?.(previewCtx, view);
@@ -62,6 +64,7 @@
     Animotion.cutsceneEffects.drawPanelImage(previewCtx, image, view, alpha, transform);
   }
   function drawSourcePanelGhosts(image, view, cutscene, baseAlpha) {
+    if (!cutscene.bridge.ghostEnabled) return;
     const values = cutscene.values;
     if (values.launch <= 0.02 || values.sourceAlpha <= 0.02) return;
     const start = cutscene.bridge;
@@ -125,11 +128,10 @@
     return matrixCache;
   }
   function drawGhostParts(view, now, cutscene) {
-    if (!cutscene.active || cutscene.values.ghostAlpha <= 0.01) return;
-    const t = state.running ? (now - state.startTime) / 1000 : state.pausedTime;
+    if (!cutscene.active || !cutscene.bridge.ghostEnabled || cutscene.values.ghostAlpha <= 0.01) return;
     previewCtx.save();
     Animotion.previewTransform.applySourceFrame(previewCtx, view, state.previewSourceFrame, state.previewSourceTransform);
-    for (const delay of [0.12, 0.07]) drawGhostPass(t - delay, cutscene.values.ghostAlpha);
+    for (const delay of Animotion.cutsceneModel.GHOST_DELAYS) drawGhostPass(Math.max(0, lastCutsceneGhostTime - delay), Animotion.cutsceneModel.GHOST_ALPHA_RATIO);
     previewCtx.restore();
   }
   function drawGhostPass(t, alpha) {
@@ -164,32 +166,23 @@
     state.renderedPointDebug = [];
     const t = state.running ? (now - state.startTime) / 1000 : state.pausedTime;
     const matrix = worldMatrix(part, t, matrixCache);
-    for (const point of rigPointsFor(part)) drawRigPoint(part, point.localPoint, matrix, view, drawPivot, point.role);
+    for (const point of rigPointsFor(part)) drawRigPoint(part, point, matrix, view, drawPivot);
     const root = Animotion.rigConnection?.bodyRootPoint?.(state.parts);
-    if (root) drawRigPoint(root.part, root.localPoint, worldMatrix(root.part, t, matrixCache), view, drawPivot, root.role);
+    if (root) drawRigPoint(root.part, root, worldMatrix(root.part, t, matrixCache), view, drawPivot);
   }
   function rigPointsFor(part) {
-    const parent = state.parts.find((candidate) => candidate.id === part.parentId);
+    const parent = parentPart(part);
     return (Animotion.rigConnection?.previewPoints?.(part, parent) || [
       { role: "rotationPivot", localPoint: part.pivot },
-      { role: "joint", localPoint: displayedJoint(part) },
-    ]).map((point) => point.role === "joint" ? { ...point, localPoint: displayedJoint(part) } : point);
-  }
-  function displayedJoint(part) {
-    if (!timelineLikeMode()) return part.joint;
-    const motion = displayedJointMotion(part);
-    return { x: part.joint.x + motion.jointX, y: part.joint.y + motion.jointY };
-  }
-  function displayedJointMotion(part) {
-    if (state.running) return Animotion.timeline.evaluatePartAtFrame(part, state.currentFrame);
-    return Animotion.motionModel.normalizeCustomMotion(part.customMotion);
+      { role: "joint", localPoint: part.joint },
+    ]);
   }
   function cutsceneValues(now) {
     if (els.motionTemplate.value !== "cutscene") return { active: false, shake: 0 };
-    const bridge = state.cutsceneBridge || Animotion.cutsceneModel.createBridge(state.parts, state.selectedPartId);
+    const bridge = Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge || Animotion.cutsceneModel.createBridge(state.parts, state.selectedPartId));
     const t = state.running ? (now - state.startTime) / 1000 : state.pausedTime;
     const values = Animotion.cutsceneModel.bridgeValues(t, bridge, Animotion.config.timelineFps);
-    return { active: true, bridge, values, shake: values.shake };
+    return { active: true, bridge, values, shake: values.shake, time: t };
   }
   function drawCutsceneEffects(view, w, h, cutscene) {
     if (!cutscene.active) return;
@@ -240,12 +233,14 @@
   function timelineLikeMode() {
     return els.motionTemplate.value === "keyframes" || els.motionTemplate.value === "cutscene";
   }
-  function drawRigPoint(part, localPoint, matrix, view, drawPivot, role) {
-    const point = new DOMPoint(part.rect.x + localPoint.x, part.rect.y + localPoint.y).matrixTransform(matrix);
-    const screen = Animotion.previewTransform.imagePointToScreen(point, view, state.previewSourceFrame, state.previewSourceTransform);
-    recordPointDebug(part, localPoint, role, screen);
-    drawPivot(previewCtx, { x: 0, y: 0, scale: 1 }, screen.x, screen.y, true, role);
-    if (state.showPointDebugLabels) drawPointDebugLabel(screen, `${part.id}:${role}`);
+  function drawRigPoint(part, spec, matrix, view, drawPivot) {
+    const local = Animotion.previewRigPoints.localPoint(part, spec, { timelineLike: timelineLikeMode() });
+    const image = Animotion.previewRigPoints.imagePoint(part, spec, matrix, { timelineLike: timelineLikeMode() });
+    const screen = Animotion.previewTransform.imagePointToScreen(image, view, state.previewSourceFrame, state.previewSourceTransform);
+    if (!local || !screen) return;
+    recordPointDebug(part, local, spec.role, screen);
+    drawPivot(previewCtx, { x: 0, y: 0, scale: 1 }, screen.x, screen.y, true, spec.role);
+    if (state.showPointDebugLabels) drawPointDebugLabel(screen, `${part.id}:${spec.role}`);
   }
   function recordPointDebug(part, localPoint, role, screen) {
     state.renderedPointDebug.push({
@@ -268,10 +263,15 @@
   function worldMatrix(part, t, cache) {
     if (cache.has(part.id)) return cache.get(part.id);
     const local = localMatrix(part, t);
-    const parent = state.parts.find((candidate) => candidate.id === part.parentId);
+    const parent = parentPart(part);
     const matrix = parent ? worldMatrix(parent, t, cache).multiply(local) : local;
     cache.set(part.id, matrix);
     return matrix;
+  }
+
+  function parentPart(part) {
+    const parentId = Animotion.rigConnection?.parentIdFor?.(part);
+    return state.parts.find((candidate) => candidate.id === parentId) || null;
   }
   function localMatrix(part, t) {
     const transform = Animotion.motion.motionFor(part, t);

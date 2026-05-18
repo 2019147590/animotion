@@ -36,3 +36,8 @@ test("preview points preserve outside-rect joint and pivot coordinates", () => {
   assert.deepEqual(points.find((point) => point.role === "rotationPivot").localPoint, { x: -4, y: 12 });
   assert.deepEqual(points.find((point) => point.role === "joint").localPoint, { x: 25, y: 35 });
 });
+
+test("parentId takes priority when parentId and parentPartId both exist", () => {
+  const part = { id: "head", parentId: "body", parentPartId: "legacy-body" };
+  assert.equal(rigConnection.parentIdFor(part), "body");
+});

@@ -285,28 +285,11 @@
   }
 
   function onKeyDown(event) {
-    if (handleHistoryShortcut(event)) return;
+    if (Animotion.historyShortcuts?.handleKeyDown?.(event)) return;
     if (event.code === "Space" && !Animotion.view.isTypingTarget(event.target)) {
       state.spaceDown = true;
       event.preventDefault();
     }
-  }
-
-  function handleHistoryShortcut(event) {
-    if (!(event.ctrlKey || event.metaKey) || event.altKey || textInputTarget(event.target)) return false;
-    const key = event.key.toLowerCase();
-    if (key !== "z" && key !== "y") return false;
-    const didApply = event.shiftKey || key === "y"
-      ? Animotion.commandHistory?.redo?.()
-      : Animotion.commandHistory?.undo?.();
-    if (didApply) event.preventDefault();
-    return Boolean(didApply);
-  }
-
-  function textInputTarget(target) {
-    if (target instanceof HTMLTextAreaElement) return true;
-    if (!(target instanceof HTMLInputElement)) return false;
-    return ["email", "number", "password", "search", "tel", "text", "url"].includes(target.type);
   }
 
   function timelineLikeMode() {

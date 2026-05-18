@@ -33,6 +33,12 @@ test("B cut reference opacity control is wired into the app shell", () => {
   assert.equal(config.includes('impactReferenceOpacity: "#impactReferenceOpacity"'), true);
 });
 
+test("panel scale controls expose the wider cutscene scale range", () => {
+  const html = fs.readFileSync("index.html", "utf8");
+  assert.equal(html.includes('id="sourcePanelScale" type="range" min="0.25" max="3.6"'), true);
+  assert.equal(html.includes('id="impactPanelScale" type="range" min="0.25" max="3.6"'), true);
+});
+
 test("editing reference layers are hidden during playback and export", () => {
   const preview = fs.readFileSync("scripts/preview.js", "utf8");
   const trajectory = fs.readFileSync("scripts/motion-trajectory-editor.js", "utf8");

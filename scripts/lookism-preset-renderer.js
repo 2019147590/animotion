@@ -70,7 +70,7 @@
   function drawReadyLayer(ctx, image, values) {
     const transform = readyTransform(values);
     if (transform.alpha <= 0.02) return;
-    for (let i = 3; i >= 1; i -= 1) drawImageAt(ctx, image, ghostTransform(transform, i, values.launch));
+    if (ghostEnabled()) for (let i = 3; i >= 1; i -= 1) drawImageAt(ctx, image, ghostTransform(transform, i, values.launch));
     drawImageAt(ctx, image, transform);
   }
 
@@ -101,8 +101,12 @@
     const alpha = rigAlpha(values.n);
     if (alpha <= 0.01) return;
     const scale = action.lerp(1.44, 1.62, action.smoothstep(action.clamp((values.n - 0.4) / 0.38, 0, 1)));
-    drawRigGhosts(ctx, rig, scale, alpha);
+    if (ghostEnabled()) drawRigGhosts(ctx, rig, scale, alpha);
     drawRigLayer(ctx, rig, sample.pose, { scale, alpha, drawOrder: data.DRAW_ORDER });
+  }
+
+  function ghostEnabled() {
+    return Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge).ghostEnabled;
   }
 
   function rigAlpha(n) {
@@ -112,10 +116,10 @@
   }
 
   function drawRigGhosts(ctx, rig, scale, alpha) {
-    for (const delay of [0.14, 0.08]) {
+    for (const delay of Animotion.cutsceneModel.GHOST_DELAYS) {
       const lastTime = state.lookismPreset?.lastTime || 0;
       const ghostTime = action.clamp(lastTime - delay, 0, data.DURATION);
-      drawRigLayer(ctx, rig, action.sampleAction(ghostTime).pose, { scale, alpha: alpha * 0.22 });
+      drawRigLayer(ctx, rig, action.sampleAction(ghostTime).pose, { scale, alpha: alpha * Animotion.cutsceneModel.GHOST_ALPHA_RATIO });
     }
   }
 

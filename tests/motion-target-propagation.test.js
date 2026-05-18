@@ -7,6 +7,7 @@ require("../scripts/motion-hints.js");
 require("../scripts/motion-drafts.js");
 require("../scripts/motion-target-state.js");
 require("../scripts/motion-target-debug.js");
+require("../scripts/rig-connection.js");
 const characterRootMotion = require("../scripts/character-root-motion.js");
 require("../scripts/pose-assist.js");
 require("../scripts/joint-coordinates.js");
@@ -141,6 +142,114 @@ test("parented parts inherit root motion through parent connection", () => {
   assert.equal(debug.rootDeltaPartIds.includes("body"), true);
   assert.equal(debug.rootDeltaPartIds.includes("head"), false);
   assert.deepEqual({ x: head.x, y: head.y }, { x: 0, y: 0 });
+});
+
+test("motion planner does not add independent head assist when parentPartId attaches head to body", () => {
+  const bridge = cutsceneModel.normalizeBridge({ impactFrame: 15 });
+  const parts = [
+    { id: "body", type: "body", rect: { x: 40, y: 20, w: 20, h: 50 }, pivot: { x: 10, y: 25 }, joint: { x: 10, y: 40 } },
+    { id: "head", type: "head", parentPartId: "body", rect: { x: 38, y: 4, w: 24, h: 20 }, pivot: { x: 12, y: 10 }, joint: { x: 12, y: 16 } },
+    { id: "leg", type: "leg", rect: { x: 67, y: 60, w: 18, h: 45 }, pivot: { x: 2, y: 6 }, joint: { x: 16, y: 40 } },
+  ];
+  const plan = motionPlanner.createPlan(parts, "leg", bridge, { template: "kick", target: { x: 150, y: 70 } });
+  const headImpact = plan.partTracks.find((track) => track.partId === "head").keyframes
+    .find((keyframe) => keyframe.frame === 15).pose;
+  assert.deepEqual({ x: headImpact.x, y: headImpact.y }, { x: 0, y: 0 });
+});
+
+test("legacy cutscene playback keeps an unparented head attached to body rotation", () => {
+  const parts = [
+    {
+      id: "body",
+      type: "body",
+      rect: { x: 40, y: 20, w: 20, h: 50 },
+      pivot: { x: 10, y: 25 },
+      joint: { x: 10, y: 40 },
+      keyframes: [{ frame: 12, pose: { x: 20, rotate: 20 } }],
+    },
+    {
+      id: "head",
+      type: "head",
+      rect: { x: 38, y: 4, w: 24, h: 20 },
+      pivot: { x: 12, y: 10 },
+      joint: { x: 12, y: 16 },
+      keyframes: [{ frame: 12, pose: {} }],
+    },
+  ];
+  const debug = characterRootMotion.evaluationDebug(parts, 12, {});
+  const head = debug.parts.find((part) => part.id === "head");
+  assert.deepEqual({ x: Math.round(head.x), y: Math.round(head.y) }, { x: 31, y: 2 });
+});
+
+test("parented head does not receive runtime root follow twice", () => {
+  const parts = [
+    {
+      id: "body",
+      type: "body",
+      rect: { x: 40, y: 20, w: 20, h: 50 },
+      pivot: { x: 10, y: 25 },
+      keyframes: [{ frame: 12, pose: { x: 20, rotate: 20 } }],
+    },
+    {
+      id: "head",
+      type: "head",
+      parentId: "body",
+      rect: { x: 38, y: 4, w: 24, h: 20 },
+      pivot: { x: 12, y: 10 },
+      keyframes: [{ frame: 12, pose: { x: 3, y: -2 } }],
+    },
+  ];
+  const debug = characterRootMotion.evaluationDebug(parts, 12, {});
+  const head = debug.parts.find((part) => part.id === "head");
+  assert.deepEqual({ x: head.x, y: head.y }, { x: 3, y: -2 });
+});
+
+test("limb-only motion does not move an unparented head with body root displacement", () => {
+  const parts = [
+    {
+      id: "body",
+      type: "body",
+      rect: { x: 40, y: 20, w: 20, h: 50 },
+      pivot: { x: 10, y: 25 },
+      keyframes: [{ frame: 12, pose: { x: 20, rotate: 20 } }],
+    },
+    {
+      id: "head",
+      type: "head",
+      rect: { x: 38, y: 4, w: 24, h: 20 },
+      pivot: { x: 12, y: 10 },
+      keyframes: [{ frame: 12, pose: {} }],
+    },
+  ];
+  const debug = characterRootMotion.evaluationDebug(parts, 12, {
+    jointAction: { targetDebug: { chosenMotionScope: "limb-only" } },
+  });
+  const head = debug.parts.find((part) => part.id === "head");
+  assert.deepEqual({ x: head.x, y: head.y }, { x: 0, y: 0 });
+});
+
+test("unparented head keeps its own pose while following body root motion", () => {
+  const parts = [
+    {
+      id: "body",
+      type: "body",
+      rect: { x: 40, y: 20, w: 20, h: 50 },
+      pivot: { x: 10, y: 25 },
+      keyframes: [{ frame: 12, pose: { x: 20, rotate: 20 } }],
+    },
+    {
+      id: "head",
+      type: "head",
+      rect: { x: 38, y: 4, w: 24, h: 20 },
+      pivot: { x: 12, y: 10 },
+      keyframes: [{ frame: 12, pose: { x: 4, y: -3 } }],
+    },
+  ];
+  const debug = characterRootMotion.evaluationDebug(parts, 12, {
+    jointAction: { targetDebug: { chosenMotionScope: "body-follow" } },
+  });
+  const head = debug.parts.find((part) => part.id === "head");
+  assert.deepEqual({ x: Math.round(head.x), y: Math.round(head.y) }, { x: 35, y: -1 });
 });
 
 test("primary part leads more strongly than torso in kick body-follow mode", () => {

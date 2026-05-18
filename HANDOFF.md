@@ -182,6 +182,7 @@ Implemented on `master`.
 - `hiddenCompletionPatch` assets preserve source part, source rect, part-local mask vertices, patch transform, guide-only render mode, and future generated-result metadata.
 - Guide mesh data is stored separately from generated output: `guide.meshVerticesNormalized`, `guide.meshFaces`, and `guide.silhouetteVerticesNormalized` are part-local normalized guide data, not final rendered image data.
 - `scripts/hidden-completion-guide-editor.js` adds the first user-facing guide flow: create a guide-only patch from the selected part, add it to `project.assets`, link it to `motionDraft.hiddenCompletion.assetId`, draw the guide mesh/silhouette on the preview, and drag guide vertices while saving normalized part-local coordinates.
+- `scripts/hidden-completion-part-panel.js`: exposes the hidden-completion workflow in the selected part inspector. It can create a guide patch, create a 2D mesh guide preset, select an existing patch for the selected source part, link/unlink it through the existing motion draft helpers, and auto-create the minimal hidden-completion draft when a cutscene `jointAction` exists without `motionDraft`.
 - `scripts/hidden-completion-request.js`: converts a saved `hiddenCompletionPatch` asset into provider-neutral `HiddenCompletionRequestPayload` data. Request options are intentionally limited to `promptVersion`, `includeWarnings`, `strictMode`, and `requestId`; provider/model/API settings are rejected here.
 - `scripts/hidden-completion-prep.js`: prepares source crop and mask descriptors from the neutral request. Normalized request coordinates are not mutated; clipping happens only at the rasterization/mask boundary.
 - `scripts/hidden-completion-provider.js`: provider adapter interface, capability declaration, and normalized provider runner.
@@ -222,7 +223,7 @@ Current architecture note:
 - The motion draft `request/generate` control can call the local provider server. If the local server is unavailable, the hidden completion state moves to `queued`.
 - Provider tests use mocked fetch/worker calls only. Manual Stability validation requires starting the local Node provider server with `STABILITY_API_KEY` set.
 - Generated patch images can be stored as texture assets and linked from `hiddenCompletionPatch.generatedResult`, but renderer compositing of generated hidden patches is still future work.
-- Guide mesh preview is currently an editor overlay. It is not a final image patch and should be treated as AI/input guidance only.
+- Guide mesh preview is currently an editor overlay. It is not a final image patch and should be treated as AI/input guidance only. Users can now create a guide patch or a 2D mesh guide preset from the selected part inspector, then adjust guide vertices in the preview.
 - Time-varying z-order / z-swap editing is not implemented.
 - The motion planner is template/rule based, not image-understanding based.
 - The generated motion is a draft; anchor editing exists, but detailed anchor/keyframe graph tooling is still limited.
@@ -257,6 +258,7 @@ Current architecture note:
 - `scripts/character-root-motion.js`: character root delta evaluation and propagation for cutscene motion.
 - `scripts/hidden-completion-assets.js`: hidden-completion patch asset normalization, guide mesh model, and runtime guide mesh restoration.
 - `scripts/hidden-completion-guide-editor.js`: guide-only patch creation, preview overlay, and guide vertex dragging.
+- `scripts/hidden-completion-part-panel.js`: selected-part hidden-completion UI for guide creation, 2D mesh guide presets, patch selection, link/unlink, and cutscene-draft fallback creation.
 - `scripts/hidden-completion-request.js`: provider-neutral hidden-completion request builder.
 - `scripts/hidden-completion-request.d.ts`: request payload/options TypeScript declarations.
 - `scripts/hidden-completion-prep.js`: source crop and mask descriptor preparation.
@@ -346,6 +348,8 @@ node tests\preview-coordinate.test.js
 node tests\preview-pose-drag.test.js
 node tests\preview-hit-test.test.js
 node tests\preview-pointer-arbitration.test.js
+node tests\events-history-shortcuts.test.js
+node tests\hidden-completion-part-panel.test.js
 node tests\hidden-completion-roundtrip.test.js
 node tests\hidden-completion-request.test.js
 node tests\hidden-completion-provider.test.js
@@ -473,6 +477,7 @@ Recently completed in the working tree:
 - Trajectory sample semantics separated from editable anchors/control points.
 - B impact anchors saved as normalized image coordinates and restored against the current image size.
 - Keyboard history shortcuts: `Ctrl+Z`, `Ctrl+Y`, and `Ctrl+Shift+Z`.
+- Keyboard history shortcuts do not call app command history from `input`, `textarea`, `select`, or `contenteditable`; browser text undo/redo remains first.
 - Timeline keyframe mutation removed from `scripts/timeline.js`; keyframe writes now stay in `scripts/motion-commands.js`.
 - Planner, anchor picker, trajectory editor, timeline controls, preview rig edits, cutscene controls/options, IO restore, and Lookism preset application moved toward command helpers.
 - Regression tests:
@@ -494,7 +499,18 @@ Recently completed in the working tree:
   - `tests/motion-target-state.test.js`
   - `tests/cutscene-options.test.js`
   - `tests/edit-target-inspector.test.js`
+  - `tests/events-history-shortcuts.test.js`
+  - `tests/hidden-completion-part-panel.test.js`
   - `tests/geometry.test.js`
   - `tests/preview-coordinate.test.js`
   - `tests/preview-pose-drag.test.js`
   - `tests/preview-pointer-arbitration.test.js`
+
+Latest completed in this working tree before upload:
+
+- Unified runtime/preview parent checks around `rigConnection.parentIdFor(part)` for parentId/parentPartId compatibility, with parentId priority regression coverage.
+- Fixed parented-head and root-follow cutscene regressions so parented heads inherit through parent transforms instead of receiving duplicate root follow.
+- Added multiple trajectory tracks for generated cutscene actions so body/root and primary limb paths can be displayed/edited without breaking existing motion command paths.
+- Expanded A/B cut image scale controls to a wider range while preserving save/load compatibility.
+- Added Lookism-style ghost rendering controls and shared ghost timing constants between generic cutscene preview and Lookism preset rendering.
+- Added selected-part hidden-completion UI for guide creation, 2D mesh guide presets, existing patch selection, patch link/unlink, and automatic hidden-completion draft creation when a cutscene action exists without a motion draft.

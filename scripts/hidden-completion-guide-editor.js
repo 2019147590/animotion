@@ -21,16 +21,17 @@
     ui.create.disabled = !visible;
     ui.status.textContent = statusText(part, draft, asset);
   }
-  function createGuideFromSelectedPart() {
+  function createGuideFromSelectedPart(options = {}) {
     const part = selectedPart();
     const draft = activeDraft();
     if (!part || !draft) return null;
     const asset = Animotion.hiddenCompletionAssets.createForPart(part, {
       id: guideAssetId(part),
-      name: `${part.name || part.id} \uBCF4\uC644 \uAC00\uC774\uB4DC`,
+      name: options.name || `${part.name || part.id} \uBCF4\uC644 \uAC00\uC774\uB4DC`,
+      guide: options.guide,
       patchStatus: "guide",
       renderMode: "guideOnly",
-      preview: { label: "\uBCF4\uC644 \uAC00\uC774\uB4DC" },
+      preview: options.preview || { label: "\uBCF4\uC644 \uAC00\uC774\uB4DC" },
     });
     if (!asset) return null;
     upsertAsset(asset);

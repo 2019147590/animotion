@@ -43,7 +43,7 @@
     const point = previewPoint(event);
     if (!point) return true;
     if (drag.anchorKey && editAnchorPoint(currentAction(), drag.anchorKey, point)) regenerateActionFromAnchors();
-    else if (editBeatPoint(currentAction(), drag.beatIndex, drag.focusKey, point)) regeneratePrimaryTrack();
+    else if (editBeatPoint(currentAction(), drag.beatIndex, drag.focusKey, point)) regenerateActionTracks();
     event.preventDefault();
     refresh();
     return true;
@@ -64,11 +64,9 @@
   function drawOverlay(ctx, view, cutscene) {
     if (!editingLayerVisible()) return;
     const action = cutscene?.bridge?.jointAction;
-    const focusKey = action?.focusKey || "hip";
-    const samples = trajectorySamples(action, focusKey);
-    const points = samples.map((sample) => sample.point);
-    if (points.length >= 2 && cutscene?.active) drawTrajectory(ctx, view, points, cutscene.values.n);
-    drawBeatHandles(ctx, view, action, focusKey);
+    const tracks = trajectoryTracks(action);
+    if (cutscene?.active) for (const track of tracks) if (track.samples.length >= 2) drawTrajectory(ctx, view, track.samples.map((sample) => sample.point), cutscene.values.n, track.key);
+    drawBeatHandles(ctx, view, action, tracks);
     drawActionAnchors(ctx, view, action);
     drawTarget(ctx, view);
   }
@@ -82,22 +80,24 @@
     refresh();
     return true;
   }
-  function drawBeatHandles(ctx, view, action, focusKey) {
+  function drawBeatHandles(ctx, view, action, tracks) {
     if (!action?.beats?.length || Animotion.state.exporting) return;
     const selectedId = currentPlan().selectedBeatId;
     ctx.save();
     ctx.lineWidth = 2;
-    for (const beat of action.beats) {
-      const point = pointFrom(beat.pose?.[focusKey]);
-      if (!point) continue;
-      const selected = beat.id === selectedId;
-      const screen = imagePointToScreen(point, view);
-      ctx.fillStyle = selected ? "#e1462e" : "#fffaf0";
-      ctx.strokeStyle = selected ? "#fffaf0" : "#e1462e";
-      ctx.beginPath();
-      ctx.arc(screen.x, screen.y, selected ? 8 : HANDLE_RADIUS, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
+    for (const track of tracks) {
+      for (const beat of action.beats) {
+        const point = pointFrom(beat.pose?.[track.key]);
+        if (!point) continue;
+        const selected = beat.id === selectedId;
+        const screen = imagePointToScreen(point, view);
+        ctx.fillStyle = selected ? colorForKey(track.key) : "#fffaf0";
+        ctx.strokeStyle = selected ? "#fffaf0" : colorForKey(track.key);
+        ctx.beginPath();
+        ctx.arc(screen.x, screen.y, selected ? 8 : HANDLE_RADIUS, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
     }
     ctx.restore();
   }
@@ -137,11 +137,10 @@
     if (!isCutsceneEditable() || !state.previewView) return null;
     const point = previewPoint(event);
     const action = currentAction();
-    const focusKey = action?.focusKey || "hip";
     if (!point || !action?.beats?.length) return null;
     const tolerance = Animotion.config.hitTolerancePx / sourceScale();
-    return action.beats
-      .map((beat, index) => ({ beat, index, focusKey, distance: pointDistance(point, pointFrom(beat.pose?.[focusKey])) }))
+    return action.beats.flatMap((beat, index) => trajectoryKeys(action)
+      .map((focusKey) => ({ beat, index, focusKey, distance: pointDistance(point, pointFrom(beat.pose?.[focusKey])) })))
       .filter((hit) => hit.distance <= tolerance)
       .sort((a, b) => a.distance - b.distance)[0] || null;
   }
@@ -181,17 +180,13 @@
     const result = Animotion.motionPlanner.createPlan(state.parts, primaryId, bridge, plan);
     Animotion.motionCommands.applyMotionPlanResult(bridge, plan, result);
   }
-  function regeneratePrimaryTrack() {
+  function regenerateActionTracks() {
     const state = Animotion.state;
     const bridge = Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge);
     const primaryId = bridge.primaryPartId || state.selectedPartId;
-    const track = Animotion.motionPlanner
-      .tracksForJointAction(state.parts, primaryId, bridge)
-      .find((candidate) => candidate.partId === primaryId);
-    const part = state.parts.find((candidate) => candidate.id === primaryId);
-    if (!part || !track) return;
-    Animotion.motionCommands.setPartKeyframes(part, track.keyframes);
-    Animotion.motionCommands.syncPartPoseToFrame(part, state.currentFrame);
+    const tracks = Animotion.motionPlanner.tracksForJointAction(state.parts, primaryId, bridge);
+    Animotion.motionCommands.applyGeneratedTracks(tracks);
+    for (const track of tracks) Animotion.motionCommands.syncPartPoseToFrame(track.partId, state.currentFrame);
   }
 
   function currentAction() {
@@ -202,16 +197,14 @@
     return Animotion.motionCommands?.currentMotionPlan?.() || Animotion.motionPlanner.normalizePlan(Animotion.state.motionPlan);
   }
 
-  function trajectorySamples(action, focusKey) {
-    return Animotion.motionTargetState?.trajectorySamples?.(action?.beats || [], focusKey)
-      || (action?.beats || []).map((beat) => beat.pose?.[focusKey]).filter(Boolean)
-        .map((point, index) => ({ id: `sample-${index}`, kind: "sample", editable: false, point: pointFrom(point) }));
-  }
+  function trajectorySamples(action, focusKey) { return Animotion.motionTrajectoryTracks?.trajectorySamples?.(action, focusKey) || (action?.beats || []).map((beat) => beat.pose?.[focusKey]).filter(Boolean).map((point, index) => ({ id: `sample-${index}`, kind: "sample", editable: false, point: pointFrom(point) })); }
+  function trajectoryTracks(action) { return Animotion.motionTrajectoryTracks?.trajectoryTracks?.(action) || [{ key: action?.focusKey || "hip", samples: trajectorySamples(action, action?.focusKey || "hip") }]; }
+  function trajectoryKeys(action) { return Animotion.motionTrajectoryTracks?.trajectoryKeys?.(action) || [action?.focusKey || "hip"]; }
 
-  function drawTrajectory(ctx, view, points, progress) {
+  function drawTrajectory(ctx, view, points, progress, key) {
     ctx.save();
     ctx.globalAlpha = 0.24;
-    ctx.strokeStyle = "#811515";
+    ctx.strokeStyle = colorForKey(key);
     ctx.lineWidth = 3;
     ctx.setLineDash([12, 14]);
     ctx.beginPath();
@@ -222,15 +215,17 @@
     });
     ctx.stroke();
     ctx.setLineDash([]);
-    drawTrajectoryMarker(ctx, view, points, progress);
+    drawTrajectoryMarker(ctx, view, points, progress, key);
     ctx.restore();
   }
 
-  function drawTrajectoryMarker(ctx, view, points, progress) {
+  function colorForKey(key) { return key === "hip" ? "#1f6f9f" : "#811515"; }
+
+  function drawTrajectoryMarker(ctx, view, points, progress, key) {
     const index = Math.min(points.length - 1, Math.floor(progress * (points.length - 1)));
     const screen = imagePointToScreen(pointFrom(points[index]), view);
     ctx.globalAlpha = 0.85;
-    ctx.fillStyle = "#c32222";
+    ctx.fillStyle = colorForKey(key);
     ctx.beginPath();
     ctx.arc(screen.x, screen.y, 5, 0, Math.PI * 2);
     ctx.fill();

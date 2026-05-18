@@ -14,6 +14,7 @@ require("../scripts/motion-anchors.js");
 const motionPanelMapper = require("../scripts/motion-panel-mapper.js");
 const cutsceneModel = require("../scripts/cutscene-model.js");
 const motionPlanner = require("../scripts/motion-planner.js");
+const trajectoryTracks = require("../scripts/motion-trajectory-tracks.js");
 const trajectoryEditor = require("../scripts/motion-trajectory-editor.js");
 const anchorPicker = require("../scripts/motion-anchor-picker.js");
 
@@ -39,8 +40,35 @@ test("cutscene bridge defaults to part-only source motion with body assist enabl
   const bridge = cutsceneModel.normalizeBridge({});
   assert.equal(bridge.sourceMotionEnabled, false);
   assert.equal(bridge.bodyAssistEnabled, true);
+  assert.equal(bridge.ghostEnabled, true);
   assert.equal(cutsceneModel.normalizeBridge({ sourceMotionEnabled: true }).sourceMotionEnabled, true);
   assert.equal(cutsceneModel.normalizeBridge({ bodyAssistEnabled: false }).bodyAssistEnabled, false);
+});
+
+test("cutscene bridge can disable ghost alpha while preserving other motion values", () => {
+  const enabled = cutsceneModel.bridgeValues(8 / 24, { ghostEnabled: true, impactFrame: 15 }, 24);
+  const disabled = cutsceneModel.bridgeValues(8 / 24, { ghostEnabled: false, impactFrame: 15 }, 24);
+  assert.equal(enabled.ghostAlpha > 0, true);
+  assert.equal(disabled.ghostAlpha, 0);
+  assert.equal(disabled.speedPower, enabled.speedPower);
+});
+
+test("generic and lookism cutscenes share ghost rendering timing constants", () => {
+  const preview = fs.readFileSync("scripts/preview.js", "utf8");
+  const lookism = fs.readFileSync("scripts/lookism-preset-renderer.js", "utf8");
+  assert.deepEqual(cutsceneModel.GHOST_DELAYS, [0.14, 0.08]);
+  assert.equal(cutsceneModel.GHOST_ALPHA_RATIO, 0.22);
+  assert.equal(preview.includes("Animotion.cutsceneModel.GHOST_DELAYS"), true);
+  assert.equal(preview.includes("Animotion.cutsceneModel.GHOST_ALPHA_RATIO"), true);
+  assert.equal(lookism.includes("Animotion.cutsceneModel.GHOST_DELAYS"), true);
+  assert.equal(lookism.includes("Animotion.cutsceneModel.GHOST_ALPHA_RATIO"), true);
+});
+
+test("cutscene options expose a ghost effect toggle", () => {
+  const options = fs.readFileSync("scripts/cutscene-options.js", "utf8");
+  assert.equal(options.includes('id="ghostEnabled"'), true);
+  assert.equal(options.includes("잔상효과"), true);
+  assert.equal(options.includes('updateBridge("ghostEnabled"'), true);
 });
 
 test("motion planner can disable auxiliary body and head tracks", () => {
@@ -87,6 +115,13 @@ test("motion planner stores multi-anchor action drafts", () => {
   assert.equal(plan.jointAction.anchors.length, 5);
   assert.deepEqual(plan.jointAction.beats.find((beat) => beat.id === "impact").pose.rKnee, [88, 77]);
   assert.equal(cutsceneModel.normalizeBridge({ jointAction: plan.jointAction }).jointAction.anchors.length, 5);
+});
+
+test("trajectory editor exposes primary and body root trajectories from one action", () => {
+  const bridge = cutsceneModel.normalizeBridge({ impactFrame: 15 });
+  const plan = motionPlanner.createPlan(sampleParts(), "leg", bridge, { template: "kick", target: { x: 150, y: 70 } });
+  const keys = trajectoryTracks.trajectoryTracks(plan.jointAction).map((track) => track.key);
+  assert.deepEqual(keys, ["rFoot", "hip"]);
 });
 
 test("edited action anchors regenerate beat poses", () => {
@@ -244,5 +279,6 @@ test("anchor picker is loaded after planner before trajectory editor", () => {
   assert.equal(bootstrap.indexOf('"pose-drag-history"') < bootstrap.indexOf('"preview-events"'), true);
   assert.equal(bootstrap.indexOf('"motion-panel-mapper"') < bootstrap.indexOf('"motion-planner"'), true);
   assert.equal(bootstrap.indexOf('"motion-planner"') < bootstrap.indexOf('"motion-anchor-picker"'), true);
+  assert.equal(bootstrap.indexOf('"motion-trajectory-tracks"') < bootstrap.indexOf('"motion-trajectory-editor"'), true);
   assert.equal(bootstrap.indexOf('"motion-anchor-picker"') < bootstrap.indexOf('"motion-trajectory-editor"'), true);
 });

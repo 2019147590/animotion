@@ -21,6 +21,8 @@
 
   function applyToTransform(transform, part, context = {}) {
     const scope = context.targetDebug?.chosenMotionScope || "limb-only";
+    const headFollow = unparentedHeadFollowDelta(part, context, scope);
+    if (headFollow) return applyHeadFollow(transform, headFollow, context.targetDebug);
     if (scope === "limb-only" || !receivesRootDelta(part)) return transform;
     if (part.id === context.targetDebug?.primaryPartId && (part.type === "body" || part.type === "spine")) return transform;
     const rootDelta = context.rootDelta || rootDeltaForFrame(context.parts, context.frame);
@@ -30,6 +32,72 @@
       x: (Number(transform.x) || 0) + desired.x - (Number(transform.x) || 0),
       y: (Number(transform.y) || 0) + desired.y - (Number(transform.y) || 0),
     };
+  }
+
+  function applyHeadFollow(transform, delta, targetDebug) {
+    if (targetDebug?.chosenMotionScope === "full-character" && sameTranslation(transform, delta)) return transform;
+    return {
+      ...transform,
+      x: (Number(transform.x) || 0) + delta.x,
+      y: (Number(transform.y) || 0) + delta.y,
+    };
+  }
+
+  function sameTranslation(transform = {}, delta = {}) {
+    return Math.abs((Number(transform.x) || 0) - (Number(delta.x) || 0)) < 0.001
+      && Math.abs((Number(transform.y) || 0) - (Number(delta.y) || 0)) < 0.001;
+  }
+
+  function unparentedHeadFollowDelta(part, context, scope) {
+    if (!shouldHeadFollowRoot(part, context, scope)) return null;
+    const root = rootPart(context.parts);
+    if (!root) return null;
+    const rootTransform = rootPoseTransform(root, context.frame);
+    if (!hasTransform(rootTransform)) return null;
+    return rootDisplacementAtPoint(root, rootTransform, partPivotImagePoint(part));
+  }
+
+  function shouldHeadFollowRoot(part, context, scope) {
+    if (part?.type !== "head" || part.hidden === true || parentIdFor(part)) return false;
+    if (!context.parts?.length || part.id === rootPart(context.parts)?.id) return false;
+    if (context.targetDebug?.chosenMotionScope) return scope !== "limb-only";
+    return true;
+  }
+
+  function rootPoseTransform(root, frame) {
+    return Animotion.motionModel.poseToTransform(Animotion.timeline.evaluatePartAtFrame(root, frame));
+  }
+
+  function hasTransform(transform = {}) {
+    return Boolean(Number(transform.x) || Number(transform.y) || Number(transform.rotate));
+  }
+
+  function rootDisplacementAtPoint(root, transform, point) {
+    const pivot = partPivotImagePoint(root);
+    const next = rotatePoint(point, pivot, degreesToRadians(transform.rotate));
+    next.x += Number(transform.x) || 0;
+    next.y += Number(transform.y) || 0;
+    return { x: next.x - point.x, y: next.y - point.y };
+  }
+
+  function rotatePoint(point, pivot, radians) {
+    const cos = Math.cos(radians);
+    const sin = Math.sin(radians);
+    const dx = point.x - pivot.x;
+    const dy = point.y - pivot.y;
+    return {
+      x: pivot.x + dx * cos - dy * sin,
+      y: pivot.y + dx * sin + dy * cos,
+    };
+  }
+
+  function partPivotImagePoint(part) {
+    const pivot = part?.pivot || { x: (Number(part?.rect?.w) || 0) * 0.5, y: (Number(part?.rect?.h) || 0) * 0.5 };
+    return { x: (Number(part?.rect?.x) || 0) + (Number(pivot.x) || 0), y: (Number(part?.rect?.y) || 0) + (Number(pivot.y) || 0) };
+  }
+
+  function degreesToRadians(degrees) {
+    return (Number(degrees) || 0) * Math.PI / 180;
   }
 
   function evaluationDebug(parts = [], frame = 1, bridge = {}) {
@@ -65,7 +133,11 @@
   }
 
   function receivesRootDelta(part) {
-    return part?.hidden !== true && !part?.parentId && CHARACTER_TYPES.has(part?.type);
+    return part?.hidden !== true && !parentIdFor(part) && CHARACTER_TYPES.has(part?.type);
+  }
+
+  function parentIdFor(part) {
+    return Animotion.rigConnection?.parentIdFor?.(part) || null;
   }
 
   function rootPart(parts = []) {

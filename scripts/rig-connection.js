@@ -23,6 +23,10 @@
     };
   }
 
+  function parentIdFor(part = {}) {
+    return part.parentId || part.parentPartId || null;
+  }
+
   function previewPoints(part, parent = null) {
     const meta = metadataForPart(part, parent);
     const points = [
@@ -141,6 +145,6 @@
     return Math.min(max, Math.max(min, value));
   }
 
-  Animotion.rigConnection = { metadataForPart, previewPoints, bodyRootPoint, labelForRole, userDebugLabels };
+  Animotion.rigConnection = { metadataForPart, parentIdFor, previewPoints, bodyRootPoint, labelForRole, userDebugLabels };
   if (typeof module !== "undefined") module.exports = Animotion.rigConnection;
 }

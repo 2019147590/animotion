@@ -29,6 +29,7 @@
     Animotion.motionAnchorPicker?.refreshControls?.();
     Animotion.motionDraftEditor?.refreshControls?.();
     Animotion.hiddenCompletionGuideEditor?.refreshControls?.();
+    Animotion.hiddenCompletionPartPanel?.refreshControls?.();
     Animotion.correspondenceEditor?.refreshControls?.();
     Animotion.cutsceneOptions?.refreshControls?.();
     renderLookismPresetStatus();

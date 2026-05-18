@@ -19,31 +19,27 @@
     const tolerance = hitTolerance();
     const matrix = currentPartMatrix(part);
     const hits = rigPointSpecs(part)
-      .map((spec) => ({ ...spec, distance: Animotion.geometry.distance(point, rigPoint(part, spec, matrix)) }))
+      .map((spec) => ({ ...spec, distance: Animotion.geometry.distance(point, rigPointImagePoint(part, spec, matrix)) }))
       .filter((hit) => hit.distance <= tolerance)
       .sort((a, b) => a.distance - b.distance);
     return hits[0] || null;
   }
 
-  function rigPoint(part, spec, matrix) {
-    const local = rigPointLocal(part, spec);
-    const point = new DOMPoint(part.rect.x + local.x, part.rect.y + local.y).matrixTransform(matrix);
-    return { x: point.x, y: point.y };
-  }
-
-  function rigPointLocal(part, spec) {
-    if (spec.role !== "joint") return spec.localPoint || part.pivot;
-    const motion = Animotion.motionModel.normalizeCustomMotion(part.customMotion);
-    if (!timelineLikeMode()) return part.joint;
-    return { x: part.joint.x + motion.jointX, y: part.joint.y + motion.jointY };
+  function rigPointImagePoint(part, spec, matrix) {
+    return Animotion.previewRigPoints.imagePoint(part, spec, matrix, { timelineLike: timelineLikeMode() });
   }
 
   function rigPointSpecs(part) {
-    const parent = Animotion.state.parts.find((candidate) => candidate.id === part.parentId);
+    const parent = parentPart(part);
     return Animotion.rigConnection?.previewPoints?.(part, parent) || [
       { role: "rotationPivot", localPoint: part.pivot, label: "회전 중심" },
       { role: "joint", localPoint: part.joint, label: "관절점" },
     ];
+  }
+
+  function parentPart(part) {
+    const parentId = Animotion.rigConnection?.parentIdFor?.(part);
+    return Animotion.state.parts.find((candidate) => candidate.id === parentId) || null;
   }
 
   function imagePointFromEvent(event) {

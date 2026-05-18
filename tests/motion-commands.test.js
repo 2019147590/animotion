@@ -24,6 +24,7 @@ function loadAnimotion() {
     "scripts/motion-target-debug.js",
     "scripts/cutscene-model.js",
     "scripts/motion-planner.js",
+    "scripts/command-history.js",
   ]) runScript(context, path);
   const Animotion = context.window.Animotion;
   Animotion.state = { currentFrame: 1, parts: [], project: { parts: [] }, cutsceneBridge: null };
@@ -65,6 +66,49 @@ test("motion command deletes a keyframe and syncs current pose", () => {
   Animotion.motionCommands.deleteKeyframe(part.id, 9);
   assert.deepEqual(part.keyframes.map((keyframe) => keyframe.frame), [1]);
   assert.equal(part.customMotion.x, 0);
+});
+
+test("motion keyframe insert records undo and redo", () => {
+  const Animotion = loadAnimotion();
+  const part = partFixture({ customMotion: { ...defaultPose(), x: 4 } });
+  Animotion.state.parts = [part];
+  Animotion.motionCommands.insertKeyframe(part, 5);
+  assert.equal(Animotion.commandHistory.canUndo(), true);
+  assert.equal(Animotion.commandHistory.undo(), true);
+  assert.equal(part.keyframes.length, 0);
+  assert.equal(part.customMotion.x, 4);
+  assert.equal(Animotion.commandHistory.redo(), true);
+  assert.equal(part.keyframes[0].frame, 5);
+  assert.equal(part.keyframes[0].pose.x, 4);
+});
+
+test("motion keyframe delete records undo and redo", () => {
+  const Animotion = loadAnimotion();
+  const part = partFixture({
+    customMotion: { ...defaultPose(), x: 16 },
+    keyframes: [
+      { frame: 1, pose: { x: 0 } },
+      { frame: 9, pose: { x: 16 } },
+    ],
+  });
+  Animotion.state.parts = [part];
+  Animotion.motionCommands.deleteKeyframe(part.id, 9);
+  assert.equal(part.keyframes.length, 1);
+  assert.equal(part.customMotion.x, 0);
+  assert.equal(Animotion.commandHistory.undo(), true);
+  assert.deepEqual(Array.from(part.keyframes, (keyframe) => keyframe.frame), [1, 9]);
+  assert.equal(part.customMotion.x, 16);
+  assert.equal(Animotion.commandHistory.redo(), true);
+  assert.deepEqual(Array.from(part.keyframes, (keyframe) => keyframe.frame), [1]);
+  assert.equal(part.customMotion.x, 0);
+});
+
+test("motion keyframe command can skip history for aggregate commands", () => {
+  const Animotion = loadAnimotion();
+  const part = partFixture({ customMotion: { ...defaultPose(), x: 4 } });
+  Animotion.state.parts = [part];
+  Animotion.motionCommands.insertKeyframe(part, 5, null, { recordHistory: false });
+  assert.equal(Animotion.commandHistory.canUndo(), false);
 });
 
 test("motion command applies generated tracks by part id", () => {
@@ -124,8 +168,12 @@ function partFixture(overrides = {}) {
     id: "part",
     type: "arm",
     rect: { x: 0, y: 0, w: 10, h: 20 },
-    customMotion: { x: 0, y: 0, rotate: 0, scaleY: 0, jointX: 0, jointY: 0, phase: 0 },
+    customMotion: defaultPose(),
     keyframes: [],
     ...overrides,
   };
+}
+
+function defaultPose() {
+  return { x: 0, y: 0, rotate: 0, scaleY: 0, jointX: 0, jointY: 0, phase: 0 };
 }

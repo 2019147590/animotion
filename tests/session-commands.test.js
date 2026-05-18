@@ -101,3 +101,24 @@ test("session command updates cutscene bridge through motion command", () => {
   assert.equal(Animotion.state.cutsceneBridge.durationFrames, 18);
   assert.equal(Animotion.state.cutsceneBridge.sourceScale, 0.8);
 });
+
+test("cutscene panel scale keeps wider values through project save and restore", () => {
+  const Animotion = loadAnimotion();
+  Animotion.state.image = { naturalWidth: 100, naturalHeight: 80 };
+  Animotion.sessionCommands.updateCutsceneBridge({ sourceScale: 0.25, impactScale: 3.6 });
+  const saved = Animotion.projectModel.projectFromEditorState(Animotion.state);
+  const restored = Animotion.projectModel.normalizeProject(saved);
+  Animotion.sessionCommands.restoreProject(restored, [], null);
+  assert.equal(Animotion.state.cutsceneBridge.sourceScale, 0.25);
+  assert.equal(Animotion.state.cutsceneBridge.impactScale, 3.6);
+});
+
+test("cutscene ghost toggle survives project save and restore", () => {
+  const Animotion = loadAnimotion();
+  Animotion.state.image = { naturalWidth: 100, naturalHeight: 80 };
+  Animotion.sessionCommands.updateCutsceneBridge({ ghostEnabled: false });
+  const saved = Animotion.projectModel.projectFromEditorState(Animotion.state);
+  const restored = Animotion.projectModel.normalizeProject(saved);
+  Animotion.sessionCommands.restoreProject(restored, [], null);
+  assert.equal(Animotion.state.cutsceneBridge.ghostEnabled, false);
+});

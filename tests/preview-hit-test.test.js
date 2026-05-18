@@ -18,6 +18,7 @@ globalThis.DOMPoint = class {
 const geometry = require("../scripts/geometry.js");
 const motionModel = require("../scripts/motion-model.js");
 const rigConnection = require("../scripts/rig-connection.js");
+const previewRigPoints = require("../scripts/preview-rig-points.js");
 const previewHitTest = require("../scripts/preview-hit-test.js");
 
 function test(name, fn) {
@@ -35,6 +36,7 @@ function setup(part) {
     geometry,
     motionModel,
     rigConnection,
+    previewRigPoints,
     config: { hitTolerancePx: 8 },
     state: {
       parts: [part],

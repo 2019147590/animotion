@@ -16,8 +16,12 @@
     impactScale: 1,
     sourceMotionEnabled: false,
     bodyAssistEnabled: true,
+    ghostEnabled: true,
   };
   const PANEL_KEYS = ["sourceX", "sourceY", "sourceScale", "impactX", "impactY", "impactScale"];
+  const PANEL_SCALE_RANGE = { min: 0.25, max: 3.6 };
+  const GHOST_DELAYS = [0.14, 0.08];
+  const GHOST_ALPHA_RATIO = 0.22;
 
   function createBridge(parts = [], primaryPartId = null) {
     const primary = primaryPartId || parts[0]?.id || null;
@@ -41,12 +45,13 @@
       effectStrength: clampNumber(bridge.effectStrength, 0, 2, DEFAULT_BRIDGE.effectStrength),
       sourceX: clampNumber(bridge.sourceX, -400, 400, DEFAULT_BRIDGE.sourceX),
       sourceY: clampNumber(bridge.sourceY, -400, 400, DEFAULT_BRIDGE.sourceY),
-      sourceScale: clampNumber(bridge.sourceScale, 0.5, 1.8, DEFAULT_BRIDGE.sourceScale),
+      sourceScale: clampNumber(bridge.sourceScale, PANEL_SCALE_RANGE.min, PANEL_SCALE_RANGE.max, DEFAULT_BRIDGE.sourceScale),
       impactX: clampNumber(bridge.impactX, -400, 400, DEFAULT_BRIDGE.impactX),
       impactY: clampNumber(bridge.impactY, -400, 400, DEFAULT_BRIDGE.impactY),
-      impactScale: clampNumber(bridge.impactScale, 0.5, 1.8, DEFAULT_BRIDGE.impactScale),
+      impactScale: clampNumber(bridge.impactScale, PANEL_SCALE_RANGE.min, PANEL_SCALE_RANGE.max, DEFAULT_BRIDGE.impactScale),
       sourceMotionEnabled: bridge.sourceMotionEnabled === true,
       bodyAssistEnabled: bridge.bodyAssistEnabled !== false,
+      ghostEnabled: bridge.ghostEnabled !== false,
       jointAction: normalizeJointAction(bridge.jointAction, { imageBounds }),
     };
   }
@@ -84,7 +89,7 @@
       crouch,
       launch,
       speedPower: launch * safe.effectStrength,
-      ghostAlpha: launch * (1 - impactIn) * 0.28 * safe.effectStrength,
+      ghostAlpha: safe.ghostEnabled ? launch * (1 - impactIn) * 0.28 * safe.effectStrength : 0,
       impactAlpha: impactIn,
       flashAlpha: impactIn * 0.42 * safe.effectStrength,
       shake: n > impactStart ? Math.sin(n * 140) * (1 - n) * 24 * safe.effectStrength : 0,
@@ -227,6 +232,9 @@
     bridgeFrameFromTime,
     bridgeValues,
     inferEffectDirection,
+    PANEL_SCALE_RANGE,
+    GHOST_DELAYS,
+    GHOST_ALPHA_RATIO,
   };
 
   if (typeof module !== "undefined") module.exports = Animotion.cutsceneModel;
