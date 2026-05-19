@@ -4,7 +4,7 @@
 
 ### Context
 
-Animotion needs an AI backend that turns a user-uploaded webtoon panel into editable Canvas rig data. The browser app should not run DWPose, See-through, or SAM directly.
+Animotion needs an AI backend that turns a user-uploaded original, licensed, or commercially usable character image into editable Canvas rig data. The browser app should not run DWPose, See-through, or SAM directly.
 
 ### Problem
 
@@ -23,11 +23,14 @@ image path
 -> version 3 rig manifest
 ```
 
+The backend is a creator-assistance layer. It must not be positioned as a service for copying unauthorized webtoon panels, original poses, silhouettes, layouts, or IP-specific styles.
+
 ### Non-Goals
 
 - Do not vendor DWPose or See-through code into this repo.
 - Do not commit model weights or generated workspaces.
 - Do not pretend to produce real masks when model runners are not configured.
+- Do not use unlicensed webtoon/IP samples as product demos or default fixtures.
 
 ### Constraints
 
@@ -97,7 +100,6 @@ See-through output:
 
 ```bash
 uv run python -m unittest discover -s tests
-uv run python scripts/run_job.py path/to/panel.png
+uv run python scripts/run_job.py path/to/character.png
 uv run uvicorn ai_rig_server.server:app --host 0.0.0.0 --port 8000
 ```
-

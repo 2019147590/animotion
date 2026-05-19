@@ -6,6 +6,8 @@
 
 `hiddenCompletionPatch` assets store user-authored hidden-area guide geometry in Animotion project JSON. A later local AI server or inpainting adapter needs a stable request payload derived from that asset.
 
+Hidden completion is a creator-assistance feature for original, licensed, or commercially usable assets. It should fill or extend user-controlled parts, not reproduce unauthorized source panels or IP-specific styles.
+
 ### Problem
 
 Provider-specific request fields would make the browser app depend on one model or service. Ambiguous coordinate spaces would also make adapters place masks and guide vertices incorrectly.

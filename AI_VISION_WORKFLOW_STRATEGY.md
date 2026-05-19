@@ -1,19 +1,21 @@
-# AI Vision 자동 파츠/리깅 전략
+# AI Vision 창작자 보조 파츠/리깅 전략
 
 ## Problem 1-Pager
 
 ### Context
 
-Animotion의 현재 최상위 앱은 사용자가 웹툰 컷 이미지를 올리고, 직접 마스크를 그려 파츠를 만든 뒤, 피벗/관절/부모관계를 지정해 Canvas에서 리깅 미리보기를 만든다. `lookism` 프로토타입은 미리 준비한 파츠 PNG와 manifest, 관절 좌표 테이블을 사용하면 영상 파일 없이도 웹툰풍 컷신을 매 프레임 합성할 수 있음을 보여준다.
+Animotion의 현재 최상위 앱은 사용자가 오리지널 또는 정식 권리를 확보한 캐릭터 이미지를 올리고, 직접 마스크를 그려 파츠를 만든 뒤, 피벗/관절/부모관계를 지정해 Canvas에서 리깅 미리보기를 만든다. `lookism` 프로토타입은 미리 준비한 파츠 PNG와 manifest, 관절 좌표 테이블을 사용하면 영상 파일 없이도 컷신을 매 프레임 합성할 수 있음을 보여주는 검증용 예시다.
 
-다음 목표는 수동 파츠 제작을 줄이는 것이다. 사용자가 임의의 웹툰/만화 패널을 업로드하면 앱이 캐릭터를 찾고, 캐릭터별 파츠 레이어를 만들고, 관절 좌표와 피벗/부모관계를 추정해서 Canvas rig data 초안을 생성해야 한다.
+다음 목표는 창작자가 직접 제어할 수 있는 수동 파츠 제작 시간을 줄이는 것이다. 사용자가 직접 그렸거나 권리를 가진 캐릭터 이미지를 업로드하면 앱이 캐릭터/파츠 후보를 찾고, 파츠 레이어, 관절 좌표, 피벗/부모관계 초안을 제안해서 Canvas rig data 초안을 생성해야 한다.
+
+이 문서는 AI 보조 기능의 현재 가설이다. 실제 모델 출력, 사용자 보정 비용, 법적/IP 판단, 구현 난이도, 데이터 round-trip 안정성에 따라 단계와 모델 조합은 바뀔 수 있다.
 
 ### Goal
 
-1차 목표는 완전 자동 완성기가 아니라, 사용자가 바로 수정 가능한 리깅 초안을 만드는 자동 파이프라인이다.
+1차 목표는 완전 자동 완성기가 아니라, 사용자가 바로 수정 가능한 리깅 초안을 만드는 창작자 보조 파이프라인이다.
 
 ```text
-웹툰 패널 업로드
+오리지널/허가 캐릭터 이미지 업로드
 -> 캐릭터 instance 추출
 -> 캐릭터별 crop
 -> DWPose 관절 추정
@@ -34,6 +36,7 @@ Animotion의 현재 최상위 앱은 사용자가 웹툰 컷 이미지를 올리
 - VLM을 픽셀 마스크의 source of truth로 쓰지 않는다.
 - 첫 구현에서 A/B 두 컷의 파츠 대응과 생성형 인비트윈까지 해결하지 않는다.
 - 사용자 보정 UI를 제거하고 원클릭 자동화만 추구하지 않는다.
+- 무단 웹툰 컷, 유명 IP, 원작 그림체 복제 워크플로우를 제품 목표로 두지 않는다.
 
 ### Constraints
 
@@ -41,7 +44,13 @@ Animotion의 현재 최상위 앱은 사용자가 웹툰 컷 이미지를 올리
 - Canvas 앱은 AI 결과물인 PNG/mask/JSON을 로드해 편집하고 렌더링한다.
 - 기존 수동 파츠 제작 워크플로우와 리그 JSON 호환성을 유지한다.
 - 모델 출력이 틀릴 수 있으므로 각 단계는 confidence, diagnostics, correction target을 남긴다.
-- MVP는 사용자가 업로드한 단일 이미지에서 자동으로 주 대상 캐릭터를 골라 rig 초안을 만드는 흐름을 먼저 검증한다. 여러 캐릭터 후보 선택 UI와 두 컷 대응은 후속 단계로 둔다.
+- MVP는 사용자가 업로드한 단일 오리지널/허가 이미지에서 자동으로 주 대상 캐릭터를 골라 rig 초안을 만드는 흐름을 먼저 검증한다. 여러 캐릭터 후보 선택 UI와 두 컷 대응은 후속 단계의 레퍼런스/포즈 보조 기능으로 둔다.
+
+### IP Safety
+
+안전한 입력은 사용자가 직접 그린 캐릭터, 사용자가 권리를 보유한 오리지널 IP, 정식 라이선스 캐릭터, 상업 사용 가능한 에셋, 테스트용 더미/샘플 에셋이다.
+
+AI pipeline은 원본 컷 복제, 원본 포즈 트레이싱, 원본 실루엣 재현, 원본 구도/연출/컷 순서 복원을 목표로 하지 않는다. 레퍼런스가 있더라도 동작 원리와 감정 흐름을 사용자 오리지널 캐릭터로 재해석하는 보조 정보로만 다룬다.
 
 ## 결정된 선택
 
@@ -51,14 +60,14 @@ DWPose를 1차 pose estimator로 사용한다.
 
 선택 이유:
 
-- body, face, hand를 포함한 whole-body keypoint 계열이라 웹툰 캐릭터 리깅에 필요한 관절 후보를 많이 제공한다.
+- body, face, hand를 포함한 whole-body keypoint 계열이라 2D 캐릭터 리깅에 필요한 관절 후보를 많이 제공한다.
 - ControlNet/일러스트 워크플로우에서 이미 널리 쓰여 애니/만화 이미지에 대한 실전 사례가 많다.
 - RTMPose보다 무겁지만 MVP 서버 파이프라인에서는 실시간 프레임 처리가 아니라 업로드 후 분석이므로 정확도와 keypoint richness가 더 중요하다.
 
 주의:
 
-- DWPose도 웹툰/만화 도메인에서는 실패할 수 있다.
-- 과장된 포즈, 가려진 팔다리, 반신 컷, 말풍선/효과선이 많은 컷은 별도 실패 처리가 필요하다.
+- DWPose도 만화/일러스트 도메인에서는 실패할 수 있다.
+- 과장된 포즈, 가려진 팔다리, 반신 이미지, 효과선이 많은 입력은 별도 실패 처리가 필요하다.
 - 관절 좌표는 rig 생성의 강한 힌트이지, 무조건 정답은 아니다.
 
 ### Layer Decomposition
@@ -83,7 +92,7 @@ See-through를 1차 layer decomposition 모델로 사용한다.
 
 역할:
 
-- 웹툰 패널 전체에서 리깅 대상 캐릭터 instance를 분리한다.
+- 입력 이미지 전체에서 리깅 대상 캐릭터 instance를 분리한다.
 - 여러 캐릭터가 있는 경우 가장 큰/중앙/고신뢰 instance를 자동 선택한다.
 - See-through와 DWPose에 배경/말풍선/다른 캐릭터가 섞여 들어가는 것을 줄인다.
 
@@ -109,7 +118,7 @@ OpenAI, Claude, Gemini 같은 VLM은 검수와 설명에 사용한다.
 ## 최종 파이프라인
 
 ```text
-[Input webtoon panel]
+[Input original/licensed character image]
         |
         v
 [Character instance segmentation]
@@ -119,8 +128,8 @@ Grounding DINO + SAM fallback
         v
 [Character crop per instance]
 normalize size
-remove panel margin
-preserve mapping to original panel coordinates
+remove image margin
+preserve mapping to original image coordinates
         |
         +--> [Pose estimator]
         |    DWPose
@@ -167,18 +176,18 @@ corrections saved for evaluation and future fine-tuning
 
 Input:
 
-- 원본 웹툰 패널 이미지
+- 원본 오리지널/허가 캐릭터 이미지
 
 Output:
 
 - `characterInstances[]`
 - 각 instance의 bbox, mask, confidence
-- 원본 패널 좌표계와 crop 좌표계 간 변환 정보
+- 원본 이미지 좌표계와 crop 좌표계 간 변환 정보
 
 Why:
 
-- See-through와 DWPose가 패널 전체의 배경, 말풍선, 효과음, 다른 캐릭터를 섞어서 보지 않게 한다.
-- 여러 캐릭터가 있는 컷에서도 대상 캐릭터를 자동 선택할 수 있게 한다.
+- See-through와 DWPose가 이미지 전체의 배경, 말풍선, 효과음, 다른 캐릭터를 섞어서 보지 않게 한다.
+- 여러 캐릭터가 있는 이미지에서도 대상 캐릭터를 자동 선택할 수 있게 한다.
 
 Failure handling:
 
@@ -204,13 +213,13 @@ MVP에서는 후보 선택 화면을 별도로 만들지 않는다. 자동 선�
 Input:
 
 - character bbox/mask
-- 원본 패널 이미지
+- 원본 이미지
 
 Process:
 
 - bbox 주변에 안전 margin을 추가한다.
 - 긴 변 기준 1024 또는 1280 해상도로 normalize한다.
-- crop 좌표계를 원본 패널 좌표계로 되돌릴 affine transform을 저장한다.
+- crop 좌표계를 원본 이미지 좌표계로 되돌릴 affine transform을 저장한다.
 
 Output:
 
@@ -525,7 +534,7 @@ Proposed JSON:
 ```json
 {
   "version": 3,
-  "sourceImage": "panel.png",
+  "sourceImage": "character.png",
   "ai": {
     "pipelineVersion": "ai-rig-v1",
     "models": {
@@ -613,7 +622,7 @@ POST /api/rig-jobs/:jobId/feedback
 
 ```text
 workspace/jobs/job_001/
-  input/panel.png
+  input/character.png
   characters/char_01/crop.png
   characters/char_01/pose.json
   characters/char_01/see_through/
@@ -664,7 +673,7 @@ Goal:
 
 Tasks:
 
-- Run See-through on 10-20 representative webtoon/anime panels.
+- Run See-through on 10-20 representative original/licensed character images or cleared dummy samples.
 - Run DWPose on the same character crops.
 - Write a local converter script from generated layers + pose JSON to Animotion rig JSON.
 - Manually inspect generated PNGs, pivots, hierarchy, z-index.
@@ -700,7 +709,7 @@ Exit criteria:
 
 Goal:
 
-- User-uploaded webtoon panel can be processed without a character candidate selection step.
+- User-uploaded original/licensed character image can be processed without a character candidate selection step.
 
 Tasks:
 
@@ -711,7 +720,7 @@ Tasks:
 
 Exit criteria:
 
-- Multi-character panel does not blindly mix characters in common cases.
+- Multi-character image does not blindly mix characters in common cases.
 - User can correct a wrong target crop after generation or through fallback bbox flow.
 
 ### Phase 3: Correction UI Integration
@@ -776,7 +785,7 @@ Human:
 
 ### Test Set
 
-Create a private evaluation folder with:
+Create a private evaluation folder with only original, licensed, commercially usable, or dummy samples:
 
 - single full-body character
 - half-body character
@@ -785,8 +794,8 @@ Create a private evaluation folder with:
 - speech bubbles
 - crossed arms/legs
 - occluded limbs
-- black-and-white manga
-- color webtoon
+- black-and-white manga-style original/dummy sample
+- color webtoon-style original/dummy sample
 - chibi/exaggerated proportions
 
 ## Open Decisions

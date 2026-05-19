@@ -4,30 +4,35 @@ This document preserves the current product direction and implementation status 
 
 ## Product Direction
 
-Animotion is moving toward a manual-first 2D motion comic authoring tool.
+Animotion is moving toward a creator-controlled 2D/2.5D character rigging animation tool for original, licensed, or commercially usable character assets.
 
 The intended MVP flow is:
 
 ```text
-A cut / B cut upload
--> manual panel crop, placement, and character mask setup
--> manual A cut rig parts and joint handles
--> motion type, target point, and action-anchor selection
--> automatic beat, joint trajectory, and multi-anchor draft
--> user edits trajectory / anchors / joints / keyframes
--> LOOKISM-style Canvas playback
--> export or save JSON
+original/licensed character image or part assets
+-> manual part selection / import
+-> pivot, joint, parent-child rig setup
+-> keypose, trajectory, and motion-draft editing
+-> hidden-completion guide/patch authoring when motion exposes missing areas
+-> preview playback
+-> export or save project JSON
 ```
 
-The AI/GPU plan remains an input automation layer, not the core renderer. Later AI should propose character masks, parts, joints, and corrections. The app must still work when the user provides those values manually.
+A/B cut correspondence, B-cut impact references, and the Lookism-style preset remain implemented prototype/reference workflows. They are no longer the primary product direction. Treat them as optional pose/reference assistance and motion-readability testbeds, not as an unauthorized webtoon panel conversion workflow.
+
+The AI/GPU plan remains an assistant layer, not the core renderer. Later AI should propose character masks, parts, joints, hidden-completion patches, side textures, and correction candidates. The app must still work when the user provides those values manually.
 
 ## Key Principles
 
+- Treat the planning spec as a living document. Keep the core direction stable, but update feature scope, terminology, data shape, and priorities when implementation, testing, user feedback, or IP/legal constraints reveal better choices.
 - Implement the feature before discussing the next step.
 - Separate implemented behavior from future work in every report.
 - Keep work units small and push each completed unit to GitHub.
 - Treat AI-generated or automatic results as editable drafts.
 - Avoid hardcoded per-image motion data in app code; save generated motion as project data.
+- Assume production inputs are user-authored, licensed, or commercially usable assets.
+- Do not design the product around copying original webtoon panels, poses, silhouettes, layouts, or IP-specific style.
+- If an automation path reduces quality or user control, move it back to a manual-first or editable-draft workflow.
 
 ## Current Implemented State
 
@@ -364,25 +369,26 @@ $env:PYTHONPATH='src'; python -m unittest discover -s tests
 
 ## Suggested Next Work Unit
 
-Refine cutscene attack motion semantics, visual debugging, and root-motion tuning.
+Stabilize creator-controlled rigging and motion authoring before adding more automatic generation.
 
 Smallest next scope:
 
 ```text
-show correspondence/manual/active/root targets with distinct overlay styles
--> expose current active target source and motion scope in one clear debug panel
--> tune bodyFollowStrength / maxRootDeltaRatio / primaryLeadStrength / secondaryFollowStrength from UI
--> improve kick anticipation, travel, impact timing, and primary-limb lead
--> keep B impact snap loop timing separate from target/root motion debugging
+part selection and inspector consistency
+-> pivot/joint editing with out-of-rect coordinates preserved
+-> parent-child transform evaluation and debug output
+-> trajectory control point editing without preview target conflicts
+-> save/load/save round-trip coverage for motionDraft and hiddenCompletionPatch guide data
+-> undo/redo records for the remaining command helpers
 ```
 
 Why this is next:
 
-- The character now receives shared root travel, so the remaining issue is readability and authoring semantics.
-- Correspondence, manual target, active target, root anchor, and trajectory sample concepts are separated in state, but the UI still needs stronger visual distinction.
-- Root motion tuning exists in data/debug and should become an explicit authoring surface before adding more motion-generation complexity.
+- The new product center is direct character rigging and motion editing, so the edit loop must be dependable before AI or A/B reference features expand.
+- Correspondence, manual target, active target, root anchor, and trajectory sample concepts are separated in state, but creator-facing UI still needs stronger visual distinction.
+- Hidden-completion guide assets now exist; their coordinates and asset references must round-trip reliably before generated patches become a production feature.
 
-Do not change `HiddenCompletionRequestPayload`, hidden-completion provider contracts, Stability/Local SD provider logic, or B impact snap timing while doing this motion pass.
+Do not change `HiddenCompletionRequestPayload`, hidden-completion provider contracts, Stability/Local SD provider logic, or B impact snap timing while doing this rigging/motion stability pass.
 
 ## GitHub State
 

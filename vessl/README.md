@@ -6,11 +6,11 @@ This project uses Vessl as a remote RTX 3090 development workspace. The local ma
 
 ### Context
 
-The AI rig pipeline needs DWPose, See-through, and a character segmentation runner. These models are too heavy for the static browser app and should run in a GPU workspace.
+The AI rig pipeline needs DWPose, See-through, and a character segmentation runner for original, licensed, or commercially usable character inputs. These models are too heavy for the static browser app and should run in a GPU workspace.
 
 ### Problem
 
-We need a repeatable SSH workflow that keeps `lookism/` preserved, runs AI work in `ai-rig-server/`, and avoids committing model weights or generated artifacts.
+We need a repeatable SSH workflow that keeps the prototype folders preserved, runs AI work in `ai-rig-server/`, and avoids committing model weights, generated artifacts, secrets, or unlicensed sample assets.
 
 ### Goal
 
@@ -31,6 +31,7 @@ local terminal
 - Do not expose a public API before the offline spike works.
 - Do not store secrets in this repo.
 - Do not commit model weights, generated PNG/PSD, or workspace outputs.
+- Do not use unauthorized webtoon/IP images as default samples or demos.
 
 ### Constraints
 
@@ -108,7 +109,7 @@ Run an offline spike:
 set -a
 source .env
 set +a
-uv run python scripts/run_job.py /workspace/samples/panel.png 1280 1280
+uv run python scripts/run_job.py /workspace/samples/character.png 1280 1280
 ```
 
 ## Runner Contract
@@ -124,8 +125,8 @@ The JSON payload shape is:
 
 ```json
 {
-  "image": "/workspace/input/panel.png",
-  "workspace": "/workspace/animotion-rig-jobs/panel",
+  "image": "/workspace/input/character.png",
+  "workspace": "/workspace/animotion-rig-jobs/character",
   "imageSize": { "width": 1280, "height": 1280 },
   "character": null
 }
@@ -156,4 +157,3 @@ cd ai-rig-server && uv run uvicorn ai_rig_server.server:app --host 0.0.0.0 --por
 
 - Vessl CLI cheat sheet: https://docs.cloud.vessl.ai/cli/cheatsheet
 - Vessl workspace creation: https://docs.cloud.vessl.ai/member/workspace/create
-
