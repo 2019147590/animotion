@@ -13,6 +13,7 @@
     els.finishSelection.disabled = !state.selection || state.selection.closed || state.selection.points.length < 3;
     els.clearSelection.disabled = !state.selection;
     els.guideParts.disabled = !state.image || !rigEdit;
+    els.applyDemoGengaMotion.disabled = !Animotion.scriptedGengaMotionPreset?.canApplyToApp?.();
     els.exportWebm.disabled = !state.image || state.parts.length === 0;
     els.saveRig.disabled = !state.image || state.parts.length === 0;
     els.sourceStatus.textContent = sourceStatusText();

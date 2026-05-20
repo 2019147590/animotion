@@ -1,18 +1,14 @@
 {
   const global = typeof window !== "undefined" ? window : globalThis;
   const Animotion = global.Animotion || (global.Animotion = {});
-  const TEMPLATES = {
-    kick: { label: "킥", beats: [["ready", 0, 0, 0, 0], ["compress", 0.24, -0.16, 0.08, 0.2], ["chamber", 0.56, 0.1, -0.12, 0.48], ["extend", 0.82, 0.58, -0.04, 0.82], ["impact", 1, 0, 0, 1]] },
-    punch: { label: "펀치", beats: [["guard", 0, 0, 0, 0], ["windup", 0.25, -0.2, 0.04, 0.15], ["drive", 0.58, 0.24, -0.02, 0.58], ["extension", 0.84, 0.75, 0, 0.86], ["impact", 1, 0, 0, 1]] },
-    dash: { label: "돌진", beats: [["ready", 0, 0, 0, 0], ["lean", 0.28, -0.08, 0.04, 0.2], ["launch", 0.62, 0.45, -0.08, 0.58], ["snap", 0.86, 0.82, -0.02, 0.86], ["arrive", 1, 0, 0, 1]] },
-  };
+  const TEMPLATES = { kick: { label: "킥", beats: [["ready", 0, 0, 0, 0], ["compress", 0.24, -0.16, 0.08, 0.2], ["chamber", 0.56, 0.1, -0.12, 0.48], ["extend", 0.82, 0.58, -0.04, 0.82], ["impact", 1, 0, 0, 1]] }, punch: { label: "펀치", beats: [["guard", 0, 0, 0, 0], ["windup", 0.25, -0.2, 0.04, 0.15], ["drive", 0.58, 0.24, -0.02, 0.58], ["extension", 0.84, 0.75, 0, 0.86], ["impact", 1, 0, 0, 1]] }, dash: { label: "돌진", beats: [["ready", 0, 0, 0, 0], ["lean", 0.28, -0.08, 0.04, 0.2], ["launch", 0.62, 0.45, -0.08, 0.58], ["snap", 0.86, 0.82, -0.02, 0.86], ["arrive", 1, 0, 0, 1]] } };
   function normalizePlan(plan = {}, options = {}) {
     const bounds = options.imageBounds || sourceBounds();
     const target = normalizeTarget(plan.target, plan.targetNormalized, bounds);
     const targetSource = normalizeTargetSource(plan.targetSource, target);
     const targetState = Animotion.motionTargetState?.normalizeTargetState?.({ ...plan, target, targetSource }, bounds) || {};
     return {
-      template: TEMPLATES[plan.template] ? plan.template : "kick",
+      template: templateFor(plan.template) ? plan.template : "kick",
       target,
       targetNormalized: target ? normalizedPoint(target, bounds) : null,
       anchors: Animotion.motionAnchors?.normalizeAnchors?.(plan.anchors, { imageBounds: bounds }) || [],
@@ -25,6 +21,9 @@
       targetDebug: Animotion.motionTargetDebug?.normalizeTargetDebug?.(plan.targetDebug) || null,
       motionHints: Animotion.motionHints?.normalize?.(plan.motionHints) || null,
       motionDraft: Animotion.motionDrafts?.normalize?.(plan.motionDraft, { assets: options.assets }) || Animotion.motionDrafts?.compileFromHints?.(plan.motionHints) || null,
+      ...(plan.demoMotionPresetId ? { demoMotionPresetId: String(plan.demoMotionPresetId) } : {}),
+      ...(Array.isArray(plan.trajectoryPoints) ? { trajectoryPoints: clonePlain(plan.trajectoryPoints) } : {}),
+      ...(plan.rootMotion && typeof plan.rootMotion === "object" ? { rootMotion: clonePlain(plan.rootMotion) } : {}),
     };
   }
   function normalizeTarget(target, normalized, bounds) {
@@ -115,10 +114,7 @@
     const part = Animotion.parts.selectedPart();
     if (!part) return;
     const previous = Animotion.cutsceneModel.normalizeBridge(Animotion.state.cutsceneBridge);
-    const bridge = Animotion.cutsceneControls.preservePanelTransform(
-      Animotion.cutsceneModel.createBridge(Animotion.state.parts, part.id),
-      previous
-    );
+    const bridge = Animotion.cutsceneControls.preservePanelTransform(Animotion.cutsceneModel.createBridge(Animotion.state.parts, part.id), previous);
     const result = createPlan(Animotion.state.parts, part.id, bridge, currentPlan());
     Animotion.motionCommands.applyMotionPlanResult(bridge, currentPlan(), result);
     Animotion.dom.els.motionTemplate.value = "cutscene";
@@ -149,7 +145,7 @@
       trajectorySamples,
       anchors,
       active,
-      jointAction: { source: `motion-planner-${plan.template}-anchors-v1`, focusKey: active.end, anchors, beats, targetDebug, activeMotionTarget, trajectoryPoints: trajectorySamples, trajectorySamples, motionHints: plan.motionHints, motionDraft: Animotion.motionDrafts?.snapshot?.(plan.motionDraft) || plan.motionDraft },
+      jointAction: { source: `motion-planner-${plan.template}-anchors-v1`, focusKey: active.end, actionTimeline: actionTimelineFor(plan.template, bridge), anchors, beats, targetDebug, activeMotionTarget, trajectoryPoints: trajectorySamples, trajectorySamples, motionHints: plan.motionHints, motionDraft: Animotion.motionDrafts?.snapshot?.(plan.motionDraft) || plan.motionDraft },
       partTracks: tracksForParts(parts, primary, beats, base, active, { ...bridge, jointAction: { targetDebug } }),
     };
   }
@@ -161,7 +157,10 @@
     return { root: "chest", mid: "head", end: "head" };
   }
   function templateBeats(template, bridge) {
-    const impact = Animotion.cutsceneModel.normalizeBridge(bridge).impactFrame;
+    const normalized = Animotion.cutsceneModel.normalizeBridge(bridge);
+    const action = actionTimelineFor(template, normalized);
+    if (action) return action.beats.map((spec) => ({ id: spec.id, at: spec.at, recoil: spec.recoil, lift: spec.lift, reach: spec.reach }));
+    const impact = normalized.impactFrame;
     return TEMPLATES[template].beats.map(([id, n, recoil, lift, reach]) => ({ id, at: Math.max(1, Math.round(1 + (impact - 1) * n)), recoil, lift, reach }));
   }
   function poseBeat(spec, base, active, target, direction, anchors) {
@@ -253,7 +252,7 @@
     const selected = plan.selectedBeatId ? ` · beat ${plan.selectedBeatId}` : "";
     const scope = plan.targetDebug?.chosenMotionScope ? ` · ${plan.targetDebug.chosenMotionScope}` : "";
     const distance = Number.isFinite(plan.targetDebug?.computedDistance) ? ` · d ${Math.round(plan.targetDebug.computedDistance)}` : "";
-    return `${TEMPLATES[plan.template].label} · ${target}${source}${scope}${distance}${hints ? ` · ${hints}` : ""}${plan.anchors.length ? ` · anchors ${plan.anchors.length}` : ""}${selected}`;
+    return `${templateFor(plan.template).label} · ${target}${source}${scope}${distance}${hints ? ` · ${hints}` : ""}${plan.anchors.length ? ` · anchors ${plan.anchors.length}` : ""}${selected}`;
   }
   function autoTarget(start, direction, primary) {
     const p = pointFromArray(start || [0, 0]);
@@ -262,8 +261,8 @@
   }
   function activeTargetPoint(plan) { return plan.activeMotionTarget?.point || plan.target || null; }
   function motionTargetForPlan(plan, point) { return plan.activeMotionTarget ? { ...plan.activeMotionTarget, point } : Animotion.motionTargetState?.generatedTarget?.(point) || null; }
-  function sourceLabel(source) { return ({ manual: "수동", correspondence: "B컷 참조", generated: "자동 생성" })[source] || source; }
-  function isBodyPrimary(part) { return part?.type === "body" || part?.type === "spine"; }
+  function sourceLabel(source) { return ({ manual: "수동", correspondence: "B컷 참조", generated: "자동 생성" })[source] || source; } function isBodyPrimary(part) { return part?.type === "body" || part?.type === "spine"; }
+  function templateFor(template) { return TEMPLATES[template] || (Animotion.actionTimelineModel?.hasTemplate?.(template) ? Animotion.actionTimelineModel.timelineForTemplate(template) : null); } function actionTimelineFor(template, bridge) { return Animotion.actionTimelineModel?.hasTemplate?.(template) ? Animotion.actionTimelineModel.timelineForTemplate(template, bridge) : null; }
   function parentIdFor(part) { return Animotion.rigConnection?.parentIdFor?.(part) || null; }
   function bendNormal(baseRoot, baseMid, baseEnd, root, end) {
     const sign = Math.sign((baseMid.x - baseRoot.x) * (baseEnd.y - baseRoot.y) - (baseMid.y - baseRoot.y) * (baseEnd.x - baseRoot.x)) || 1;
@@ -293,6 +292,7 @@
   function rounded(point) { return [Math.round(point.x), Math.round(point.y)]; }
   function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
   function normalizedPoint(point, bounds) { return Animotion.coordinateSpaces?.normalizedImagePointFromPoint?.(point, bounds) || null; }
+  function clonePlain(value) { return JSON.parse(JSON.stringify(value)); }
   function sourceBounds() { return Animotion.state?.image ? { width: Animotion.state.image.naturalWidth, height: Animotion.state.image.naturalHeight } : typeof Animotion.imageBounds === "function" ? Animotion.imageBounds() : null; }
   function refresh() { Animotion.ui?.refreshUi?.(); }
   Animotion.motionPlanner = { normalizePlan, createPlan, installControls, refreshControls, tracksForJointAction, hitTarget, beginDragFromTarget, setTargetMode };

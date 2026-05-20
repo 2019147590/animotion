@@ -70,6 +70,7 @@
       id,
       name: stringOrDefault(part.name, `part_${index + 1}`),
       type: PART_TYPES.has(part.type) ? part.type : "prop",
+      humanRole: Animotion.humanRigSchema?.normalizeRole?.(part.humanRole) || null,
       assetId: stringOrDefault(part.assetId, `asset-${id}`),
       sourceAssetId: stringOrDefault(part.sourceAssetId, "source-image"),
       parentId: connection.parentPartId,

@@ -22,6 +22,10 @@ A/B cut correspondence, B-cut impact references, and the Lookism-style preset re
 
 The AI/GPU plan remains an assistant layer, not the core renderer. Later AI should propose character masks, parts, joints, hidden-completion patches, side textures, and correction candidates. The app must still work when the user provides those values manually.
 
+Scripted genga cut generation is now a rights-safe fixture path for development and demos, and it is being moved toward a Blender-like user-authored scripting workflow. It is not a professional drawing app. The current implementation uses a restricted declarative JSON/object DSL instead of arbitrary `eval`: a cut definition can describe canvas settings, SVG elements, logical parts, rects, pivot/joint candidates, parent-child links, z-order, and hidden-completion guide metadata. The output can enter the existing rig/project pipeline.
+
+The hardcoded demo genga cut remains available, but it should be treated as the first sample definition/internal reference implementation, not as the final shape of the generator.
+
 ## Key Principles
 
 - Treat the planning spec as a living document. Keep the core direction stable, but update feature scope, terminology, data shape, and priorities when implementation, testing, user feedback, or IP/legal constraints reveal better choices.
@@ -33,6 +37,7 @@ The AI/GPU plan remains an assistant layer, not the core renderer. Later AI shou
 - Assume production inputs are user-authored, licensed, or commercially usable assets.
 - Do not design the product around copying original webtoon panels, poses, silhouettes, layouts, or IP-specific style.
 - If an automation path reduces quality or user control, move it back to a manual-first or editable-draft workflow.
+- Keep scripted fixtures deterministic and structure-first; visual quality can improve later only if it does not turn the app into a general drawing tool.
 
 ## Current Implemented State
 
@@ -75,9 +80,14 @@ Recent commit:
 
 ### Motion Planning And Anchor Draft
 
-Implemented in `scripts/motion-planner.js`, `scripts/motion-anchors.js`, `scripts/motion-anchor-picker.js`, and `scripts/motion-trajectory-editor.js`.
+Implemented in `scripts/motion-planner.js`, `scripts/action-timeline-model.js`, `scripts/motion-anchors.js`, `scripts/motion-anchor-picker.js`, and `scripts/motion-trajectory-editor.js`.
 
 - Motion templates: kick, punch, dash.
+- Punch and kick now read their beat timing from `scripts/action-timeline-model.js` while preserving the existing `motionPlanner -> cutsceneBridge -> part.keyframes` flow.
+- Punch timeline: `guard -> windup -> drive -> extension -> impact -> recover`.
+- Kick timeline: `ready -> compress -> chamber -> extend -> impact -> recover`.
+- Action timeline normalization preserves `durationFrames`, `impactFrame`, `beats`, `primaryPartRole`, and `rootMotionHint`.
+- Legacy `motionPlan.template: "punch"` and `"kick"` continue to normalize and generate cutscene bridge actions.
 - Target point picking on the preview canvas.
 - Template-based beat generation.
 - Joint trajectory draft from current A rig plus target.
@@ -144,6 +154,45 @@ Recent commit:
 5064c57 Add direct motion anchor picking
 ```
 
+### Scripted Genga Cut Generator
+
+Implemented in the current working tree.
+
+- `scripts/scripted-genga-runner.js`: restricted script runner for declarative genga cut definitions.
+- `scripts/scripted-genga-sample-definition.js`: first sample/internal reference definition for the demo anime/genga cut.
+- `scripts/scripted-genga-generator.js`: compatibility wrapper that now runs the sample definition through the runner.
+- `scripts/scripted-genga-motion-preset.js`: applies a small demo motion preset to the generated fixture using existing cutscene/keyframe/motionDraft paths.
+- `tests/scripted-genga-generator.test.js`: deterministic generation, DSL compile, project round-trip, hidden-completion guide, and demo motion round-trip coverage.
+- `index.html`: dev/demo controls for `Generate Demo Genga Cut` and `Apply Demo Genga Motion`.
+
+Current script API surface:
+
+- `Animotion.scriptedGengaRunner.compileScriptedGengaScript(source)`: accepts a JSON string or object definition and rejects non-JSON source. This intentionally avoids arbitrary code execution.
+- `Animotion.scriptedGengaRunner.runScriptedGengaDefinition(definition)`: creates preview SVG data URI, layers, parts, hidden-completion patch assets, and an `AnimotionProject` payload.
+- `Animotion.scriptedGengaRunner.loadGeneratedCutIntoApp(result)`: loads the generated result through the existing session/project/part-canvas restore path.
+- `Animotion.scriptedGengaSampleDefinition.createDefinition()`: returns the current sample cut definition.
+- `Animotion.scriptedGengaGenerator.createFixture()`: compatibility entrypoint used by tests and UI; internally runs the sample definition.
+
+Definition shape currently supported:
+
+```text
+canvas
+visual.elements
+parts
+hiddenCompletionGuides
+editor.selectedPartId
+editor.rootPartId
+editor.motionPlan
+```
+
+Security and scope notes:
+
+- No `eval` or arbitrary user code execution is used.
+- The script/definition API is separated from internal app state. Definitions produce data; app loading is a separate boundary call.
+- SVG output is allowlisted to a small set of element names and attributes.
+- This is not a brush engine, drawing app, or AI image generator.
+- The next natural step is a dev-only JSON textarea/import entrypoint plus validation error display, not a full code editor.
+
 ### Project Model And Commands
 
 Implemented on `master`.
@@ -151,7 +200,9 @@ Implemented on `master`.
 - `scripts/project-model.js`: central `AnimotionProject` runtime normalization and project part/editor part conversion.
 - `scripts/project-serialization.js`: converts current editor state into `AnimotionProject`.
 - `scripts/project-model.d.ts`: TypeScript type declarations for `AnimotionProject`, assets, parts, rigs, motions, effects, timeline, and editor metadata.
+- `scripts/human-rig-schema.js`: basic 2D human rig metadata helpers. It keeps existing `part.type` unchanged and normalizes optional `part.humanRole` values for `torso`, `pelvis`, `head`, `upperArm`, `forearm`, `hand`, `thigh`, `shin`, and `foot`.
 - Project JSON now saves as `format: "animotion-project"` with string `version`, metadata, canvas, assets, parts, rigs, motions, effects, timeline, and editor compatibility data.
+- Project parts now preserve `humanRole` through save/load round trips without changing legacy part type handling.
 - Existing legacy rig JSON with `parts` and AI rig payloads with `version: 3` still import.
 - Save downloads `animotion-project.json` instead of `animotion-rig.json`.
 - `scripts/session-commands.js`: new source image reset, B cut image setup, project/legacy restore, Lookism preset application, cutscene bridge updates, and panel setup restore.
@@ -283,6 +334,12 @@ Current architecture note:
 - `scripts/motion-anchor-picker.js`: choose and directly place generated action anchors.
 - `scripts/motion-trajectory-editor.js`: editable beat handles and trajectory overlay.
 - `scripts/cutscene-options.js`: A cut source-motion and body-assist option controls.
+- `scripts/human-rig-schema.js`: optional basic human rig role normalization plus missing-role and parent-chain validation.
+- `scripts/action-timeline-model.js`: punch/kick action timeline normalization used by motion planner.
+- `scripts/scripted-genga-runner.js`: restricted declarative genga cut definition compiler/runner and project conversion boundary.
+- `scripts/scripted-genga-sample-definition.js`: sample/internal reference genga cut definition used by the demo button.
+- `scripts/scripted-genga-generator.js`: compatibility wrapper for `Generate Demo Genga Cut`.
+- `scripts/scripted-genga-motion-preset.js`: demo motion preset for the generated genga fixture.
 - `scripts/rig-connection.js`: explicit parent/child attach point metadata and rig preview point roles.
 - `scripts/edit-target-inspector.js`: selected/hovered edit target inspector for pose, motion path, and hidden guide points.
 - `scripts/preview-coordinate.js`: preview/client/image/part-local coordinate conversion helpers for direct manipulation.
@@ -342,6 +399,9 @@ node tests\lookism-preset.test.js
 node tests\part-commands.test.js
 node tests\motion-commands.test.js
 node tests\session-commands.test.js
+node tests\human-rig-schema.test.js
+node tests\action-timeline-model.test.js
+node tests\scripted-genga-generator.test.js
 node tests\panel-commands.test.js
 node tests\correspondence-commands.test.js
 node tests\motion-draft-editor.test.js
@@ -404,17 +464,63 @@ Branch:
 master
 ```
 
-Latest known committed baseline before this handoff update:
+Latest known committed baseline before this upload:
 
 ```text
 81a192c Keep rig handles direct outside part bounds
 ```
 
+Current upload commit:
+
+```text
+this commit: Add human rig schema and action timelines
+```
+
 ## Current Working Tree Notes
 
-As of this handoff update, the latest preview pointer arbitration and pose-drag direct-manipulation work has been committed and pushed on `master`.
+As of this handoff update on 2026-05-20, the scripted genga generator, demo motion preset, planning-doc updates, UI demo entrypoints, basic human rig schema, and action timeline model have been committed for upload to `master`.
 
 Recently completed in the working tree:
+
+- Planning/product direction update:
+  - Updated the planning spec and README direction around creator-controlled 2D/2.5D animation, rights-safe original/licensed IP workflows, scripted genga fixtures, and planning documents as living documents.
+  - Reframed generated demo cuts as source material for rigging/motion/hidden-completion testing, not as a general drawing app.
+- Scripted genga runner:
+  - Added a restricted declarative runner in `scripts/scripted-genga-runner.js`.
+  - Added `compileScriptedGengaScript(source)`, `runScriptedGengaDefinition(definition)`, and `loadGeneratedCutIntoApp(result)`.
+  - `compileScriptedGengaScript` currently accepts JSON string/object definitions and rejects arbitrary source. There is no `eval`.
+  - The runner separates definition normalization, SVG preview generation, part/layer metadata generation, hidden-completion guide asset generation, and `AnimotionProject` conversion.
+  - SVG output is generated from allowlisted elements/attributes.
+- Sample genga definition:
+  - Added `scripts/scripted-genga-sample-definition.js` as the first sample/internal reference implementation.
+  - The previous hardcoded demo cut is now expressed as a sample cut definition with canvas, visual SVG elements, parts, parent links, pivots, joints, layer order, and a hidden-completion guide.
+  - `Generate Demo Genga Cut` still works through `scripts/scripted-genga-generator.js`, but the wrapper now runs the sample definition through the runner.
+- Demo genga motion preset:
+  - Added `scripts/scripted-genga-motion-preset.js`.
+  - Added `Apply Demo Genga Motion` as a dev/demo UI entrypoint.
+  - The preset applies torso/root, head, right upper arm, right forearm, and speed-arc keyframes.
+  - It stores trajectory points, root motion, cutscene bridge data, and motionDraft hidden-completion metadata through existing motion/cutscene/project paths.
+  - `scripts/motion-planner.js` now preserves demo `trajectoryPoints`, `rootMotion`, and `demoMotionPresetId` during plan normalization.
+- Scripted genga tests:
+  - Expanded `tests/scripted-genga-generator.test.js` to cover deterministic sample definition execution, JSON compile behavior, motion-ready metadata, project normalize/save/load round-trip, hidden-completion guide preservation, demo motion application, and demo motion round-trip.
+
+- Basic human rig schema:
+  - Added `scripts/human-rig-schema.js`.
+  - Existing `part.type` values are unchanged.
+  - `humanRole` is stored as optional metadata and normalizes to `torso`, `pelvis`, `head`, `upperArm`, `forearm`, `hand`, `thigh`, `shin`, or `foot`.
+  - Added pure validation helpers for required-role gaps and parent-chain issues, including missing parents and cycles.
+  - `project-model` and `.d.ts` now preserve `humanRole` through save/load round trips.
+- Action timeline model:
+  - Added `scripts/action-timeline-model.js`.
+  - Punch timeline is `guard -> windup -> drive -> extension -> impact -> recover`.
+  - Kick timeline is `ready -> compress -> chamber -> extend -> impact -> recover`.
+  - The model normalizes `impactFrame`, `durationFrames`, `beats`, `primaryPartRole`, and `rootMotionHint`.
+  - `motion-planner.js` now reads punch/kick beats from the new model while preserving legacy `template: "punch"` and `template: "kick"` behavior.
+  - `cutscene-model.js` preserves normalized `jointAction.actionTimeline` metadata.
+- Human/action tests:
+  - Added `tests/human-rig-schema.test.js`.
+  - Added `tests/action-timeline-model.test.js`.
+  - Verified new tests plus existing punch/kick, project round-trip, motion command, session, target propagation/state, geometry, part command, hidden completion round-trip, AI import, and scripted genga tests.
 
 - Motion/cutscene terminology cleanup:
   - Added `MOTION_TERMINOLOGY.md`.
@@ -491,6 +597,9 @@ Recently completed in the working tree:
   - `tests/part-commands.test.js`
   - `tests/motion-commands.test.js`
   - `tests/session-commands.test.js`
+  - `tests/human-rig-schema.test.js`
+  - `tests/action-timeline-model.test.js`
+  - `tests/scripted-genga-generator.test.js`
   - `tests/panel-commands.test.js`
   - `tests/correspondence-commands.test.js`
   - `tests/motion-draft-editor.test.js`

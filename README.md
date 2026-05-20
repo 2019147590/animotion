@@ -32,6 +32,7 @@
 - 프레임 기반 키프레임 모션 삽입/삭제와 선형 보간
 - 리그 JSON 저장/불러오기
 - Canvas `MediaRecorder` 기반 WebM 내보내기
+- 권리 안전한 원화 컷 fixture를 만드는 실험용 `Generate Demo Genga Cut` 진입점
 
 ## 실행
 
@@ -56,6 +57,7 @@ AI 기반 파츠/리깅 보조 전략은 [AI_VISION_WORKFLOW_STRATEGY.md](AI_VIS
 - A/B 컷 대응은 메인 기능이 아니라 선택적 레퍼런스/포즈 보조 기능이다.
 - AI 결과물은 항상 사용자가 수정 가능한 asset, guide, patch, texture로 저장한다.
 - pivot, joint, guide vertex 같은 part-local 좌표는 `rect` 밖과 normalized `0..1` 밖 값을 보존해야 한다.
+- scripted cut generator는 professional drawing app이 아니라 리깅/모션/hidden completion 테스트에 바로 쓰는 rights-safe original source cut fixture 생성기다.
 - 세부 구현은 고정하지 않는다. 반복 버그, 테스트 병목, UI 혼란, 법적/IP 판단, 구현 난이도 대비 가치가 드러나면 기획과 우선순위를 함께 조정한다.
 
 ## MVP 한계

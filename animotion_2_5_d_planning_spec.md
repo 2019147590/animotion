@@ -87,6 +87,24 @@ Animotion은 더 이상 기존 웹툰 컷 A/B를 그대로 맞춰 애니메이�
 | `hiddenCompletionPatch` | 회전/변형 시 드러나는 숨은 부위 보완 에셋 |
 | 2.5D draft | 2D 파츠에 깊이감/회전감을 주기 위한 편집 상태 |
 | A/B cut matching | 메인 기능이 아닌 선택적 레퍼런스/포즈 보조 기능 |
+| scripted cut generator | 권리 안전한 원화 컷 fixture와 motion-ready metadata를 만드는 dev/demo 보조 기능 |
+
+## 4.1 Scripted Genga Cut Generator
+
+Animotion은 단순 자동 리깅 툴도 아니고 순수 AI 애니메이션 생성기도 아니다. 입력 이미지를 움직일 수 있는 `motion-ready structure`로 바꾸고, 리깅 기반 모션과 애니메이터식 자유 표현이 함께 존재하는 제작 경험을 제공해야 한다.
+
+이를 검증하려면 권리 문제가 없는 오리지널 2D 애니메이션 원화 컷 fixture가 필요하다. `scripted cut generator`는 이를 위한 최소 기반이다.
+
+원칙:
+
+- professional drawing app 또는 범용 그림툴이 아니다.
+- 브러시 엔진, Clip Studio/Photoshop 대체 기능, AI 이미지 생성 기능을 만들지 않는다.
+- 목적은 rights-safe original 2D anime/genga-style source cuts를 생성하는 것이다.
+- 생성 결과는 단순 이미지가 아니라 리깅/모션/hidden completion 테스트에 바로 투입 가능한 구조여야 한다.
+- 출력은 `original cut preview`, logical parts/layers, part rects, pivot/joint candidates, parent-child links, z-order, optional hidden completion guide candidate를 포함한다.
+- 고퀄 일러스트보다 deterministic fixture와 구조화된 metadata를 우선한다.
+
+이 기능은 제품의 메인 제작 UX가 아니라 개발/데모/테스트용 entrypoint다. 다만 사용자가 원화 컷을 넣었을 때 기대해야 할 motion-ready 구조를 명확히 보여주는 기준 fixture 역할을 한다.
 
 ## 5. 비목표
 
@@ -96,11 +114,13 @@ Animotion은 더 이상 기존 웹툰 컷 A/B를 그대로 맞춰 애니메이�
 
 ## 6. MVP 목표
 
-1차 MVP:
+1차 구현목표:
 
-> 사용자가 오리지널 2D 캐릭터 파츠를 불러오고, 직접 피벗/관절/부모관계를 설정한 뒤, 키포즈와 이동 경로를 조정하여 짧은 컷신 모션을 만들 수 있다.
+> 2D 기본 인체 캐릭터를 입력받아 전신 펀치/킥 액션을 리깅 기반으로 만들고, 타격 순간에는 스미어·메쉬변형·드로우오버 같은 만화적 표현을 추가할 수 있게 한다. 또한 클로즈업 펀치 컷에서는 얼굴·상체·주먹을 디테일하게 제어해, 가까이 보여도 일본 2D 애니식 액션 표현이 가능하도록 한다. 그리고 리깅 모션과 만화적 표현을 자유자재로 구사할 수 있어야 한다.
 
-MVP 핵심 기능: 파츠 선택, 이동/회전/스케일, pivot/joint 편집, parent-child 연결, 키프레임 저장과 보간, trajectory 편집, preview 재생, 숨은 부위 보완용 guide/patch asset 편집, 저장/불러오기 round-trip 안정성, undo/redo 가능한 command 구조.
+1차 전제: 입력 캐릭터는 오리지널, 정식 라이선스, 또는 상업적으로 사용 가능한 기본 인체형 2D 캐릭터로 제한한다. 자동 완성보다 창작자가 직접 수정할 수 있는 리깅, 키포즈, 작화 보조 레이어를 우선한다.
+
+MVP 핵심 기능: 파츠 선택, 이동/회전/스케일, pivot/joint 편집, parent-child 연결, 전신 펀치/킥용 키포즈와 이동 경로 편집, 타격 프레임용 스미어/메쉬 변형/드로우오버 레이어, 클로즈업 펀치 컷용 얼굴/상체/주먹 세부 제어, preview 재생, 숨은 부위 보완용 guide/patch asset 편집, 저장/불러오기 round-trip 안정성, undo/redo 가능한 command 구조.
 
 AI 기능은 MVP의 필수 핵심이 아니라 후속 보조 기능이다.
 

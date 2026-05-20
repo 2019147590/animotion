@@ -49,6 +49,7 @@ export type Part = {
   id: string;
   name: string;
   type: "head" | "body" | "spine" | "arm" | "leg" | "hand" | "hair" | "eye" | "mouth" | "clothes" | "prop" | "background";
+  humanRole?: HumanRole | null;
   assetId: string;
   sourceAssetId?: string;
   parentId?: string | null;
@@ -297,4 +298,5 @@ export type PolygonMask = { points: Vec2[] };
 export type Mesh2D = { vertices: Vec2[]; triangles: [number, number, number][]; uvs?: Vec2[] };
 export type Transform2D = { x: number; y: number; rotation: number; scaleX: number; scaleY: number };
 export type CustomMotion = { x: number; y: number; rotate: number; scaleY: number; jointX: number; jointY: number; phase: number };
+export type HumanRole = "torso" | "pelvis" | "head" | "upperArm" | "forearm" | "hand" | "thigh" | "shin" | "foot";
 export type RotationLimit3D = { xMin: number; xMax: number; yMin: number; yMax: number; zMin: number; zMax: number };

@@ -15,7 +15,7 @@
           <span class="mark">A</span>
           <div>
             <h1>Animotion</h1>
-            <p>2D motion comic rig MVP</p>
+            <p>2D/2.5D motion-ready cut rig MVP</p>
           </div>
         </div>
 
@@ -23,7 +23,7 @@
           <h2>컷 입력</h2>
           <label class="file-drop">
             <input id="imageInput" type="file" accept="image/*" />
-            <span>웹툰 컷 업로드</span>
+            <span>원화/캐릭터 컷 업로드</span>
             <small>PNG, JPG, WebP</small>
           </label>
           <label class="file-drop secondary">
@@ -33,6 +33,9 @@
           </label>
           <button id="loadLookismPreset" type="button" class="preset-button">Lookism 컷신 프리셋 불러오기</button>
           <p id="lookismPresetStatus" class="hint">lookism 폴더의 PNG 2개와 파츠를 사용해 0.5초 컷신을 즉시 재현합니다.</p>
+          <button id="generateDemoGengaCut" type="button">Generate Demo Genga Cut</button>
+          <button id="applyDemoGengaMotion" type="button" disabled>Apply Demo Genga Motion</button>
+          <p id="demoGengaStatus" class="hint">권리 안전한 오리지널 원화 컷 fixture와 리깅 metadata를 생성합니다.</p>
         </section>
 
         <section class="control-group">
@@ -161,7 +164,7 @@
           <header>
             <div>
               <h2>원본 컷</h2>
-              <p>파츠로 떼어낼 영역을 드래그</p>
+              <p>motion-ready 파츠로 떼어낼 영역을 드래그</p>
             </div>
             <span id="sourceStatus">이미지 없음</span>
           </header>

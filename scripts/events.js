@@ -140,6 +140,8 @@
     els.imageInput.addEventListener("change", Animotion.io.handleImageUpload);
     els.nextImageInput.addEventListener("change", Animotion.io.handleNextImageUpload);
     els.loadLookismPreset.addEventListener("click", Animotion.lookismPreset.loadIntoApp);
+    els.generateDemoGengaCut.addEventListener("click", generateDemoGengaCut);
+    els.applyDemoGengaMotion.addEventListener("click", applyDemoGengaMotion);
     els.sourceZoom.addEventListener("input", () => Animotion.view.setSourceZoom(Number(els.sourceZoom.value)));
     els.zoomOut.addEventListener("click", () => Animotion.view.setSourceZoom(state.sourceZoom / Animotion.config.zoomStep));
     els.zoomReset.addEventListener("click", Animotion.view.resetSourceView);
@@ -170,6 +172,23 @@
     Animotion.partCommands.createPartFromShape(els.partType.value, state.selection, els.partName.value.trim());
     els.partName.value = "";
     clearSelection();
+  }
+
+  async function generateDemoGengaCut() {
+    try {
+      els.demoGengaStatus.textContent = "오리지널 원화 컷 fixture를 생성하는 중입니다.";
+      await Animotion.scriptedGengaGenerator.loadIntoApp();
+    } catch (error) {
+      els.demoGengaStatus.textContent = error.message;
+    }
+  }
+
+  function applyDemoGengaMotion() {
+    try {
+      Animotion.scriptedGengaMotionPreset.applyToApp();
+    } catch (error) {
+      els.demoGengaStatus.textContent = error.message;
+    }
   }
 
   function applyOutline() {

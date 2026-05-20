@@ -33,7 +33,7 @@
     const image = Animotion.panelEditor?.imageFor() || state.image;
     if (!image) {
       sourceCtx.restore();
-      drawEmpty(sourceCtx, sourceCanvas, "웹툰 컷을 업로드하세요");
+      drawEmpty(sourceCtx, sourceCanvas, "원화/캐릭터 컷을 업로드하세요");
       return;
     }
     const view = Animotion.view.sourceImageView(w, h);

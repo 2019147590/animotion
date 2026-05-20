@@ -52,7 +52,7 @@
       sourceMotionEnabled: bridge.sourceMotionEnabled === true,
       bodyAssistEnabled: bridge.bodyAssistEnabled !== false,
       ghostEnabled: bridge.ghostEnabled !== false,
-      jointAction: normalizeJointAction(bridge.jointAction, { imageBounds }),
+      jointAction: normalizeJointAction(bridge.jointAction, { imageBounds, durationFrames, impactFrame: bridge.impactFrame }),
     };
   }
 
@@ -140,6 +140,7 @@
     return {
       source: String(action.source || "part-pivots-v1"),
       focusKey: action.focusKey ? String(action.focusKey) : null,
+      ...(action.actionTimeline ? { actionTimeline: Animotion.actionTimelineModel?.normalizeTimeline?.(action.actionTimeline, options) || clonePlain(action.actionTimeline) } : {}),
       anchors: Animotion.motionAnchors?.normalizeAnchors?.(action.anchors, options) || [],
       beats: action.beats.map((beat) => normalizeBeat(beat, options)).filter(Boolean),
       ...(action.targetDebug ? { targetDebug: clonePlain(action.targetDebug) } : {}),
