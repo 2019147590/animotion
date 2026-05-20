@@ -7,19 +7,19 @@
   const TIMELINES = Object.freeze({
     punch: timeline("punch", "펀치", "forearm", "body-follow", [
       beat("guard", 0, 0, 0, 0),
-      beat("windup", 0.25, -0.2, 0.04, 0.15),
-      beat("drive", 0.58, 0.24, -0.02, 0.58),
-      beat("extension", 0.84, 0.75, 0, 0.86),
+      beat("windup", 0.2, -0.24, 0.06, 0.1),
+      beat("drive", 0.52, 0.18, -0.03, 0.62),
+      beat("extension", 0.78, 0.38, -0.01, 0.9),
       beat("impact", 1, 0, 0, 1),
-      beat("recover", "duration", 0.08, 0, 0.25),
+      beat("recover", "duration", 0.04, 0.02, 0.22),
     ]),
     kick: timeline("kick", "킥", "shin", "body-follow", [
       beat("ready", 0, 0, 0, 0),
-      beat("compress", 0.24, -0.16, 0.08, 0.2),
-      beat("chamber", 0.56, 0.1, -0.12, 0.48),
-      beat("extend", 0.82, 0.58, -0.04, 0.82),
+      beat("compress", 0.18, -0.2, 0.1, 0.14),
+      beat("chamber", 0.46, 0.04, -0.16, 0.38),
+      beat("extend", 0.76, 0.42, -0.06, 0.84),
       beat("impact", 1, 0, 0, 1),
-      beat("recover", "duration", 0.06, 0, 0.24),
+      beat("recover", "duration", 0.04, 0.02, 0.22),
     ]),
   });
 

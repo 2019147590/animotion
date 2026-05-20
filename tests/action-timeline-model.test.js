@@ -72,6 +72,52 @@ test("motion planner reads punch and kick beats from action timeline model", () 
   assert.equal(punch.jointAction.beats.find((beat) => beat.id === "recover").at, 36);
 });
 
+test("punch has distinct windup drive impact and recover transforms with body follow", () => {
+  const Animotion = loadAnimotion();
+  const bridge = Animotion.cutsceneModel.normalizeBridge({ durationFrames: 36, impactFrame: 24 });
+  const plan = Animotion.motionPlanner.createPlan(sampleParts(), "arm", bridge, { template: "punch", target: { x: 160, y: 30 } });
+  const beats = beatMap(plan.jointAction);
+  assert.equal(beats.windup.at < beats.drive.at && beats.drive.at < beats.impact.at && beats.impact.at < beats.recover.at, true);
+  assert.notDeepEqual(beats.windup.pose.rHand, beats.drive.pose.rHand);
+  assert.notDeepEqual(beats.drive.pose.rHand, beats.impact.pose.rHand);
+  assert.notDeepEqual(beats.impact.pose.rHand, beats.recover.pose.rHand);
+  assert.equal(Math.abs(bodyPoseAt(plan, "body", beats.impact.at).x) > 0, true);
+});
+
+test("kick has chamber extend impact and recover transforms with body follow", () => {
+  const Animotion = loadAnimotion();
+  const bridge = Animotion.cutsceneModel.normalizeBridge({ durationFrames: 36, impactFrame: 24 });
+  const plan = Animotion.motionPlanner.createPlan(sampleParts(), "leg", bridge, { template: "kick", target: { x: 160, y: 70 } });
+  const beats = beatMap(plan.jointAction);
+  assert.equal(beats.chamber.at < beats.extend.at && beats.extend.at < beats.impact.at && beats.impact.at < beats.recover.at, true);
+  assert.notDeepEqual(beats.chamber.pose.rFoot, beats.extend.pose.rFoot);
+  assert.notDeepEqual(beats.extend.pose.rFoot, beats.impact.pose.rFoot);
+  assert.notDeepEqual(beats.impact.pose.rFoot, beats.recover.pose.rFoot);
+  assert.equal(Math.hypot(bodyPoseAt(plan, "body", beats.impact.at).x, bodyPoseAt(plan, "body", beats.impact.at).y) > 0, true);
+});
+
+test("humanRole metadata can identify punch and kick body root participation", () => {
+  const Animotion = loadAnimotion();
+  const bridge = Animotion.cutsceneModel.normalizeBridge({ durationFrames: 36, impactFrame: 24 });
+  const parts = roleOnlyParts();
+  const punch = Animotion.motionPlanner.createPlan(parts, "right-forearm", bridge, { template: "punch", target: { x: 160, y: 30 } });
+  const kick = Animotion.motionPlanner.createPlan(parts, "right-shin", bridge, { template: "kick", target: { x: 160, y: 70 } });
+  assert.equal(punch.jointAction.focusKey, "rHand");
+  assert.equal(kick.jointAction.focusKey, "rFoot");
+  assert.equal(Math.abs(bodyPoseAt(punch, "torso", 24).x) > 0, true);
+  assert.equal(Math.hypot(bodyPoseAt(kick, "torso", 24).x, bodyPoseAt(kick, "torso", 24).y) > 0, true);
+});
+
+test("missing optional humanRole parts do not crash punch or kick generation", () => {
+  const Animotion = loadAnimotion();
+  const bridge = Animotion.cutsceneModel.normalizeBridge({ durationFrames: 36, impactFrame: 24 });
+  const sparse = sampleParts().map(({ humanRole, ...part }) => part).filter((part) => part.id !== "head");
+  const punch = Animotion.motionPlanner.createPlan(sparse, "arm", bridge, { template: "punch", target: { x: 160, y: 30 } });
+  const kick = Animotion.motionPlanner.createPlan(sparse, "leg", bridge, { template: "kick", target: { x: 160, y: 70 } });
+  assert.equal(punch.jointAction.beats.find((beat) => beat.id === "impact").at, 24);
+  assert.equal(kick.jointAction.beats.find((beat) => beat.id === "impact").at, 24);
+});
+
 test("legacy punch and kick template strings still normalize", () => {
   const Animotion = loadAnimotion();
   assert.equal(Animotion.motionPlanner.normalizePlan({ template: "punch" }).template, "punch");
@@ -88,6 +134,23 @@ function sampleParts() {
   ];
 }
 
+function roleOnlyParts() {
+  return [
+    { id: "torso", type: "prop", humanRole: "torso", rect: { x: 40, y: 20, w: 20, h: 50 }, pivot: { x: 10, y: 25 }, joint: { x: 10, y: 40 } },
+    { id: "head", type: "prop", humanRole: "head", rect: { x: 38, y: 4, w: 24, h: 20 }, pivot: { x: 12, y: 10 }, joint: { x: 12, y: 16 } },
+    { id: "right-forearm", type: "prop", humanRole: "forearm", rect: { x: 64, y: 28, w: 18, h: 32 }, pivot: { x: 2, y: 6 }, joint: { x: 16, y: 24 } },
+    { id: "right-shin", type: "prop", humanRole: "shin", rect: { x: 67, y: 60, w: 18, h: 45 }, pivot: { x: 2, y: 6 }, joint: { x: 16, y: 40 } },
+  ];
+}
+
 function ids(timeline) {
   return JSON.parse(JSON.stringify(timeline.beats.map((beat) => beat.id)));
+}
+
+function beatMap(action) {
+  return Object.fromEntries(action.beats.map((beat) => [beat.id, beat]));
+}
+
+function bodyPoseAt(plan, partId, frame) {
+  return plan.partTracks.find((track) => track.partId === partId).keyframes.find((keyframe) => keyframe.frame === frame).pose;
 }

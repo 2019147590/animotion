@@ -150,8 +150,8 @@
   }
   function activeKeys(primary, parts) {
     const side = Animotion.poseAssist?.actionSide?.(primary, parts) < 0 ? "l" : "r";
-    if (primary?.type === "arm") return { root: `${side}Shoulder`, mid: `${side}Elbow`, end: `${side}Hand` };
-    if (primary?.type === "leg") return { root: "hip", mid: `${side}Knee`, end: `${side}Foot` };
+    if (partKind(primary) === "arm") return { root: `${side}Shoulder`, mid: `${side}Elbow`, end: `${side}Hand` };
+    if (partKind(primary) === "leg") return { root: "hip", mid: `${side}Knee`, end: `${side}Foot` };
     if (isBodyPrimary(primary)) return { root: "hip", mid: "chest", end: "chest", motion: "translate" };
     return { root: "chest", mid: "head", end: "head" };
   }
@@ -233,10 +233,10 @@
       Object.assign(pose, { x: beat.pose.hip[0] - base.hip[0], y: beat.pose.hip[1] - base.hip[1] });
       return { frame: beat.at, pose };
     }
-    if (!parentId && bridge.bodyAssistEnabled !== false && !isBodyPrimary(primary) && (part.type === "body" || part.type === "spine")) {
+    if (!parentId && bridge.bodyAssistEnabled !== false && !isBodyPrimary(primary) && isBodyPrimary(part)) {
       Object.assign(pose, { x: beat.pose.hip[0] - base.hip[0], y: beat.pose.hip[1] - base.hip[1] });
     }
-    if (!parentId && bridge.bodyAssistEnabled !== false && !isBodyPrimary(primary) && part.type === "head") {
+    if (!parentId && bridge.bodyAssistEnabled !== false && !isBodyPrimary(primary) && partKind(part) === "head") {
       pose.x = (beat.pose.head[0] - base.head[0]) * 0.7;
       pose.y = (beat.pose.head[1] - base.head[1]) * 0.7;
     }
@@ -255,12 +255,12 @@
   }
   function autoTarget(start, direction, primary) {
     const p = pointFromArray(start || [0, 0]);
-    const distance = primary?.type === "leg" ? 170 : 120;
+    const distance = partKind(primary) === "leg" ? 170 : 120;
     return { x: Math.round(p.x + direction.x * distance), y: Math.round(p.y + direction.y * distance) };
   }
   function activeTargetPoint(plan) { return plan.activeMotionTarget?.point || plan.target || null; }
   function motionTargetForPlan(plan, point) { return plan.activeMotionTarget ? { ...plan.activeMotionTarget, point } : Animotion.motionTargetState?.generatedTarget?.(point) || null; }
-  function sourceLabel(source) { return ({ manual: "수동", correspondence: "B컷 참조", generated: "자동 생성" })[source] || source; } function isBodyPrimary(part) { return part?.type === "body" || part?.type === "spine"; }
+  function sourceLabel(source) { return ({ manual: "수동", correspondence: "B컷 참조", generated: "자동 생성" })[source] || source; } function partKind(part = {}) { if (["thigh", "shin", "foot"].includes(part.humanRole) || part.type === "leg") return "leg"; if (["upperArm", "forearm", "hand"].includes(part.humanRole) || part.type === "arm") return "arm"; if (["torso", "pelvis"].includes(part.humanRole) || part.type === "body" || part.type === "spine") return "body"; if (part.humanRole === "head" || part.type === "head") return "head"; return part.type || null; } function isBodyPrimary(part) { return partKind(part) === "body"; }
   function templateFor(template) { return TEMPLATES[template] || (Animotion.actionTimelineModel?.hasTemplate?.(template) ? Animotion.actionTimelineModel.timelineForTemplate(template) : null); } function actionTimelineFor(template, bridge) { return Animotion.actionTimelineModel?.hasTemplate?.(template) ? Animotion.actionTimelineModel.timelineForTemplate(template, bridge) : null; }
   function impactExaggerationFor(actionTimeline, parts, primary) { return Animotion.impactExaggerationLayer?.createDefaultImpactExaggerationForActionTimeline?.(actionTimeline, { parts, primaryPartId: primary?.id }) || null; }
   function parentIdFor(part) { return Animotion.rigConnection?.parentIdFor?.(part) || null; }

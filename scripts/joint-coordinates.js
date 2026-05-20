@@ -3,10 +3,10 @@
   const Animotion = global.Animotion || (global.Animotion = {});
 
   function inferJointPose(parts = []) {
-    const body = mainPart(parts, ["spine", "body"]) || parts[0];
-    const head = mainPart(parts, ["head"]);
-    const arms = sideParts(parts, "arm", body);
-    const legs = sideParts(parts, "leg", body);
+    const body = mainPart(parts, ["spine", "body"], ["torso", "pelvis"]) || parts[0];
+    const head = mainPart(parts, ["head"], ["head"]);
+    const arms = sideParts(parts, "arm", body, ["upperArm", "forearm", "hand"]);
+    const legs = sideParts(parts, "leg", body, ["thigh", "shin", "foot"]);
     return {
       hip: rounded(bottomPoint(body)),
       chest: rounded(topPoint(body)),
@@ -34,12 +34,13 @@
     };
   }
 
-  function mainPart(parts, types) {
-    return types.map((type) => parts.find((part) => part.type === type)).find(Boolean);
+  function mainPart(parts, types, roles = []) {
+    return roles.map((role) => parts.find((part) => part.humanRole === role)).find(Boolean)
+      || types.map((type) => parts.find((part) => part.type === type)).find(Boolean);
   }
 
-  function sideParts(parts, type, body) {
-    const candidates = parts.filter((part) => part.type === type).sort((a, b) => centerPoint(a).x - centerPoint(b).x);
+  function sideParts(parts, type, body, roles = []) {
+    const candidates = parts.filter((part) => part.type === type || roles.includes(part.humanRole)).sort((a, b) => centerPoint(a).x - centerPoint(b).x);
     const bodyX = centerPoint(body || candidates[0]).x;
     return {
       left: candidates.filter((part) => centerPoint(part).x < bodyX).pop() || candidates[0] || null,

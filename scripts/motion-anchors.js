@@ -25,10 +25,11 @@
 
   function createAnchors(parts, primary, base, active, direction, target, plan = {}) {
     const primaryAnchor = anchor(active.end, primary?.id, "primary", target, true);
-    if (primary?.type === "leg") return legAnchors(parts, primary, base, active, primaryAnchor, plan);
-    if (primary?.type === "arm") return armAnchors(parts, primary, base, active, primaryAnchor, plan);
-    if (primary?.type === "body" || primary?.type === "spine") return bodyAnchors(parts, primary, base, primaryAnchor);
-    return [primaryAnchor, followAnchor(parts, "head", base.head, target, 0.7)].filter(Boolean);
+    const primaryKind = roleKind(primary);
+    if (primaryKind === "leg") return legAnchors(parts, primary, base, active, primaryAnchor, plan);
+    if (primaryKind === "arm") return armAnchors(parts, primary, base, active, primaryAnchor, plan);
+    if (primaryKind === "body") return bodyAnchors(parts, primary, base, primaryAnchor);
+    return [primaryAnchor, followAnchor(parts, "head", ["head"], base.head, target, 0.7)].filter(Boolean);
   }
 
   function anchorsFromPlan(plan, parts, primary, base, active, direction, target) {
@@ -58,7 +59,7 @@
       anchor(active.mid, primary?.id, "bendHint", kneeHint(base, active, primaryAnchor.point), false),
       anchor("hip", bodyPartId(parts), "root", add(base.hip, rootShift), false),
       anchor("chest", bodyPartId(parts), "balance", add(base.chest, scaled(rootShift, 0.9, secondaryFollow(plan))), false),
-      followAnchor(parts, "head", base.head, add(base.head, scaled(rootShift, 0.7, secondaryFollow(plan))), 1),
+      followAnchor(parts, "head", ["head"], base.head, add(base.head, scaled(rootShift, 0.7, secondaryFollow(plan))), 1),
     ].filter(Boolean);
   }
 
@@ -67,8 +68,9 @@
     return [
       primaryAnchor,
       anchor(active.mid, primary?.id, "bendHint", kneeHint(base, active, primaryAnchor.point), false),
+      anchor("hip", bodyPartId(parts), "root", add(base.hip, scaled(rootShift, 0.75, secondaryFollow(plan))), false),
       anchor("chest", bodyPartId(parts), "balance", add(base.chest, rootShift), false),
-      followAnchor(parts, "head", base.head, add(base.head, scaled(rootShift, 0.5, secondaryFollow(plan))), 1),
+      followAnchor(parts, "head", ["head"], base.head, add(base.head, scaled(rootShift, 0.5, secondaryFollow(plan))), 1),
     ].filter(Boolean);
   }
 
@@ -77,7 +79,7 @@
     return [
       primaryAnchor,
       anchor("hip", primary?.id || bodyPartId(parts), "root", add(base.hip, delta), false),
-      followAnchor(parts, "head", base.head, add(base.head, { x: delta.x * 0.7, y: delta.y * 0.7 }), 1),
+      followAnchor(parts, "head", ["head"], base.head, add(base.head, { x: delta.x * 0.7, y: delta.y * 0.7 }), 1),
     ].filter(Boolean);
   }
 
@@ -94,8 +96,8 @@
     return { ...anchor, point: normalized, pointNormalized: normalizedPoint(normalized, sourceBounds()), locked };
   }
 
-  function followAnchor(parts, type, basePoint, target, amount) {
-    const part = parts.find((candidate) => candidate.type === type);
+  function followAnchor(parts, type, roles, basePoint, target, amount) {
+    const part = parts.find((candidate) => candidate.type === type || roles.includes(candidate.humanRole));
     if (!part || !basePoint || !target) return null;
     const start = pointFromArray(basePoint);
     return anchor(type, part.id, "follow", lerp(start, target, amount), false);
@@ -137,7 +139,15 @@
   }
 
   function bodyPartId(parts) {
-    return parts.find((part) => part.type === "spine")?.id || parts.find((part) => part.type === "body")?.id || null;
+    return parts.find((part) => part.humanRole === "torso")?.id || parts.find((part) => part.humanRole === "pelvis")?.id || parts.find((part) => part.type === "spine")?.id || parts.find((part) => part.type === "body")?.id || null;
+  }
+
+  function roleKind(part = {}) {
+    if (["thigh", "shin", "foot"].includes(part.humanRole) || part.type === "leg") return "leg";
+    if (["upperArm", "forearm", "hand"].includes(part.humanRole) || part.type === "arm") return "arm";
+    if (["torso", "pelvis"].includes(part.humanRole) || part.type === "body" || part.type === "spine") return "body";
+    if (part.humanRole === "head" || part.type === "head") return "head";
+    return part.type || null;
   }
 
   function normalizePoint(point) {
