@@ -22,6 +22,7 @@ function loadAnimotion() {
     "scripts/timeline.js",
     "scripts/motion-target-state.js",
     "scripts/motion-target-debug.js",
+    "scripts/impact-exaggeration-layer.js",
     "scripts/cutscene-model.js",
     "scripts/motion-planner.js",
     "scripts/command-history.js",
@@ -161,6 +162,26 @@ test("motion command normalizes cutscene bridge joint action updates", () => {
   });
   assert.equal(Animotion.state.cutsceneBridge.durationFrames, 18);
   assert.equal(Animotion.state.cutsceneBridge.jointAction.beats[0].pose.head[0], 10);
+});
+
+test("motion command toggles impact exaggeration enabled on joint action", () => {
+  const Animotion = loadAnimotion();
+  Animotion.motionCommands.setCutsceneBridge({
+    durationFrames: 18,
+    impactFrame: 15,
+    jointAction: {
+      source: "test",
+      impactExaggeration: { frame: 15, targetPartIds: ["hand"] },
+      beats: [{ id: "impact", at: 15, pose: { hand: [10, 20] } }],
+    },
+  });
+  const action = Animotion.state.cutsceneBridge.jointAction;
+  Animotion.motionCommands.updateJointAction({
+    ...action,
+    impactExaggeration: { ...action.impactExaggeration, enabled: false },
+  });
+  assert.equal(Animotion.state.cutsceneBridge.jointAction.impactExaggeration.enabled, false);
+  assert.equal(Animotion.state.project.effects, undefined);
 });
 
 function partFixture(overrides = {}) {

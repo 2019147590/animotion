@@ -36,6 +36,7 @@
     renderLookismPresetStatus();
     renderPanelScaleControls();
     renderKeyframeStatus();
+    renderImpactExaggerationStatus();
     renderPartsList();
     renderInspector();
     Animotion.editTargetInspector?.refreshControls?.();
@@ -49,6 +50,31 @@
     els.deleteKeyframe.disabled = !part || !keyframeMode || !frames.includes(state.currentFrame);
     els.autoAnticipation.disabled = !part || !state.parts.length;
     els.keyframeStatus.textContent = frames.length ? `키프레임: ${frames.join(", ")}` : "선택 파츠에 키프레임이 없습니다.";
+  }
+
+  function renderImpactExaggerationStatus() {
+    if (!els.impactExaggerationStatus) return;
+    const bridge = Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge);
+    const layer = bridge.jointAction?.impactExaggeration;
+    if (!layer) {
+      if (els.impactExaggerationEnabled) {
+        els.impactExaggerationEnabled.checked = false;
+        els.impactExaggerationEnabled.disabled = true;
+      }
+      els.impactExaggerationStatus.textContent = "타격 과장 정보 없음";
+      return;
+    }
+    if (els.impactExaggerationEnabled) {
+      els.impactExaggerationEnabled.checked = layer.enabled !== false;
+      els.impactExaggerationEnabled.disabled = false;
+    }
+    const stateText = layer.enabled === false ? "꺼짐" : "켜짐";
+    els.impactExaggerationStatus.textContent = `타격 과장 ${stateText}: frame ${layer.frame}, hold ${layer.holdFrames}, strength ${layer.strength}, targets ${targetNames(layer.targetPartIds)}`;
+  }
+
+  function targetNames(ids = []) {
+    if (!ids.length) return "none";
+    return ids.map((id) => state.parts.find((part) => part.id === id)?.name || id).join(", ");
   }
 
   function renderPartsList() {

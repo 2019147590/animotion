@@ -36,6 +36,7 @@
     "motion-target-debug",
     "character-root-motion",
     "action-timeline-model",
+    "impact-exaggeration-layer",
     "joint-coordinates",
     "cutscene-model",
     "motion-anchors",

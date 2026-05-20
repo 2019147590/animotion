@@ -32,6 +32,8 @@
     insertKeyframe: "#insertKeyframe",
     deleteKeyframe: "#deleteKeyframe",
     keyframeStatus: "#keyframeStatus",
+    impactExaggerationEnabled: "#impactExaggerationEnabled",
+    impactExaggerationStatus: "#impactExaggerationStatus",
     autoAnticipation: "#autoAnticipation",
     motionStrength: "#motionStrength",
     backgroundOpacity: "#backgroundOpacity",

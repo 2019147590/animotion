@@ -132,7 +132,7 @@
     const targetDebug = Animotion.motionTargetDebug?.analyzeTarget?.(plan, base, active, target) || {};
     targetDebug.activeMotionTarget = Animotion.motionTargetState?.activeMotionTargetDebug?.({ ...plan, activeMotionTarget }) || null;
     const scopedPlan = { ...plan, targetDebug };
-    const anchors = Animotion.motionAnchors?.anchorsFromPlan?.(scopedPlan, parts, primary, base, active, direction, target) || [];
+    const anchors = Animotion.motionAnchors?.anchorsFromPlan?.(scopedPlan, parts, primary, base, active, direction, target) || [], actionTimeline = actionTimelineFor(plan.template, bridge);
     const beats = templateBeats(plan.template, bridge).map((spec) => poseBeat(spec, base, active, target, direction, anchors));
     const trajectorySamples = Animotion.motionTargetState?.trajectorySamples?.(beats, active.end) || [];
     Object.assign(targetDebug, Animotion.characterRootMotion?.debugForPlan?.(parts, primary, beats, base, plan, targetDebug) || {});
@@ -141,11 +141,10 @@
       motionScope: plan.motionScope,
       targetDebug,
       activeMotionTarget,
-      trajectoryPoints: trajectorySamples,
-      trajectorySamples,
+      trajectoryPoints: trajectorySamples, trajectorySamples,
       anchors,
       active,
-      jointAction: { source: `motion-planner-${plan.template}-anchors-v1`, focusKey: active.end, actionTimeline: actionTimelineFor(plan.template, bridge), anchors, beats, targetDebug, activeMotionTarget, trajectoryPoints: trajectorySamples, trajectorySamples, motionHints: plan.motionHints, motionDraft: Animotion.motionDrafts?.snapshot?.(plan.motionDraft) || plan.motionDraft },
+      jointAction: { source: `motion-planner-${plan.template}-anchors-v1`, focusKey: active.end, actionTimeline, impactExaggeration: impactExaggerationFor(actionTimeline, parts, primary), anchors, beats, targetDebug, activeMotionTarget, trajectoryPoints: trajectorySamples, trajectorySamples, motionHints: plan.motionHints, motionDraft: Animotion.motionDrafts?.snapshot?.(plan.motionDraft) || plan.motionDraft },
       partTracks: tracksForParts(parts, primary, beats, base, active, { ...bridge, jointAction: { targetDebug } }),
     };
   }
@@ -263,6 +262,7 @@
   function motionTargetForPlan(plan, point) { return plan.activeMotionTarget ? { ...plan.activeMotionTarget, point } : Animotion.motionTargetState?.generatedTarget?.(point) || null; }
   function sourceLabel(source) { return ({ manual: "수동", correspondence: "B컷 참조", generated: "자동 생성" })[source] || source; } function isBodyPrimary(part) { return part?.type === "body" || part?.type === "spine"; }
   function templateFor(template) { return TEMPLATES[template] || (Animotion.actionTimelineModel?.hasTemplate?.(template) ? Animotion.actionTimelineModel.timelineForTemplate(template) : null); } function actionTimelineFor(template, bridge) { return Animotion.actionTimelineModel?.hasTemplate?.(template) ? Animotion.actionTimelineModel.timelineForTemplate(template, bridge) : null; }
+  function impactExaggerationFor(actionTimeline, parts, primary) { return Animotion.impactExaggerationLayer?.createDefaultImpactExaggerationForActionTimeline?.(actionTimeline, { parts, primaryPartId: primary?.id }) || null; }
   function parentIdFor(part) { return Animotion.rigConnection?.parentIdFor?.(part) || null; }
   function bendNormal(baseRoot, baseMid, baseEnd, root, end) {
     const sign = Math.sign((baseMid.x - baseRoot.x) * (baseEnd.y - baseRoot.y) - (baseMid.y - baseRoot.y) * (baseEnd.x - baseRoot.x)) || 1;

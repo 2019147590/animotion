@@ -141,6 +141,7 @@
       source: String(action.source || "part-pivots-v1"),
       focusKey: action.focusKey ? String(action.focusKey) : null,
       ...(action.actionTimeline ? { actionTimeline: Animotion.actionTimelineModel?.normalizeTimeline?.(action.actionTimeline, options) || clonePlain(action.actionTimeline) } : {}),
+      ...(action.impactExaggeration ? { impactExaggeration: Animotion.impactExaggerationLayer?.normalizeImpactExaggerationLayer?.(action.impactExaggeration) || clonePlain(action.impactExaggeration) } : {}),
       anchors: Animotion.motionAnchors?.normalizeAnchors?.(action.anchors, options) || [],
       beats: action.beats.map((beat) => normalizeBeat(beat, options)).filter(Boolean),
       ...(action.targetDebug ? { targetDebug: clonePlain(action.targetDebug) } : {}),

@@ -274,15 +274,20 @@
     return state.parts.find((candidate) => candidate.id === parentId) || null;
   }
   function localMatrix(part, t) {
-    const transform = Animotion.motion.motionFor(part, t);
+    const transform = Animotion.motion.motionFor(part, t), impactHint = impactTransformHint(part);
     const pivotX = part.rect.x + part.pivot.x;
     const pivotY = part.rect.y + part.pivot.y;
     const rotate = transform.rotate + jointRotation(part, transform);
     return new DOMMatrix()
       .translate(pivotX + transform.x, pivotY + transform.y)
       .rotate(rotate)
-      .scale(transform.scaleX, transform.scaleY)
+      .scale(transform.scaleX * impactHint.scaleX, transform.scaleY * impactHint.scaleY)
       .translate(-pivotX, -pivotY);
+  }
+  function impactTransformHint(part) {
+    if (els.motionTemplate.value !== "cutscene") return { scaleX: 1, scaleY: 1 };
+    const bridge = Animotion.cutsceneModel?.normalizeBridge?.(state.cutsceneBridge), layer = bridge?.jointAction?.impactExaggeration;
+    return Animotion.impactExaggerationLayer?.transformHintForPart?.(layer, part, state.currentFrame) || { scaleX: 1, scaleY: 1 };
   }
   function jointRotation(part, transform) {
     if (!part.joint || (!transform.jointX && !transform.jointY)) return 0;

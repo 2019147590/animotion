@@ -88,6 +88,8 @@ Implemented in `scripts/motion-planner.js`, `scripts/action-timeline-model.js`, 
 - Kick timeline: `ready -> compress -> chamber -> extend -> impact -> recover`.
 - Action timeline normalization preserves `durationFrames`, `impactFrame`, `beats`, `primaryPartRole`, and `rootMotionHint`.
 - Legacy `motionPlan.template: "punch"` and `"kick"` continue to normalize and generate cutscene bridge actions.
+- Punch/kick plans now create `cutsceneBridge.jointAction.impactExaggeration` from the action timeline impact beat.
+- Impact exaggeration metadata is stored on `cutsceneBridge.jointAction` only. Do not introduce a duplicate `project.effects` editor state for this.
 - Target point picking on the preview canvas.
 - Template-based beat generation.
 - Joint trajectory draft from current A rig plus target.
@@ -122,6 +124,18 @@ Important behavior:
 - Far leg targets move body anchors more; near leg targets keep body movement small so the leg can move locally.
 - Anchor direct-picking is now implemented for generated anchors. A separate full anchor-management UI is still future work.
 - Current generation still requires selecting a part and then generating beats; simply placing a target does not create motion until `beat/trajectory generation` is clicked.
+
+### Impact Exaggeration Layer
+
+Implemented in the current working tree in `scripts/impact-exaggeration-layer.js`, `scripts/motion-planner.js`, `scripts/cutscene-model.js`, `scripts/preview.js`, `scripts/ui.js`, and `scripts/events.js`.
+
+- `normalizeImpactExaggerationLayer()` normalizes `kind`, `enabled`, `frame`, `holdFrames`, `strength`, `targetPartIds`, `scaleHints`, and `stretchHints`.
+- `createDefaultImpactExaggerationForActionTimeline()` reads the punch/kick action timeline impact beat and creates default impact exaggeration metadata.
+- Newly generated punch/kick impact exaggeration defaults to `enabled: true`.
+- Legacy impact exaggeration data without `enabled` normalizes as enabled.
+- The motion panel exposes a focused `타격 과장 적용` checkbox. It only toggles `cutsceneBridge.jointAction.impactExaggeration.enabled` through `motionCommands.updateJointAction()`.
+- Preview applies only minimal scale/stretch hints at the impact hold frames, and skips those hints entirely when `enabled === false`.
+- Strength/frame editing, smear UI, draw-over UI, and full render effects are still future work.
 
 Recent commits:
 
@@ -336,6 +350,7 @@ Current architecture note:
 - `scripts/cutscene-options.js`: A cut source-motion and body-assist option controls.
 - `scripts/human-rig-schema.js`: optional basic human rig role normalization plus missing-role and parent-chain validation.
 - `scripts/action-timeline-model.js`: punch/kick action timeline normalization used by motion planner.
+- `scripts/impact-exaggeration-layer.js`: punch/kick impact beat exaggeration metadata normalization and preview transform hints.
 - `scripts/scripted-genga-runner.js`: restricted declarative genga cut definition compiler/runner and project conversion boundary.
 - `scripts/scripted-genga-sample-definition.js`: sample/internal reference genga cut definition used by the demo button.
 - `scripts/scripted-genga-generator.js`: compatibility wrapper for `Generate Demo Genga Cut`.
@@ -401,6 +416,7 @@ node tests\motion-commands.test.js
 node tests\session-commands.test.js
 node tests\human-rig-schema.test.js
 node tests\action-timeline-model.test.js
+node tests\impact-exaggeration-layer.test.js
 node tests\scripted-genga-generator.test.js
 node tests\panel-commands.test.js
 node tests\correspondence-commands.test.js
@@ -464,21 +480,21 @@ Branch:
 master
 ```
 
-Latest known committed baseline before this upload:
+Latest known committed baseline:
 
 ```text
-81a192c Keep rig handles direct outside part bounds
+abb9f2b Add human rig schema and action timelines
 ```
 
-Current upload commit:
+Current upload status:
 
 ```text
-this commit: Add human rig schema and action timelines
+impact exaggeration work is still uncommitted/unpushed in the working tree
 ```
 
 ## Current Working Tree Notes
 
-As of this handoff update on 2026-05-20, the scripted genga generator, demo motion preset, planning-doc updates, UI demo entrypoints, basic human rig schema, and action timeline model have been committed for upload to `master`.
+As of this handoff update on 2026-05-20, the scripted genga generator, demo motion preset, planning-doc updates, UI demo entrypoints, basic human rig schema, and action timeline model have been committed and pushed to `master`. The impact exaggeration layer and enabled-toggle UI are implemented locally but not committed or pushed.
 
 Recently completed in the working tree:
 
@@ -521,6 +537,21 @@ Recently completed in the working tree:
   - Added `tests/human-rig-schema.test.js`.
   - Added `tests/action-timeline-model.test.js`.
   - Verified new tests plus existing punch/kick, project round-trip, motion command, session, target propagation/state, geometry, part command, hidden completion round-trip, AI import, and scripted genga tests.
+- Impact exaggeration layer:
+  - Added `scripts/impact-exaggeration-layer.js`.
+  - `cutsceneBridge.jointAction.impactExaggeration` is the canonical source of truth.
+  - `motion-planner.js` creates default punch/kick impact exaggeration from the action timeline impact beat.
+  - `cutscene-model.js` preserves normalized impact exaggeration metadata through save/load.
+  - `preview.js` applies minimal scale/stretch hints only while the layer is enabled and the current frame is inside the impact hold range.
+  - `index.html`, `scripts/config.js`, `scripts/ui.js`, and `scripts/events.js` add the `타격 과장 적용` checkbox in the motion panel.
+  - The checkbox updates the existing joint action through `motionCommands.updateJointAction()` and does not create `project.effects` or any separate editor state.
+  - Added `enabled: true` by default for new punch/kick layers. Legacy layers without `enabled` normalize as enabled.
+  - Smear, draw-over, strength editing, frame editing, and close-up punch rig UI are not implemented in this unit.
+- Impact exaggeration tests:
+  - Added `tests/impact-exaggeration-layer.test.js`.
+  - Covered normalization, strength/hold clamping, punch/kick default layer creation, save/load round-trip, `enabled: false` preview suppression, legacy no-`enabled` compatibility, and UI shell wiring.
+  - Expanded `tests/motion-commands.test.js` to verify enabled toggling stays on `cutsceneBridge.jointAction.impactExaggeration` and does not create `project.effects`.
+  - Verified all `tests/*.test.js` pass locally.
 
 - Motion/cutscene terminology cleanup:
   - Added `MOTION_TERMINOLOGY.md`.
@@ -599,6 +630,7 @@ Recently completed in the working tree:
   - `tests/session-commands.test.js`
   - `tests/human-rig-schema.test.js`
   - `tests/action-timeline-model.test.js`
+  - `tests/impact-exaggeration-layer.test.js`
   - `tests/scripted-genga-generator.test.js`
   - `tests/panel-commands.test.js`
   - `tests/correspondence-commands.test.js`

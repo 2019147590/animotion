@@ -153,6 +153,7 @@
     els.clearSelection.addEventListener("click", clearSelection);
     els.guideParts.addEventListener("click", Animotion.io.createGuideParts);
     els.motionTemplate.addEventListener("change", onMotionTemplateChange);
+    els.impactExaggerationEnabled.addEventListener("change", updateImpactExaggerationEnabled);
     els.separateCharacter.addEventListener("change", () => {
       state.separateCharacter = els.separateCharacter.checked;
       Animotion.ui.refreshUi();
@@ -236,6 +237,16 @@
     if (timelineLikeMode()) {
       Animotion.timelineControls.setCurrentFrame(state.currentFrame);
     }
+    Animotion.ui.refreshUi();
+  }
+
+  function updateImpactExaggerationEnabled() {
+    const action = state.cutsceneBridge?.jointAction;
+    if (!action?.impactExaggeration) return;
+    Animotion.motionCommands.updateJointAction({
+      ...action,
+      impactExaggeration: { ...action.impactExaggeration, enabled: els.impactExaggerationEnabled.checked },
+    });
     Animotion.ui.refreshUi();
   }
 
