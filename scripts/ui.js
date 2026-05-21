@@ -37,6 +37,7 @@
     renderPanelScaleControls();
     renderKeyframeStatus();
     renderImpactExaggerationStatus();
+    renderCutsceneMotionStatus();
     renderPartsList();
     renderInspector();
     Animotion.editTargetInspector?.refreshControls?.();
@@ -75,6 +76,12 @@
   function targetNames(ids = []) {
     if (!ids.length) return "none";
     return ids.map((id) => state.parts.find((part) => part.id === id)?.name || id).join(", ");
+  }
+
+  function renderCutsceneMotionStatus() {
+    if (!els.cutsceneMotionStatus) return;
+    const status = Animotion.cutsceneMotionStatus?.statusForBridge?.(state.cutsceneBridge, { parts: state.parts, currentFrame: state.currentFrame });
+    els.cutsceneMotionStatus.textContent = Animotion.cutsceneMotionStatus?.statusText?.(status) || "Punch/kick motion status: unavailable";
   }
 
   function renderPartsList() {

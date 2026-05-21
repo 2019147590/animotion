@@ -37,6 +37,7 @@
     "character-root-motion",
     "action-timeline-model",
     "impact-exaggeration-layer",
+    "cutscene-motion-status",
     "joint-coordinates",
     "cutscene-model",
     "motion-anchors",

@@ -34,6 +34,7 @@
     keyframeStatus: "#keyframeStatus",
     impactExaggerationEnabled: "#impactExaggerationEnabled",
     impactExaggerationStatus: "#impactExaggerationStatus",
+    cutsceneMotionStatus: "#cutsceneMotionStatus",
     autoAnticipation: "#autoAnticipation",
     motionStrength: "#motionStrength",
     backgroundOpacity: "#backgroundOpacity",
