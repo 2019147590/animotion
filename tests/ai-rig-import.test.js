@@ -180,6 +180,46 @@ test("project save and load preserves outside-rect rig point coordinates", () =>
   assert.equal(`${loaded[0].pivot.x},${loaded[0].pivot.y}`, "-6,12");
   assert.equal(`${loaded[0].joint.x},${loaded[0].joint.y}`, "45,-8");
 });
+
+test("project save recomputes normalized part geometry from the current editor rect", () => {
+  const Animotion = loadAnimotion();
+  Object.assign(Animotion.state, {
+    imageName: "panel.png",
+    image: { naturalWidth: 1023, naturalHeight: 1537 },
+    currentFrame: 1,
+    project: { assets: [] },
+    parts: [{
+      id: "head",
+      name: "head_01",
+      type: "head",
+      rect: { x: 430, y: 90, w: 280, h: 320 },
+      sourceRect: { x: 430, y: 90, w: 280, h: 320 },
+      sourceRectNormalized: { xNorm: 1022 / 1023, yNorm: 1536 / 1537, wNorm: 1 / 1023, hNorm: 1 / 1537, coordinateSpace: "normalized-image" },
+      pivot: { x: 140, y: 160 },
+      joint: { x: 140, y: 250 },
+      pivotNormalized: { xNorm: 0.999, yNorm: 0.999, coordinateSpace: "part-local-normalized" },
+      jointNormalized: { xNorm: 0.999, yNorm: 0.999, coordinateSpace: "part-local-normalized" },
+      mask: { kind: "polygon", points: [{ x: 40, y: 20 }, { x: 200, y: 30 }, { x: 240, y: 260 }] },
+      maskVerticesNormalized: [{ xNorm: 181, yNorm: 263, coordinateSpace: "part-local-normalized" }],
+      customMotion: {},
+      keyframes: [],
+    }],
+  });
+  const saved = Animotion.io.createRigPayload();
+  const head = saved.parts[0];
+  assert.equal(head.sourceRect.x, 430);
+  assert.equal(head.sourceRect.y, 90);
+  assert.equal(head.sourceRect.w, 280);
+  assert.equal(head.sourceRect.h, 320);
+  assert.equal(head.sourceRectNormalized.xNorm, 430 / 1023);
+  assert.equal(head.sourceRectNormalized.yNorm, 90 / 1537);
+  assert.equal(head.sourceRectNormalized.wNorm, 280 / 1023);
+  assert.equal(head.sourceRectNormalized.hNorm, 320 / 1537);
+  assert.equal(head.pivotNormalized.xNorm, 0.5);
+  assert.equal(head.pivotNormalized.yNorm, 0.5);
+  assert.equal(head.maskVerticesNormalized[0].xNorm, 40 / 280);
+  assert.equal(head.maskVerticesNormalized[0].yNorm, 20 / 320);
+});
 test("project importer restores normalized part coordinates against the current source image size", () => {
   const Animotion = loadAnimotion();
   Animotion.state.image = { naturalWidth: 200, naturalHeight: 160 };

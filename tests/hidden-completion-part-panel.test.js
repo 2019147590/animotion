@@ -103,6 +103,13 @@ test("hidden completion part panel installs without motion draft inspector", () 
   assert.equal(document.querySelector("#motionDraftInspector"), null);
 });
 
+test("hidden completion part panel refresh is hidden when no part is selected", () => {
+  const { Animotion, document } = loadPanel();
+  assert.doesNotThrow(() => Animotion.hiddenCompletionPartPanel.refreshControls());
+  assert.equal(document.querySelector("#hiddenCompletionPartTools").classList.contains("hidden"), true);
+  assert.equal(document.querySelector("#createHiddenCompletionGuideFromPart").disabled, true);
+});
+
 test("hidden completion part panel enables existing guide creation only for selected draft part", () => {
   const { Animotion, document } = loadPanel();
   const part = { id: "head-a", name: "head" };

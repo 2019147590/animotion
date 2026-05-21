@@ -28,6 +28,7 @@ function loadAnimotion() {
   ]) runScript(context, path);
   const Animotion = context.window.Animotion;
   const project = Animotion.projectModel.createEmptyProject();
+  const motionTemplate = { value: "breathe" };
   Animotion.state = {
     project,
     image: null,
@@ -43,6 +44,7 @@ function loadAnimotion() {
     motionPlan: { template: "kick", target: null, targetMode: false },
     separateCharacter: false,
   };
+  Animotion.dom = { els: { motionTemplate } };
   runScript(context, "scripts/motion-commands.js");
   runScript(context, "scripts/correspondence-commands.js");
   runScript(context, "scripts/session-commands.js");
@@ -60,6 +62,8 @@ test("session command resets state for a new source image", () => {
   assert.equal(Animotion.state.image, image);
   assert.equal(Animotion.state.imageName, "panel.png");
   assert.equal(Animotion.state.parts, Animotion.state.project.parts);
+  assert.equal(Animotion.state.parts.length, 0);
+  assert.equal(Animotion.state.selectedPartId, null);
   assert.equal(Animotion.state.panelSetup.source.crop, null);
   assert.equal(Animotion.state.motionPlan.template, "kick");
 });
@@ -121,4 +125,58 @@ test("cutscene ghost toggle survives project save and restore", () => {
   const restored = Animotion.projectModel.normalizeProject(saved);
   Animotion.sessionCommands.restoreProject(restored, [], null);
   assert.equal(Animotion.state.cutsceneBridge.ghostEnabled, false);
+});
+
+test("project restore uses saved cutscene bridge instead of current panel transform", () => {
+  const Animotion = loadAnimotion();
+  const project = Animotion.projectModel.normalizeProject({
+    format: "animotion-project",
+    version: "1.0.0",
+    metadata: { name: "Project", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+    canvas: { width: 100, height: 80, fps: 24, durationFrames: 18 },
+    parts: [],
+    editor: {
+      cutsceneBridge: { durationFrames: 18, impactFrame: 12, sourceX: 80, sourceScale: 1.8, impactX: -40, impactScale: 0.7 },
+    },
+  });
+  const currentBridge = { durationFrames: 18, impactFrame: 15, sourceX: -120, sourceScale: 0.35, impactX: 90, impactScale: 2.4 };
+  Animotion.sessionCommands.restoreProject(project, [], currentBridge);
+  assert.equal(Animotion.state.cutsceneBridge.impactFrame, 12);
+  assert.equal(Animotion.state.cutsceneBridge.sourceX, 80);
+  assert.equal(Animotion.state.cutsceneBridge.sourceScale, 1.8);
+  assert.equal(Animotion.state.cutsceneBridge.impactX, -40);
+  assert.equal(Animotion.state.cutsceneBridge.impactScale, 0.7);
+});
+
+test("project restore returns the motion UI to cutscene mode when a cutscene bridge is saved", () => {
+  const Animotion = loadAnimotion();
+  const project = Animotion.projectModel.normalizeProject({
+    format: "animotion-project",
+    version: "1.0.0",
+    metadata: { name: "Project", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+    canvas: { width: 100, height: 80, fps: 24, durationFrames: 18 },
+    parts: [],
+    editor: {
+      cutsceneBridge: {
+        durationFrames: 18,
+        impactFrame: 12,
+        jointAction: { source: "motion-planner-kick-anchors-v1", beats: [{ id: "impact", at: 12, pose: { rFoot: [30, 40] } }] },
+      },
+    },
+  });
+  Animotion.dom.els.motionTemplate.value = "breathe";
+  Animotion.sessionCommands.restoreProject(project, [], null);
+  assert.equal(Animotion.dom.els.motionTemplate.value, "cutscene");
+});
+
+test("empty parts project sync and serialization stays valid after image reset", () => {
+  const Animotion = loadAnimotion();
+  const image = { naturalWidth: 320, naturalHeight: 240 };
+  Animotion.sessionCommands.resetForNewImage(image, "empty.png");
+  const saved = Animotion.projectModel.projectFromEditorState(Animotion.state);
+  assert.equal(saved.parts.length, 0);
+  assert.equal(saved.rigs[0].rootPartId, null);
+  assert.equal(saved.rigs[0].bones.length, 0);
+  assert.equal(saved.editor.selectedPartId, null);
+  assert.equal(saved.assets.some((asset) => asset.id === "source-image"), true);
 });

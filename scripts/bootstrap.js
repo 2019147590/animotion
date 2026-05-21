@@ -43,6 +43,7 @@
     "motion-anchors",
     "motion-panel-mapper",
     "motion-planner",
+    "motion-planner-commands",
     "motion-anchor-picker",
     "motion-trajectory-tracks",
     "preview-hit-test",

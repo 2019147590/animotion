@@ -3,6 +3,7 @@
   const Animotion = global.Animotion || (global.Animotion = {});
 
   function statusForBridge(bridge = {}, options = {}) {
+    if (!bridge) return { active: false };
     const safe = Animotion.cutsceneModel?.normalizeBridge?.(bridge) || bridge || {};
     const action = safe.jointAction;
     const actionType = actionTypeFor(action);
@@ -53,6 +54,7 @@
   }
 
   function actionTypeFor(action = {}) {
+    if (!action) return null;
     const template = action.actionTimeline?.template || action.actionTimeline?.id || "";
     if (template === "punch" || template === "kick") return template;
     const source = String(action.source || "");

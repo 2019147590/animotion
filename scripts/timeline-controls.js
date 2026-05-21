@@ -43,6 +43,8 @@
   function generateAnticipation() {
     const primary = Animotion.parts.selectedPart();
     if (!primary) return;
+    const canonical = Animotion.motionPlannerCommands?.generateFromSelection?.({ onlyCanonicalActions: true });
+    if (canonical?.handled) return;
     const cutsceneMode = els.motionTemplate.value === "cutscene";
     const previousBridge = Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge);
     if (cutsceneMode || state.nextImage) {

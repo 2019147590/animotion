@@ -65,6 +65,12 @@ Recent stability pass:
 - Pointer arbitration has regression coverage for overlapping rig handles, trajectory handles, and active motion target hits.
 - `motionDraft` plus `hiddenCompletionPatch` guide data now has save/load/save round-trip coverage together.
 
+Current upload adds an image-session stability pass:
+
+- A plain PNG/JPG upload through the normal image upload button is allowed to leave `selectedPartId === null`, `parts.length === 0`, and no active `cutsceneBridge.jointAction`.
+- The motion status, inspector empty state, parent select refresh, hidden-completion part panel, and empty project sync/serialization paths guard those null/empty states directly instead of hiding errors with broad try/catch.
+- The verified upload crash was `Cannot read properties of null (reading 'actionTimeline')` in `cutscene-motion-status.js`; a missing `jointAction` now renders as inactive status.
+
 ### Panel Quality Setup
 
 Implemented in `scripts/panel-editor.js` and `scripts/panel-commands.js`.
@@ -116,6 +122,10 @@ Implemented in `scripts/motion-planner.js`, `scripts/action-timeline-model.js`, 
 - Target picking freezes playback so the editing reference stays visible.
 - Target point, beat handles, anchors, selected outlines, and rig handles are editing references only; they are hidden during playback/export.
 - Motion plan saved/restored through rig JSON as `motionPlan`.
+- `scripts/motion-planner-commands.js` centralizes the canonical selected-part punch/kick generation path used by both `비트/이동 궤적 생성` and `선택 파츠 기준 컷신 초안 생성`.
+- When the selected cutscene action type is punch or kick, the selected-part cutscene draft button now generates `motion-planner-punch-anchors-v1` or `motion-planner-kick-anchors-v1` with `cutsceneBridge.jointAction.actionTimeline.template` set to `punch` or `kick`.
+- Punch generation requires an arm/forearm/hand role or type, and kick generation requires a thigh/shin/foot/leg role or type. Invalid selections show a status message and do not fall back to the legacy `part-pivots-v1` draft.
+- The legacy selected-part `part-pivots-v1` draft path remains only for non-punch/kick action types.
 - Timeline keyframe edits, generated track application, cutscene bridge updates, motion plan updates, anchor regeneration, and trajectory regeneration now go through `scripts/motion-commands.js`.
 - B correspondence anchors, manual motion targets, active motion targets, character root anchors, and trajectory points are separated in state/debug.
 - `activeMotionTarget.source` records whether motion generation is driven by `manual`, `correspondence`, or `generated` input.
@@ -239,6 +249,10 @@ Implemented on `master`.
 - `scripts/human-rig-schema.js`: basic 2D human rig metadata helpers. It keeps existing `part.type` unchanged and normalizes optional `part.humanRole` values for `torso`, `pelvis`, `head`, `upperArm`, `forearm`, `hand`, `thigh`, `shin`, and `foot`.
 - Project JSON now saves as `format: "animotion-project"` with string `version`, metadata, canvas, assets, parts, rigs, motions, effects, timeline, and editor compatibility data.
 - Project parts now preserve `humanRole` through save/load round trips without changing legacy part type handling.
+- Project restore now loads the saved `editor.cutsceneBridge` directly instead of merging it with the current session bridge, so saved panel transforms and action data are not polluted by pre-load UI state.
+- Project restore returns the motion template UI to `cutscene` when a saved cutscene bridge has a `jointAction`, or to `keyframes` when restored parts have keyframes.
+- Project save recomputes part `sourceRectNormalized`, `pivotNormalized`, `jointNormalized`, and `maskVerticesNormalized` from the current editor `rect/pivot/joint/mask` instead of trusting stale normalized fields left on runtime part objects.
+- Existing JSON files that already contain a wrong `sourceRect` such as a 1x1 rect at the image edge cannot be perfectly reconstructed from that JSON alone; the fix prevents newly saved JSON from writing that stale geometry again.
 - Existing legacy rig JSON with `parts` and AI rig payloads with `version: 3` still import.
 - Save downloads `animotion-project.json` instead of `animotion-rig.json`.
 - `scripts/session-commands.js`: new source image reset, B cut image setup, project/legacy restore, Lookism preset application, cutscene bridge updates, and panel setup restore.
@@ -446,6 +460,7 @@ node tests\correspondence-commands.test.js
 node tests\motion-draft-editor.test.js
 node tests\motion-target-propagation.test.js
 node tests\motion-target-state.test.js
+node tests\motion-planner-commands.test.js
 node tests\rig-connection.test.js
 node tests\ui-inspector.test.js
 node tests\edit-target-inspector.test.js
@@ -465,6 +480,12 @@ node tests\hidden-completion-local-sd-provider.test.js
 node --test lookism\test\cutscene-values.test.mjs
 cd ai-rig-server
 $env:PYTHONPATH='src'; python -m unittest discover -s tests
+```
+
+For the browser-only app test suite, this work unit also used:
+
+```powershell
+Get-ChildItem tests -Filter *.test.js | ForEach-Object { node $_.FullName }
 ```
 
 ## Suggested Next Work Unit
@@ -506,24 +527,25 @@ master
 Latest known implementation baseline:
 
 ```text
-ce43f68 Stabilize rigging and motion authoring state
+current upload builds on ce43f68 with image upload/session restore, canonical punch/kick selected-part draft generation, and project save geometry stabilization
 ```
 
 Current upload status:
 
 ```text
-master includes implementation work through ce43f68. This handoff document is a documentation-only follow-up update.
+this upload includes implementation, tests, and this handoff update on origin/master.
 ```
 
 ## Current Project Notes
 
-As of this handoff update on 2026-05-21, implementation work is current through `ce43f68 Stabilize rigging and motion authoring state`. Impact exaggeration, punch/kick timing refinement, punch/kick motion status visibility, and rigging/motion authoring stability pass 1 are committed and pushed.
+As of this handoff update on 2026-05-21, implementation work includes the previous `ce43f68 Stabilize rigging and motion authoring state` baseline plus the current image upload/session restore, punch/kick selected-part generation, and project save geometry stabilization work unit.
 
 Latest completed implementation commits:
 
 - `f2536d3 Add cutscene motion status visibility`: read-only punch/kick cutscene status line in the motion panel, backed by `scripts/cutscene-motion-status.js` and `tests/cutscene-motion-status.test.js`.
 - `ce43f68 Stabilize rigging and motion authoring state`: inspector parent fallback, `parentId`/`parentPartId` compatibility, out-of-rect pivot/joint preservation, pointer arbitration regressions, and motionDraft plus hiddenCompletionPatch guide round-trip coverage.
-- No persisted schema changes, duplicate editor state, provider contract changes, or new AI generation features were added in these units.
+- Current upload: normal image upload no longer crashes when there are no parts or selected part, project restore no longer merges in stale current bridge data, restored cutscene projects set the motion UI back to cutscene mode, stale normalized runtime geometry is ignored during project save, and punch/kick selected-part draft generation reuses the canonical motion planner path.
+- No persisted schema changes, duplicate editor state, provider contract changes, Stability/Local SD changes, or B impact snap timing changes were added in these units.
 
 Previously completed implementation history:
 

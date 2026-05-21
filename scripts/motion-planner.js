@@ -61,7 +61,7 @@
     anchor.after(box);
     refs().template.addEventListener("change", updateTemplate);
     refs().pickTarget.addEventListener("click", toggleTargetMode);
-    refs().generate.addEventListener("click", generateFromUi);
+    refs().generate.addEventListener("click", () => Animotion.motionPlannerCommands?.generateFromSelection?.());
   }
   function refreshControls() {
     const ui = refs();
@@ -72,12 +72,13 @@
     ui.pickTarget.classList.toggle("active", plan.targetMode);
     ui.pickTarget.disabled = !Animotion.state.image || !part;
     ui.generate.disabled = !Animotion.state.image || !part;
-    ui.status.textContent = statusText(plan, part);
+    ui.status.textContent = Animotion.motionPlannerCommands?.statusMessage?.(plan, part) || statusText(plan, part);
   }
   function currentPlan() {
     return Animotion.motionCommands?.currentMotionPlan?.() || normalizePlan(Animotion.state.motionPlan);
   }
   function updateTemplate() {
+    Animotion.motionPlannerCommands?.clearStatus?.();
     Animotion.motionCommands.setMotionPlan({ template: refs().template.value });
     refresh();
   }
@@ -109,16 +110,6 @@
       }) || { target: point, anchors: [], targetMode: false, targetSource: { type: "manual" } });
     refresh();
     return true;
-  }
-  function generateFromUi() {
-    const part = Animotion.parts.selectedPart();
-    if (!part) return;
-    const previous = Animotion.cutsceneModel.normalizeBridge(Animotion.state.cutsceneBridge);
-    const bridge = Animotion.cutsceneControls.preservePanelTransform(Animotion.cutsceneModel.createBridge(Animotion.state.parts, part.id), previous);
-    const result = createPlan(Animotion.state.parts, part.id, bridge, currentPlan());
-    Animotion.motionCommands.applyMotionPlanResult(bridge, currentPlan(), result);
-    Animotion.dom.els.motionTemplate.value = "cutscene";
-    Animotion.timelineControls.setCurrentFrame(bridge.impactFrame);
   }
   function createPlan(parts, primaryId, bridge, options = {}) {
     const plan = normalizePlan(options);

@@ -85,6 +85,15 @@ test("cutscene status is inactive for non punch kick actions", () => {
   assert.equal(status.active, false);
 });
 
+test("cutscene status is inactive for a new image session without a bridge", () => {
+  const Animotion = loadAnimotion();
+  assert.equal(Animotion.cutsceneMotionStatus.statusForBridge(null).active, false);
+  assert.equal(
+    Animotion.cutsceneMotionStatus.statusText(Animotion.cutsceneMotionStatus.statusForBridge(null)),
+    "Punch/kick motion status: no active punch/kick draft"
+  );
+});
+
 test("app shell exposes punch kick motion status in the motion UI", () => {
   const html = fs.readFileSync("index.html", "utf8");
   const config = fs.readFileSync("scripts/config.js", "utf8");

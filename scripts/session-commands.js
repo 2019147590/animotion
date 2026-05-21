@@ -57,9 +57,10 @@
     setPanelSetup(project.editor?.panelSetup);
     setCorrespondences(project.editor?.correspondences);
     Animotion.motionCommands.setMotionPlan(project.editor?.motionPlan || state.motionPlan);
-    setMergedBridge(project.editor?.cutsceneBridge, currentBridge);
+    Animotion.motionCommands.setCutsceneBridge(project.editor?.cutsceneBridge || null);
     state.currentFrame = project.timeline?.currentFrame || state.currentFrame;
     state.selectedPartId = loadedSelectedPartId(project.editor?.selectedPartId);
+    restoreMotionTemplate();
     clearHistory();
   }
 
@@ -107,6 +108,13 @@
     Animotion.motionCommands.setCutsceneBridge(
       Animotion.cutsceneModel.mergePanelTransform(baseBridge, currentBridge)
     );
+  }
+
+  function restoreMotionTemplate() {
+    const template = Animotion.dom?.els?.motionTemplate;
+    if (!template) return;
+    if (state.cutsceneBridge?.jointAction) template.value = "cutscene";
+    else if (state.parts.some((part) => part.keyframes?.length)) template.value = "keyframes";
   }
 
   function defaultPanelSetup() {

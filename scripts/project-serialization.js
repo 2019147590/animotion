@@ -6,7 +6,7 @@
   function projectFromEditorState(state, options = {}) {
     const previous = state.project || {};
     const canvas = canvasFromState(state, options);
-    const parts = (state.parts || []).map((part, index) => model.normalizeProjectPart(part, index, { imageBounds: canvas }));
+    const parts = (state.parts || []).map((part, index) => model.normalizeProjectPart(editorPartForSave(part), index, { imageBounds: canvas }));
     const motions = motionClipsFromParts(parts, canvas.durationFrames);
     return {
       ...model.createEmptyProject({
@@ -23,6 +23,15 @@
       timeline: timelineFromState(state, motions, canvas.durationFrames),
       editor: editorDataFromState(state),
     };
+  }
+
+  function editorPartForSave(part) {
+    const next = { ...part };
+    delete next.sourceRectNormalized;
+    delete next.pivotNormalized;
+    delete next.jointNormalized;
+    delete next.maskVerticesNormalized;
+    return next;
   }
 
   function canvasFromState(state, options) {

@@ -34,6 +34,7 @@ function loadAnimotion() {
     timeline: { sortedKeyframes: (part) => part.keyframes || [] },
     motionModel: { normalizeCustomMotion: (motion = {}) => ({ x: motion.x || 0, y: motion.y || 0, rotate: motion.rotate || 0, scaleY: motion.scaleY || 0, jointX: motion.jointX || 0, jointY: motion.jointY || 0, phase: motion.phase || 0 }) },
     cutsceneModel: { normalizeBridge: (bridge = {}) => ({ durationFrames: 36, ...bridge }) },
+    cutsceneMotionStatus: { statusForBridge: () => ({ active: false }), statusText: () => "Punch/kick motion status: no active punch/kick draft" },
     partTypeLabels: { body: "몸통", head: "머리", eye: "눈" },
     shapeKind: { rect: "rect" },
     tool: { edit: "edit" },
@@ -67,7 +68,7 @@ function fakeElement(key = "") {
     disabled: false,
     textContent: "",
     className: "",
-    classList: { toggle() {} },
+    classList: { lastToggle: null, toggle(name, force) { this.lastToggle = { name, force }; } },
     replaceChildren(...children) { this.children = children; },
     append(...children) { this.children = [...(this.children || []), ...children]; },
     addEventListener() {},
@@ -127,4 +128,20 @@ test("inspector parent options exclude descendants through parentPartId fallback
   const values = Animotion.dom.els.editParent.options.map((option) => option.value);
   assert.equal(values.includes("head"), false);
   assert.equal(values.includes("eye"), false);
+});
+
+test("ui refresh treats an uploaded image with no selected part as empty inspector state", () => {
+  const Animotion = loadAnimotion();
+  Animotion.state.parts = [];
+  Animotion.state.selectedPartId = null;
+  assert.doesNotThrow(() => Animotion.ui.refreshUi());
+  assert.equal(Animotion.dom.els.emptyInspector.classList.lastToggle.force, false);
+  assert.equal(Animotion.dom.els.partInspector.classList.lastToggle.force, true);
+});
+
+test("inspector parent select refresh is skipped when no part is selected", () => {
+  const Animotion = loadAnimotion();
+  Animotion.state.selectedPartId = null;
+  assert.doesNotThrow(() => Animotion.ui.refreshUi());
+  assert.deepEqual(Animotion.dom.els.editParent.options, []);
 });
