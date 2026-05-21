@@ -1,7 +1,7 @@
 {
   const global = typeof window !== "undefined" ? window : globalThis;
   const Animotion = global.Animotion || (global.Animotion = {});
-  const EDITABLE_RIG_ROLES = new Set(["joint", "rotationPivot", "anchor"]);
+  const EDITABLE_RIG_ROLES = new Set(["joint", "rotationPivot", "anchor", "handTip"]);
 
   function selectedEditableRigPoint(event) {
     const part = selectedPart();

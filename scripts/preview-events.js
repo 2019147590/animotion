@@ -37,7 +37,7 @@
     freezePlayback();
     if (mode === "pose") syncTimelinePosesToFrame();
     state.previewDrag = dragSession(event, part, target.role, mode, target.hit);
-    els.pivotEditTarget.value = target.role === "joint" ? "joint" : "anchor";
+    els.pivotEditTarget.value = target.role === "joint" || target.role === "handTip" ? target.role : "anchor";
     if (mode === "pose") updateControlPose(part.id, { x: 0, y: 0 });
     previewCanvas.setPointerCapture(event.pointerId);
     Animotion.previewPointerArbitration?.setActiveDragOwner?.("previewEvents", event, { kind: mode, label: target.label });
@@ -210,7 +210,7 @@
   }
 
   function editableRole(role) {
-    return role === "joint" || role === "rotationPivot" || role === "anchor";
+    return role === "joint" || role === "rotationPivot" || role === "anchor" || role === "handTip";
   }
 
   function editPointSelection(role, label) {
@@ -242,11 +242,14 @@
   }
 
   function pointField(role) {
-    return role === "joint" ? "joint" : "pivot";
+    if (role === "joint") return "joint";
+    if (role === "handTip") return "handTip";
+    return "pivot";
   }
 
   function pointLocal(part, role) {
-    return Animotion.previewRigPoints.localPoint(part, { role, localPoint: part.pivot }, { timelineLike: timelineLikeMode() });
+    const fallback = role === "handTip" ? part.handTip || part.joint : part.pivot;
+    return Animotion.previewRigPoints.localPoint(part, { role, localPoint: fallback }, { timelineLike: timelineLikeMode() });
   }
 
   function previewPointer(event) {

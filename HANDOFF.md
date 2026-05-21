@@ -71,6 +71,20 @@ Current upload adds an image-session stability pass:
 - The motion status, inspector empty state, parent select refresh, hidden-completion part panel, and empty project sync/serialization paths guard those null/empty states directly instead of hiding errors with broad try/catch.
 - The verified upload crash was `Cannot read properties of null (reading 'actionTimeline')` in `cutscene-motion-status.js`; a missing `jointAction` now renders as inactive status.
 
+Current upload adds an arm-only hand endpoint and cutscene-only punch depth pass:
+
+- Arm-only rigs can now store an explicit `handTip` local endpoint. There may still be no separate hand part.
+- The source inspector, rig handles, hit testing, save/load normalization, part shape edits, and source overlay all preserve and expose the `handTip` endpoint without requiring a schema break.
+- Punch generation now uses `handTip` as the endpoint for arm-only primary parts while keeping `selectedPartId` and the visual driver on the selected arm part.
+- Existing separate hand-part rigs still prefer the terminal hand part for punch generation.
+- Loaded legacy JSON is not auto-migrated. Old saved `cutsceneBridge.jointAction` and `part.keyframes` remain as saved until the user explicitly regenerates punch/kick.
+- Explicit punch regeneration replaces old generated punch keyframes, keeps `actionTimeline.template === "punch"`, and computes rear/front classification plus impact target from base part geometry rather than stale evaluated keyframes.
+- Rear-cross punch generation records `targetDebug.punchStyle` on the generated action. Front jab remains `jab`.
+- Cutscene preview/playback now applies a frame-local evaluated render-order bias for rear-cross punch only. The punching arm/hand rises in front of head/face during drive/impact and returns to original order during recover.
+- This depth override is not saved into project part order and does not mutate legacy layer order.
+- For arm-only rigs the depth bias applies to the punching arm. For separate hand rigs the terminal hand receives the strongest bias and the parent forearm receives a smaller supporting bias.
+- New regressions cover loaded legacy elbow-only punch preservation, explicit handTip-based regeneration, rear windup, recover, front jab preservation, and cutscene-only depth ordering.
+
 ### Panel Quality Setup
 
 Implemented in `scripts/panel-editor.js` and `scripts/panel-commands.js`.
@@ -509,8 +523,9 @@ Smallest next scope:
 
 ```text
 boxer punch browser smoke demo
--> punch windup/impact/recover manual edit QA
--> visible keyframe/frame feedback for hand, arm, and torso edits
+-> verify handTip endpoint visualization and cutscene depth ordering in the browser
+-> punch windup/drive/impact/recover manual edit QA
+-> visible keyframe/frame feedback for hand, arm, torso, and depth phase behavior
 -> explicit "regenerate punch" vs "keep manual edits" UX language
 -> only after punch demo is stable, resume kick quality tuning
 ```
@@ -519,7 +534,7 @@ Why this is next:
 
 - The new product center is direct character rigging and motion editing, so the edit loop must remain dependable before AI or A/B reference features expand.
 - The first stability pass covered inspector parent fallback, out-of-rect pivot/joint preservation, pointer arbitration regressions, and motionDraft/hiddenCompletionPatch guide round trips.
-- The current motion target is narrower: make the boxer punch auto-generation plus manual correction loop reliable before spending time on kick tuning.
+- The current motion target is narrower: make the boxer punch auto-generation, handTip endpoint behavior, cutscene depth ordering, and manual correction loop reliable before spending time on kick tuning.
 - Remaining work should stay in the current command, inspector/status, `motionPlan`, `cutsceneBridge.jointAction`, `part.keyframes`, `hiddenCompletionPatch`, and `project.assets` flows.
 
 Do not change `HiddenCompletionRequestPayload`, hidden-completion provider contracts, Stability/Local SD provider logic, or B impact snap timing while continuing this rigging/motion stability pass.
@@ -541,7 +556,7 @@ master
 Latest known implementation baseline:
 
 ```text
-current upload builds on the motion authoring baseline with punch/kick draft context invalidation, boxer punch manual-edit workflow stabilization, punch windup status labeling, and rear-hand punch regeneration fallback
+current upload builds on the rear-hand punch baseline with arm-only handTip endpoints and cutscene-only rear-cross depth ordering
 ```
 
 Current upload status:
@@ -552,12 +567,17 @@ this upload includes implementation, tests, and this handoff update on origin/ma
 
 ## Current Project Notes
 
-As of this handoff update on 2026-05-21, implementation work includes the previous `ce43f68 Stabilize rigging and motion authoring state` baseline, the image upload/session restore and canonical punch/kick selected-part generation work, plus the current punch/kick draft context invalidation and boxer punch manual-edit workflow stabilization.
+As of this handoff update on 2026-05-22, implementation work includes the previous `ce43f68 Stabilize rigging and motion authoring state` baseline, the image upload/session restore and canonical punch/kick selected-part generation work, punch/kick draft context invalidation, boxer punch manual-edit workflow stabilization, arm-only `handTip` endpoint support, and cutscene-only rear-cross depth ordering.
 
 Latest completed implementation commits:
 
 - `f2536d3 Add cutscene motion status visibility`: read-only punch/kick cutscene status line in the motion panel, backed by `scripts/cutscene-motion-status.js` and `tests/cutscene-motion-status.test.js`.
 - `ce43f68 Stabilize rigging and motion authoring state`: inspector parent fallback, `parentId`/`parentPartId` compatibility, out-of-rect pivot/joint preservation, pointer arbitration regressions, and motionDraft plus hiddenCompletionPatch guide round-trip coverage.
+- Current upload: arm-only rigs now support an explicit `handTip` endpoint in the inspector, rig handles, hit testing, render overlay, project model, serialization, part creation, and shape edit preservation paths.
+- Current upload: punch generation uses the selected arm's `handTip` as the actual endpoint when no separate hand part exists, while separate hand-part rigs still resolve to the terminal hand part.
+- Current upload: explicit punch regeneration after loading legacy elbow-only keyframes replaces generated punch tracks, keeps `actionTimeline.template === "punch"`, and uses base geometry for rear/front classification, target computation, windup, impact, and recover.
+- Current upload: cutscene preview/playback evaluates a temporary rear-cross depth bias from `cutsceneBridge.jointAction` and current frame, so the punching rear hand/arm renders above the head during drive/impact and returns to base order during recover without changing saved part order.
+- Current upload: new regressions include `tests/punch-hand-tip-regression.test.js` and `tests/cutscene-depth.test.js`; the full `tests/*.test.js` suite passed locally.
 - Current upload: normal image upload no longer crashes when there are no parts or selected part, project restore no longer merges in stale current bridge data, restored cutscene projects set the motion UI back to cutscene mode, stale normalized runtime geometry is ignored during project save, and punch/kick selected-part draft generation reuses the canonical motion planner path.
 - Current upload also prevents punch/kick generation from reusing stale target/anchor/draft data when the action type or selected primary part changes, while preserving manual trajectory edits for the same action plus same part.
 - Boxer punch action demo is now the active 1st-priority scope: generated punch `part.keyframes` can be scrubbed, hand/arm/body pose drags commit frame keyframes, preview evaluation uses those manual keyframes, and edits persist until explicit punch regeneration.

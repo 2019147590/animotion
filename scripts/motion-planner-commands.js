@@ -8,19 +8,20 @@
   function generateFromSelection(options = {}) {
     const plan = currentPlan();
     const template = plan.template;
-    const primary = selectedPart();
+    const selected = selectedPart();
+    const primary = primaryForAction(template, selected);
     const canonical = isCanonicalAction(template);
     if (options.onlyCanonicalActions && !canonical) return { handled: false, generated: false };
-    const message = canonical ? primaryGuardMessage(template, primary) : "";
+    const message = canonical ? primaryGuardMessage(template, selected) : "";
     if (message) {
-      blockedStatus = { template, partId: primary?.id || null, message };
+      blockedStatus = { template, partId: selected?.id || null, message };
       refresh();
       return { handled: true, generated: false, reason: "invalid-primary", message };
     }
     if (!primary) return { handled: canonical, generated: false, reason: "missing-primary" };
     blockedStatus = null;
     const previous = Animotion.cutsceneModel.normalizeBridge(Animotion.state.cutsceneBridge);
-    const generationPlan = planForGeneration(plan, template, primary, previous);
+    const generationPlan = planForGeneration(plan, template, selected, primary, previous);
     const bridge = Animotion.cutsceneControls.preservePanelTransform(
       Animotion.cutsceneModel.createBridge(Animotion.state.parts, primary.id),
       previous
@@ -57,16 +58,28 @@
     return template === "punch" || template === "kick";
   }
 
-  function planForGeneration(plan, template, primary, previousBridge) {
+  function planForGeneration(plan, template, selected, primary, previousBridge) {
     if (!isCanonicalAction(template)) return plan;
     const previousAction = previousBridge?.jointAction;
     if (!previousAction) return plan;
-    if (sameActionContext(previousBridge, previousAction, template, primary?.id)) return plan;
+    if (sameActionContext(previousBridge, previousAction, template, selected?.id, primary?.id)) return plan;
     return invalidatedDraftPlan(plan);
   }
 
-  function sameActionContext(previousBridge, previousAction, template, selectedPartId) {
-    return actionTemplate(previousAction) === template && previousBridge?.primaryPartId === selectedPartId;
+  function sameActionContext(previousBridge, previousAction, template, selectedPartId, primaryPartId) {
+    const previousPartId = previousBridge?.primaryPartId;
+    return actionTemplate(previousAction) === template && samePartReference(previousPartId, selectedPartId, primaryPartId);
+  }
+
+  function samePartReference(previousPartId, selectedPartId, primaryPartId) {
+    if (!previousPartId) return false;
+    if (previousPartId === primaryPartId || previousPartId === selectedPartId) return true;
+    const parts = Animotion.state?.parts || [];
+    const primary = parts.find((part) => part.id === primaryPartId);
+    const previous = parts.find((part) => part.id === previousPartId);
+    if (primary && isDescendantOf(primary, previousPartId, parts)) return true;
+    const previousSuffix = numberedSuffix(previous);
+    return Boolean(primary && previousSuffix && previousSuffix === numberedSuffix(primary));
   }
 
   function actionTemplate(action) {
@@ -97,6 +110,53 @@
   function partKind(part = {}) {
     if (part.humanRole) return part.humanRole;
     return part.type || "";
+  }
+
+  function primaryForAction(template, part) {
+    if (template !== "punch" || !part) return part;
+    return terminalPunchPart(part) || part;
+  }
+
+  function terminalPunchPart(part) {
+    if (partKind(part) === "hand") return part;
+    const parts = Animotion.state?.parts || [];
+    return descendantHand(part, parts) || numberedHand(part, parts);
+  }
+
+  function descendantHand(part, parts) {
+    return parts.find((candidate) => (
+      candidate.id !== part.id
+      && partKind(candidate) === "hand"
+      && isDescendantOf(candidate, part.id, parts)
+    )) || null;
+  }
+
+  function isDescendantOf(part, ancestorId, parts) {
+    let current = part;
+    const seen = new Set();
+    while (parentIdFor(current)) {
+      const parentId = parentIdFor(current);
+      if (parentId === ancestorId) return true;
+      if (seen.has(parentId)) return false;
+      seen.add(parentId);
+      current = parts.find((candidate) => candidate.id === parentId);
+      if (!current) return false;
+    }
+    return false;
+  }
+
+  function numberedHand(part, parts) {
+    const suffix = numberedSuffix(part);
+    if (!suffix) return null;
+    return parts.find((candidate) => partKind(candidate) === "hand" && numberedSuffix(candidate) === suffix) || null;
+  }
+
+  function numberedSuffix(part) {
+    return String(`${part?.id || ""} ${part?.name || ""}`).match(/(?:^|[^0-9])([0-9]+)(?!.*[0-9])/)?.[1] || null;
+  }
+
+  function parentIdFor(part = {}) {
+    return Animotion.rigConnection?.parentIdFor?.(part) || part.parentId || part.parentPartId || null;
   }
 
   function selectedPart() {

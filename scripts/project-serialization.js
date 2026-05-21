@@ -30,6 +30,7 @@
     delete next.sourceRectNormalized;
     delete next.pivotNormalized;
     delete next.jointNormalized;
+    delete next.handTipNormalized;
     delete next.maskVerticesNormalized;
     return next;
   }

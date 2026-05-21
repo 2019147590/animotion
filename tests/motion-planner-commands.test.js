@@ -27,6 +27,7 @@ function loadAnimotion() {
     "scripts/character-root-motion.js",
     "scripts/action-timeline-model.js",
     "scripts/impact-exaggeration-layer.js",
+    "scripts/rig-connection.js",
     "scripts/pose-assist.js",
     "scripts/joint-coordinates.js",
     "scripts/cutscene-model.js",
@@ -120,6 +121,27 @@ function clickAuto(Animotion) {
   Animotion.dom.els.autoAnticipation.click();
 }
 
+function legacyRearHandParts(oldKeyframes) {
+  return [
+    part("body", "body", { x: 40, y: 20, w: 20, h: 50 }),
+    part("head", "head", { x: 38, y: 4, w: 24, h: 20 }),
+    { ...part("upper_01", "arm", { x: 28, y: 24, w: 20, h: 20 }), humanRole: "upperArm" },
+    { ...part("arm_01", "arm", { x: 16, y: 28, w: 18, h: 32 }), humanRole: "forearm", parentId: "upper_01", keyframes: oldKeyframes },
+    { ...part("hand_01", "hand", { x: 10, y: 49, w: 12, h: 12 }), humanRole: "hand", parentId: "arm_01" },
+    { ...part("upper_02", "arm", { x: 60, y: 24, w: 20, h: 20 }), humanRole: "upperArm" },
+    { ...part("arm_02", "arm", { x: 64, y: 28, w: 18, h: 32 }), humanRole: "forearm", parentId: "upper_02" },
+    { ...part("hand_02", "hand", { x: 80, y: 49, w: 12, h: 12 }), humanRole: "hand", parentId: "arm_02" },
+  ];
+}
+
+function beatMap(action) {
+  return Object.fromEntries(action.beats.map((beat) => [beat.id, beat]));
+}
+
+function distance(a, b) {
+  return Math.hypot(Number(b[0]) - Number(a[0]), Number(b[1]) - Number(a[1]));
+}
+
 test("auto cutscene button generates canonical punch action for an arm part", () => {
   const Animotion = loadAnimotion();
   Animotion.state.selectedPartId = "arm";
@@ -203,6 +225,42 @@ test("auto cutscene button preserves adjusted trajectory for the same action and
   const primaryAnchor = Animotion.state.cutsceneBridge.jointAction.anchors.find((anchor) => anchor.key === "rHand");
   assert.equal(primaryAnchor.point.x, 150);
   assert.equal(primaryAnchor.point.y, 26);
+});
+
+test("explicit punch regeneration after legacy load targets the terminal rear hand", () => {
+  for (const selectedPartId of ["arm_01", "hand_01"]) {
+    const Animotion = loadAnimotion();
+    const oldKeyframes = [{ frame: 24, pose: { x: 0, y: 0, rotate: 0, scaleY: 0, jointX: 52, jointY: -40, phase: 0 } }];
+    Animotion.state.parts = legacyRearHandParts(oldKeyframes);
+    Animotion.state.project.parts = Animotion.state.parts;
+    Animotion.state.selectedPartId = selectedPartId;
+    Animotion.state.motionPlan = { template: "punch", target: { x: 160, y: 30 } };
+    Animotion.state.cutsceneBridge = Animotion.cutsceneModel.normalizeBridge({
+      primaryPartId: "arm_01",
+      durationFrames: 36,
+      impactFrame: 24,
+      jointAction: {
+        source: "motion-planner-punch-anchors-v1",
+        focusKey: "lHand",
+        actionTimeline: { template: "punch" },
+        beats: [{ id: "impact", at: 24, pose: { lHand: [70, 8], lElbow: [68, -16], hip: [50, 63] } }],
+      },
+    });
+    const base = Animotion.jointCoordinates.inferJointPose(Animotion.state.parts);
+
+    assert.deepEqual(JSON.parse(JSON.stringify(Animotion.state.parts.find((part) => part.id === "arm_01").keyframes)), oldKeyframes);
+    clickAuto(Animotion);
+
+    const bridge = Animotion.state.cutsceneBridge;
+    const beats = beatMap(bridge.jointAction);
+    const handMove = distance(base.lHand, beats.impact.pose.lHand);
+    const elbowMove = distance(base.lElbow, beats.impact.pose.lElbow);
+    assert.equal(bridge.primaryPartId, "hand_01");
+    assert.equal(bridge.jointAction.actionTimeline.template, "punch");
+    assert.notDeepEqual(JSON.parse(JSON.stringify(Animotion.state.parts.find((part) => part.id === "arm_01").keyframes)), oldKeyframes);
+    assert.equal(handMove > elbowMove, true);
+    assert.equal(beats.windup.pose.lHand[0] <= base.lHand[0], true);
+  }
 });
 
 test("auto cutscene button blocks punch and kick for an invalid selected part", () => {

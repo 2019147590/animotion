@@ -259,6 +259,8 @@
     els.pivotY.addEventListener("input", () => updatePoint("pivot", "y", Number(els.pivotY.value)));
     els.jointX.addEventListener("input", () => updatePoint("joint", "x", Number(els.jointX.value)));
     els.jointY.addEventListener("input", () => updatePoint("joint", "y", Number(els.jointY.value)));
+    els.handTipX.addEventListener("input", () => updatePoint("handTip", "x", Number(els.handTipX.value)));
+    els.handTipY.addEventListener("input", () => updatePoint("handTip", "y", Number(els.handTipY.value)));
     els.editOrder.addEventListener("input", () => update({ order: Number(els.editOrder.value) }));
     els.editAlpha.addEventListener("input", () => update({ alpha: Number(els.editAlpha.value) }));
     els.editHidden.addEventListener("change", () => update({ hidden: els.editHidden.checked }));
@@ -281,7 +283,7 @@
     const part = Animotion.parts.selectedPart();
     if (!part) return;
     const sizeKey = axis === "x" ? "w" : "h";
-    updateSelectedPart({ [pointKey]: { ...part[pointKey], [axis]: ratio * part.rect[sizeKey] } });
+    updateSelectedPart({ [pointKey]: { ...(part[pointKey] || part.joint || part.pivot), [axis]: ratio * part.rect[sizeKey] } });
   }
 
   function updateMotion(key, value) {

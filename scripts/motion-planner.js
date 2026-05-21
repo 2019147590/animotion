@@ -123,7 +123,7 @@
     const targetDebug = Animotion.motionTargetDebug?.analyzeTarget?.(plan, base, active, target) || {};
     targetDebug.activeMotionTarget = Animotion.motionTargetState?.activeMotionTargetDebug?.({ ...plan, activeMotionTarget }) || null;
     const scopedPlan = { ...plan, targetDebug };
-    const punchStyle = Animotion.motionAnchors?.punchStyleFor?.(scopedPlan, parts, primary, base, active, direction, target) || "jab";
+    const punchStyle = Animotion.motionAnchors?.punchStyleFor?.(scopedPlan, parts, primary, base, active, direction, target) || "jab"; targetDebug.punchStyle = punchStyle;
     const anchors = Animotion.motionAnchors?.anchorsFromPlan?.(scopedPlan, parts, primary, base, active, direction, target) || [], actionTimeline = actionTimelineFor(plan.template, bridge);
     const beats = templateBeats(plan.template, bridge).map((spec) => poseBeat(spec, base, active, target, direction, anchors, punchStyle));
     const trajectorySamples = Animotion.motionTargetState?.trajectorySamples?.(beats, active.end) || [];
@@ -219,7 +219,7 @@
     const pose = Animotion.motionModel.defaultCustomMotion();
     const parentId = parentIdFor(part);
     if (part.id === primary.id) {
-      if (active.motion === "translate") {
+      if (active.motion === "translate" || drivesHandTipEndpoint(part, active)) {
         pose.x = beat.pose[active.end][0] - base[active.end][0];
         pose.y = beat.pose[active.end][1] - base[active.end][1];
       } else {
@@ -241,6 +241,7 @@
     }
     return { frame: beat.at, pose };
   }
+  function drivesHandTipEndpoint(part, active) { return partKind(part) === "arm" && Boolean(part.handTip) && String(active.end || "").endsWith("Hand"); }
   function statusText(plan, part) {
     if (!part) return "파츠를 선택하면 움직임 목표 기반 궤적을 만들 수 있습니다.";
     const target = plan.target ? `움직임 목표 ${plan.target.x}, ${plan.target.y}` : "움직임 목표 없음";
@@ -290,8 +291,7 @@
     return { x: a.x + (b.x - a.x) * ratio, y: a.y + (b.y - a.y) * ratio };
   }
   function rounded(point) { return [Math.round(point.x), Math.round(point.y)]; }
-  function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
-  function normalizedPoint(point, bounds) { return Animotion.coordinateSpaces?.normalizedImagePointFromPoint?.(point, bounds) || null; }
+  function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); } function normalizedPoint(point, bounds) { return Animotion.coordinateSpaces?.normalizedImagePointFromPoint?.(point, bounds) || null; }
   function clonePlain(value) { return JSON.parse(JSON.stringify(value)); }
   function sourceBounds() { return Animotion.state?.image ? { width: Animotion.state.image.naturalWidth, height: Animotion.state.image.naturalHeight } : typeof Animotion.imageBounds === "function" ? Animotion.imageBounds() : null; }
   function refresh() { Animotion.ui?.refreshUi?.(); }

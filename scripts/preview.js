@@ -118,7 +118,7 @@
     const matrixCache = new Map();
     previewCtx.save();
     Animotion.previewTransform.applySourceFrame(previewCtx, view, state.previewSourceFrame, state.previewSourceTransform);
-    for (const part of [...state.parts].sort((a, b) => a.order - b.order)) {
+    for (const part of orderedPartsForFrame(t, cutscene)) {
       if (!part.hidden) drawPart(part, t, matrixCache, view);
     }
     previewCtx.restore();
@@ -131,13 +131,13 @@
     if (!cutscene.active || !cutscene.bridge.ghostEnabled || cutscene.values.ghostAlpha <= 0.01) return;
     previewCtx.save();
     Animotion.previewTransform.applySourceFrame(previewCtx, view, state.previewSourceFrame, state.previewSourceTransform);
-    for (const delay of Animotion.cutsceneModel.GHOST_DELAYS) drawGhostPass(Math.max(0, lastCutsceneGhostTime - delay), Animotion.cutsceneModel.GHOST_ALPHA_RATIO);
+    for (const delay of Animotion.cutsceneModel.GHOST_DELAYS) drawGhostPass(Math.max(0, lastCutsceneGhostTime - delay), Animotion.cutsceneModel.GHOST_ALPHA_RATIO, cutscene);
     previewCtx.restore();
   }
-  function drawGhostPass(t, alpha) {
+  function drawGhostPass(t, alpha, cutscene) {
     if (t < 0) return;
     const matrixCache = new Map();
-    for (const part of [...state.parts].sort((a, b) => a.order - b.order)) {
+    for (const part of orderedPartsForFrame(t, cutscene)) {
       if (!part.hidden) drawPart(part, t, matrixCache, state.previewView, alpha);
     }
   }
@@ -230,9 +230,8 @@
     }
     return Animotion.timeline.frameFromTime(t, Animotion.config.timelineFrames, Animotion.config.timelineFps);
   }
-  function timelineLikeMode() {
-    return els.motionTemplate.value === "keyframes" || els.motionTemplate.value === "cutscene";
-  }
+  function timelineLikeMode() { return els.motionTemplate.value === "keyframes" || els.motionTemplate.value === "cutscene"; }
+  function orderedPartsForFrame(t, cutscene) { const frame = state.running ? currentMotionFrame(t) : state.currentFrame; return Animotion.cutsceneDepth?.orderedParts?.(state.parts, { bridge: cutscene?.bridge, frame, parts: state.parts }) || [...state.parts].sort((a, b) => a.order - b.order); }
   function drawRigPoint(part, spec, matrix, view, drawPivot) {
     const local = Animotion.previewRigPoints.localPoint(part, spec, { timelineLike: timelineLikeMode() });
     const image = Animotion.previewRigPoints.imagePoint(part, spec, matrix, { timelineLike: timelineLikeMode() });
@@ -258,8 +257,7 @@
     previewCtx.fillText(label, screen.x + 9, screen.y - 8);
     previewCtx.restore();
   }
-  function sourceScale(view) { return Animotion.previewTransform.sourceScale(view, state.previewSourceFrame, state.previewSourceTransform); }
-  function applyMatrix(ctx, matrix) { ctx.transform(matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f); }
+  function sourceScale(view) { return Animotion.previewTransform.sourceScale(view, state.previewSourceFrame, state.previewSourceTransform); } function applyMatrix(ctx, matrix) { ctx.transform(matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f); }
   function worldMatrix(part, t, cache) {
     if (cache.has(part.id)) return cache.get(part.id);
     const local = localMatrix(part, t);

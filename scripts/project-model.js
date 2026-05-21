@@ -65,6 +65,7 @@
     const layerIndex = intOrDefault(part.order, intOrDefault(part.layerIndex, index + 1));
     const pivot = localPointForCurrentRect(part.pivotNormalized, part.pivot, rect);
     const joint = localPointForCurrentRect(part.jointNormalized, part.joint, rect);
+    const handTip = localPointForCurrentRect(part.handTipNormalized, part.handTip, rect);
     const connection = Animotion.rigConnection?.metadataForPart?.({ ...part, rect, pivot, joint }) || { parentPartId: part.parentPartId || part.parentId || null };
     return {
       id,
@@ -83,6 +84,7 @@
       opacity: clampNumber(part.alpha ?? part.opacity, 0, 1, 1),
       pivot,
       joint,
+      ...(part.handTip || part.handTipNormalized ? { handTip, handTipNormalized: normalizedLocalPoint(handTip, rect) } : {}),
       sourceRectNormalized: normalizedImageRect(rect, imageBounds),
       pivotNormalized: normalizedLocalPoint(pivot, rect),
       jointNormalized: normalizedLocalPoint(joint, rect),
@@ -107,7 +109,6 @@
       keyframes: motionByPart.get(part.id) || normalizeLegacyKeyframes(part.keyframes),
     };
   }
-
   function partKeyframesFromMotions(motions) {
     const byPart = new Map();
     for (const motion of motions) {
@@ -120,7 +121,6 @@
     }
     return byPart;
   }
-
   function normalizeArray(values, normalizer) {
     return Array.isArray(values) ? values.map(normalizer).filter(Boolean) : [];
   }

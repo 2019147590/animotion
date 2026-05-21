@@ -19,6 +19,7 @@
       mask,
       pivot: Animotion.rigging.defaultPivotForPart(type, rect, parent?.rect || null),
       joint: Animotion.rigging.defaultJointForPart(type, rect, parent?.rect || null),
+      ...(type === "arm" ? { handTip: Animotion.rigging.defaultHandTipForPart(type, rect, parent?.rect || null) } : {}),
       parentId: parent?.id || null,
       parentPartId: parent?.id || null,
       attachPointSelf: connection.attachPointSelf,
@@ -48,11 +49,13 @@
     if (rect.w < Animotion.config.minShapeSize || rect.h < Animotion.config.minShapeSize) return part;
     const oldPivot = absolutePoint(part.rect, part.pivot);
     const oldJoint = absolutePoint(part.rect, part.joint);
+    const oldHandTip = part.handTip ? absolutePoint(part.rect, part.handTip) : null;
     part.rect = rect;
     part.sourceRect = rect;
     part.mask = geometry.shapeToMask(normalized, rect);
     part.pivot = localPointFromAbsolute(oldPivot, rect);
     part.joint = localPointFromAbsolute(oldJoint, rect);
+    if (oldHandTip) part.handTip = localPointFromAbsolute(oldHandTip, rect);
     Animotion.parts.updatePartCanvas(part);
     syncProjectParts();
     return part;

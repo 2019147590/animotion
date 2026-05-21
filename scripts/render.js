@@ -54,6 +54,7 @@
         drawShapeOverlay(sourceCtx, view, geometry.absoluteShapeFromPart(part), selected, part.name, false, showHandles);
         drawPivot(sourceCtx, view, part.rect.x + part.pivot.x, part.rect.y + part.pivot.y, selected, "anchor");
         drawPivot(sourceCtx, view, part.rect.x + part.joint.x, part.rect.y + part.joint.y, selected, "joint");
+        if (part.handTip) drawPivot(sourceCtx, view, part.rect.x + part.handTip.x, part.rect.y + part.handTip.y, selected, "handTip");
       }
     }
     if (state.selection) {
@@ -144,6 +145,7 @@
 
   function pointStyle(role, selected) {
     if (role === "joint") return { fill: "#8fd3ff", stroke: "#151515" };
+    if (role === "handTip") return { fill: "#f16fb1", stroke: "#151515" };
     if (role === "connection" || role === "parentConnection") return { fill: "#0f7f79", stroke: "#151515", square: true };
     if (role === "bodyRoot") return { fill: "#151515", stroke: "#f1b83b" };
     if (role === "trajectory") return { fill: "#e1462e", stroke: "#fffaf0" };

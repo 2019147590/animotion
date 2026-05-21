@@ -119,6 +119,7 @@ test("save payload uses the central AnimotionProject model", () => {
       rect: { x: 10, y: 20, w: 30, h: 40 },
       pivot: { x: 5, y: 6 },
       joint: { x: 25, y: 30 },
+      handTip: { x: 2, y: 38 },
       order: 3,
       alpha: 0.5,
       hidden: true,
@@ -139,6 +140,7 @@ test("save payload uses the central AnimotionProject model", () => {
   assert.equal(project.parts[0].pivotNormalized.coordinateSpace, "part-local-normalized");
   assert.equal(project.parts[0].pivotNormalized.xNorm, 5 / 30);
   assert.equal(project.parts[0].jointNormalized.yNorm, 30 / 40);
+  assert.equal(project.parts[0].handTipNormalized.yNorm, 38 / 40);
   assert.equal(project.parts[0].maskVerticesNormalized.length, 0);
   assert.equal(project.motions[0].keyframes[0].targetId, "part-arm");
   assert.equal(project.timeline.currentFrame, 7);
@@ -167,6 +169,7 @@ test("project save and load preserves outside-rect rig point coordinates", () =>
       rect: { x: 20, y: 10, w: 30, h: 40 },
       pivot: { x: -6, y: 12 },
       joint: { x: 45, y: -8 },
+      handTip: { x: 48, y: 44 },
       order: 1,
       alpha: 1,
       customMotion: {},
@@ -177,8 +180,10 @@ test("project save and load preserves outside-rect rig point coordinates", () =>
   const loaded = Animotion.projectModel.editorPartsFromProject(Animotion.projectModel.normalizeProject(saved, { imageBounds: { width: 100, height: 80 } }));
   assert.equal(saved.parts[0].pivotNormalized.xNorm, -0.2);
   assert.equal(saved.parts[0].jointNormalized.xNorm, 1.5);
+  assert.equal(saved.parts[0].handTipNormalized.xNorm, 1.6);
   assert.equal(`${loaded[0].pivot.x},${loaded[0].pivot.y}`, "-6,12");
   assert.equal(`${loaded[0].joint.x},${loaded[0].joint.y}`, "45,-8");
+  assert.equal(`${loaded[0].handTip.x},${loaded[0].handTip.y}`, "48,44");
 });
 
 test("project save recomputes normalized part geometry from the current editor rect", () => {

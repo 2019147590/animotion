@@ -91,3 +91,10 @@ test("hit testing can select a rig handle outside the selected part rect", () =>
   const hit = previewHitTest.selectedEditableRigPoint({ clientX: 14, clientY: 55 });
   assert.equal(hit.role, "joint");
 });
+
+test("hit testing can select an arm hand tip endpoint", () => {
+  const selected = { ...part(), type: "arm", handTip: { x: -8, y: 30 } };
+  setup(selected);
+  const hit = previewHitTest.selectedEditableRigPoint({ clientX: 12, clientY: 60 });
+  assert.equal(hit.role, "handTip");
+});

@@ -37,6 +37,13 @@ test("preview points preserve outside-rect joint and pivot coordinates", () => {
   assert.deepEqual(points.find((point) => point.role === "joint").localPoint, { x: 25, y: 35 });
 });
 
+test("arm preview points expose a separate hand tip endpoint", () => {
+  const arm = { id: "bent-arm", type: "arm", rect: { x: 10, y: 20, w: 30, h: 40 }, pivot: { x: 26, y: 6 }, joint: { x: 14, y: 18 }, handTip: { x: 4, y: 36 } };
+  const points = rigConnection.previewPoints(arm);
+  assert.deepEqual(points.find((point) => point.role === "joint").localPoint, { x: 14, y: 18 });
+  assert.deepEqual(points.find((point) => point.role === "handTip").localPoint, { x: 4, y: 36 });
+});
+
 test("parentId takes priority when parentId and parentPartId both exist", () => {
   const part = { id: "head", parentId: "body", parentPartId: "legacy-body" };
   assert.equal(rigConnection.parentIdFor(part), "body");

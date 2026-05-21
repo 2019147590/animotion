@@ -235,7 +235,7 @@
 
   function endPoint(part = {}) {
     const rect = part.rect || {};
-    const joint = part.joint || { x: Number(rect.w || 0) * 0.5, y: Number(rect.h || 0) * 0.88 };
+    const joint = part.handTip || part.joint || { x: Number(rect.w || 0) * 0.5, y: Number(rect.h || 0) * 0.88 };
     return { x: Number(rect.x || 0) + Number(joint.x || 0), y: Number(rect.y || 0) + Number(joint.y || 0) };
   }
 

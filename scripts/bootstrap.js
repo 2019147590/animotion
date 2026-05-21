@@ -69,6 +69,7 @@
     "preview-transform",
     "preview-coordinate",
     "preview-rig-points",
+    "cutscene-depth",
     "preview",
     "render",
     "ui",

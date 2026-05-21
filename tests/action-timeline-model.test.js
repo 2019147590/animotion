@@ -91,6 +91,7 @@ test("front hand punch keeps the existing jab motion", () => {
   const impact = beatMap(plan.jointAction).impact;
   const primary = bodyPoseAt(plan, "front_forearm", impact.at);
   const body = bodyPoseAt(plan, "body", impact.at);
+  assert.equal(plan.jointAction.targetDebug.punchStyle, "jab");
   assert.equal(impact.pose.rHand[0], 160);
   assert.equal(impact.pose.rHand[1], 30);
   assert.equal(primary.jointX, 80);
@@ -106,6 +107,7 @@ test("rear hand punch stays a punch while the hand drives toward impact", () => 
   const plan = Animotion.motionPlanner.createPlan(parts, "back_forearm", bridge, { template: "punch", target: { x: 160, y: 30 } });
   const beats = beatMap(plan.jointAction);
   assert.equal(plan.jointAction.actionTimeline.template, "punch");
+  assert.equal(plan.jointAction.targetDebug.punchStyle, "rear-cross");
   assert.equal(beats.impact.pose.lHand[0], 160);
   assert.equal(beats.impact.pose.lHand[1], 30);
   assert.equal(beats.impact.pose.lHand[0] > base.lHand[0], true);

@@ -16,6 +16,11 @@
     return { x: rect.w * 0.5, y: rect.h * 0.5 };
   }
 
+  function defaultHandTipForPart(type, rect, parentRect = null) {
+    if (type !== "arm") return null;
+    return limbJoint(rect, parentRect, 0.88);
+  }
+
   function armShoulderPivot(rect, parentRect) {
     if (!parentRect) return { x: rect.w * 0.5, y: rect.h * 0.12 };
     return sidePivot(rect, parentRect, SIDE_PIVOT.armY);
@@ -47,7 +52,7 @@
     };
   }
 
-  Animotion.rigging = { defaultPivotForPart, defaultJointForPart, localPointFromImagePoint };
+  Animotion.rigging = { defaultPivotForPart, defaultJointForPart, defaultHandTipForPart, localPointFromImagePoint };
 
   if (typeof module !== "undefined") module.exports = Animotion.rigging;
 }

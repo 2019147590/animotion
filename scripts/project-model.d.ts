@@ -63,9 +63,11 @@ export type Part = {
   opacity: number;
   pivot: Vec2;
   joint?: Vec2;
+  handTip?: Vec2;
   sourceRectNormalized?: NormalizedImageRect | null;
   pivotNormalized?: NormalizedLocalPoint | null;
   jointNormalized?: NormalizedLocalPoint | null;
+  handTipNormalized?: NormalizedLocalPoint | null;
   maskVerticesNormalized?: NormalizedLocalPoint[];
   mask?: PolygonMask | null;
   transform: Transform2D;

@@ -59,6 +59,8 @@
     pivotY: "#pivotY",
     jointX: "#jointX",
     jointY: "#jointY",
+    handTipX: "#handTipX",
+    handTipY: "#handTipY",
     editOrder: "#editOrder",
     editAlpha: "#editAlpha",
     editHidden: "#editHidden",

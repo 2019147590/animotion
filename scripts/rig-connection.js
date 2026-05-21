@@ -33,9 +33,10 @@
       pointSpec("connection", meta.attachPointSelf, localAttachPoint(part, meta.attachPointSelf), labelForAttach(meta.attachPointSelf)),
       pointSpec("rotationPivot", "rotationPivot", meta.rotationPivot, "회전 중심"),
       pointSpec("joint", "joint", localPoint(part.joint, part.rect), "관절점"),
+      handTipPoint(part),
     ];
     if (parent) points.push(pointSpec("parentConnection", meta.attachPointParent, parentAttachPoint(parent, part, meta.attachPointParent), labelForAttach(meta.attachPointParent)));
-    return points.filter((point) => point.localPoint);
+    return points.filter((point) => point?.localPoint);
   }
 
   function bodyRootPoint(parts = []) {
@@ -47,6 +48,7 @@
     if (role === "connection" || role === "parentConnection") return "연결점";
     if (role === "rotationPivot" || role === "anchor") return "회전 중심";
     if (role === "joint") return "관절점";
+    if (role === "handTip") return "손끝점";
     if (role === "trajectory") return "이동 경로점";
     if (role === "hiddenGuide") return "보완 가이드 점";
     if (role === "bodyRoot") return "몸 기준점";
@@ -63,12 +65,18 @@
       trajectoryPoint: "이동 경로점",
       pivot: "회전 중심",
       joint: "관절점",
+      handTip: "손끝점",
       hiddenCompletionGuideVertex: "보완 가이드 점",
     };
   }
 
   function pointSpec(role, key, localPointValue, label) {
     return { role, key, localPoint: localPointValue, label };
+  }
+
+  function handTipPoint(part = {}) {
+    if (part.type !== "arm" && part.humanRole !== "forearm" && part.humanRole !== "upperArm") return null;
+    return pointSpec("handTip", "handTip", localPoint(part.handTip || part.joint, part.rect), "손끝점");
   }
 
   function selfAttachKey(part, parent) {

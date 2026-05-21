@@ -144,6 +144,16 @@ test("shape edits preserve outside pivot and joint image positions", () => {
   assert.equal(part.joint.x > part.rect.w, true);
 });
 
+test("arm parts preserve hand tip rig point through shape edits", () => {
+  const Animotion = loadAnimotion();
+  const part = Animotion.partCommands.createPart("arm", { x: 20, y: 20, w: 20, h: 20 });
+  Animotion.partCommands.updatePart(part.id, { handTip: { x: 35, y: -6 } });
+  const handTipImage = { x: part.rect.x + part.handTip.x, y: part.rect.y + part.handTip.y };
+  Animotion.partCommands.applyShapeToPart(part.id, Animotion.geometry.rectShape({ x: 30, y: 30, w: 12, h: 12 }));
+  assert.deepEqual({ x: part.rect.x + part.handTip.x, y: part.rect.y + part.handTip.y }, handTipImage);
+  assert.equal(part.handTip.x > part.rect.w, true);
+});
+
 test("part update command records undo and redo patches", () => {
   const Animotion = loadAnimotion();
   const part = Animotion.partCommands.createPart("body", { x: 0, y: 0, w: 20, h: 20 });
