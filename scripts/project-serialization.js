@@ -105,21 +105,26 @@
     return {
       id: "main-rig",
       name: "Main Rig",
-      rootPartId: parts.find((part) => !part.parentId)?.id || parts[0]?.id || null,
+      rootPartId: parts.find((part) => !parentIdFor(part))?.id || parts[0]?.id || null,
       bones: parts.map((part) => boneFromPart(part)),
     };
   }
 
   function boneFromPart(part) {
     const rect = model.normalizeRect(part.sourceRect || part.rect);
+    const parentId = parentIdFor(part);
     return {
       id: `bone-${part.id}`,
       name: `${part.name} bone`,
-      parentBoneId: part.parentId ? `bone-${part.parentId}` : undefined,
+      parentBoneId: parentId ? `bone-${parentId}` : undefined,
       partId: part.id,
       start: { x: rect.x + part.pivot.x, y: rect.y + part.pivot.y },
       end: { x: rect.x + part.joint.x, y: rect.y + part.joint.y },
     };
+  }
+
+  function parentIdFor(part) {
+    return Animotion.rigConnection?.parentIdFor?.(part) || part?.parentId || part?.parentPartId || null;
   }
 
   function effectsFromState(state) {

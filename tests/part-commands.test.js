@@ -111,6 +111,37 @@ test("part command delete removes the part and clears child parents", () => {
   assert.equal(Animotion.state.parts.length, 1);
   assert.equal(Animotion.state.parts[0].id, child.id);
   assert.equal(Animotion.state.parts[0].parentId, null);
+  assert.equal(Animotion.state.parts[0].parentPartId, null);
+});
+
+test("part command parent compatibility uses parentPartId for cycles and delete cleanup", () => {
+  const Animotion = loadAnimotion();
+  const torso = Animotion.partCommands.createPart("body", { x: 0, y: 0, w: 20, h: 20 });
+  const head = Animotion.partCommands.createPart("head", { x: 4, y: 0, w: 10, h: 10 });
+  head.parentId = null;
+  head.parentPartId = torso.id;
+  Animotion.partCommands.updatePart(torso.id, { parentId: head.id });
+  assert.equal(torso.parentId, null);
+  Animotion.partCommands.deletePart(torso.id);
+  const remaining = Animotion.state.parts[0];
+  assert.equal(remaining.parentId, null);
+  assert.equal(remaining.parentPartId, null);
+});
+
+test("shape edits preserve outside pivot and joint image positions", () => {
+  const Animotion = loadAnimotion();
+  const part = Animotion.partCommands.createPart("arm", { x: 20, y: 20, w: 20, h: 20 });
+  Animotion.partCommands.updatePart(part.id, {
+    pivot: { x: -8, y: 10 },
+    joint: { x: 35, y: -6 },
+  });
+  const pivotImage = { x: part.rect.x + part.pivot.x, y: part.rect.y + part.pivot.y };
+  const jointImage = { x: part.rect.x + part.joint.x, y: part.rect.y + part.joint.y };
+  Animotion.partCommands.applyShapeToPart(part.id, Animotion.geometry.rectShape({ x: 30, y: 30, w: 12, h: 12 }));
+  assert.deepEqual({ x: part.rect.x + part.pivot.x, y: part.rect.y + part.pivot.y }, pivotImage);
+  assert.deepEqual({ x: part.rect.x + part.joint.x, y: part.rect.y + part.joint.y }, jointImage);
+  assert.equal(part.pivot.x < 0, true);
+  assert.equal(part.joint.x > part.rect.w, true);
 });
 
 test("part update command records undo and redo patches", () => {

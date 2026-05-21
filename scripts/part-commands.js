@@ -51,8 +51,8 @@
     part.rect = rect;
     part.sourceRect = rect;
     part.mask = geometry.shapeToMask(normalized, rect);
-    part.pivot = clampedLocalPoint(oldPivot, rect);
-    part.joint = clampedLocalPoint(oldJoint, rect);
+    part.pivot = localPointFromAbsolute(oldPivot, rect);
+    part.joint = localPointFromAbsolute(oldJoint, rect);
     Animotion.parts.updatePartCanvas(part);
     syncProjectParts();
     return part;
@@ -91,7 +91,7 @@
     if (!part) return null;
     state.parts = state.parts
       .filter((candidate) => candidate.id !== part.id)
-      .map((candidate) => candidate.parentId === part.id ? { ...candidate, parentId: null } : candidate);
+      .map((candidate) => parentIdFor(candidate) === part.id ? { ...candidate, parentId: null, parentPartId: null } : candidate);
     state.selectedPartId = state.parts[0]?.id || null;
     syncProjectParts();
     return part;
@@ -152,7 +152,7 @@
     if (hasOwn(next, "alpha")) next.alpha = geometry.clamp(Number(next.alpha) || 0, 0, 1);
     if (hasOwn(next, "hidden")) next.hidden = Boolean(next.hidden);
     if (hasOwn(next, "customMotion")) next.customMotion = Animotion.motionModel.normalizeCustomMotion(next.customMotion);
-    Object.assign(next, Animotion.rigConnection?.metadataForPart?.({ ...part, ...next }, findPart(next.parentId ?? part.parentId)) || {});
+    Object.assign(next, Animotion.rigConnection?.metadataForPart?.({ ...part, ...next }, findPart(parentIdFor({ ...part, ...next }))) || {});
     return next;
   }
 
@@ -172,11 +172,16 @@
   function validParentId(partId, parentId) {
     if (!parentId || parentId === partId) return null;
     let current = findPart(parentId);
-    while (current?.parentId) {
-      if (current.parentId === partId) return null;
-      current = findPart(current.parentId);
+    while (parentIdFor(current)) {
+      const currentParentId = parentIdFor(current);
+      if (currentParentId === partId) return null;
+      current = findPart(currentParentId);
     }
     return parentId;
+  }
+
+  function parentIdFor(part) {
+    return Animotion.rigConnection?.parentIdFor?.(part) || part?.parentId || part?.parentPartId || null;
   }
 
   function findPart(partOrId) {
@@ -188,10 +193,10 @@
     return { x: rect.x + point.x, y: rect.y + point.y };
   }
 
-  function clampedLocalPoint(point, rect) {
+  function localPointFromAbsolute(point, rect) {
     return {
-      x: geometry.clamp(point.x - rect.x, 0, rect.w),
-      y: geometry.clamp(point.y - rect.y, 0, rect.h),
+      x: point.x - rect.x,
+      y: point.y - rect.y,
     };
   }
 

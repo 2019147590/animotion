@@ -62,6 +62,19 @@ test("selected rigging point wins over active motion target picker", () => {
   assert.equal(target.kind, "selected-part-rigging-point");
 });
 
+test("rig handle wins when trajectory sample control and active target overlap", () => {
+  reset({
+    previewEvents: { hitTarget: () => ({ kind: "selected-part-rigging-point", label: "관절점" }) },
+    motionPlanner: { hitTarget: () => ({ label: "움직임 목표", point: { x: 40, y: 50 } }) },
+    trajectoryEditor: { hitTarget: () => ({ type: "beat", label: "이동 경로점", hit: { beat: { id: "impact" }, focusKey: "rFoot" } }) },
+  });
+  const targets = arbitration.collectTargets(eventStub());
+  const target = arbitration.decideTarget(targets);
+  assert.equal(target.kind, "selected-part-rigging-point");
+  assert.equal(targets.some((candidate) => candidate.kind === "active-mode-guide-point" && candidate.editorKey === "motionPlanner"), true);
+  assert.equal(targets.some((candidate) => candidate.kind === "motion-trajectory-point"), true);
+});
+
 test("active drag session wins over new pointerdown candidates", () => {
   reset({
     dom: { previewCanvas: { hasPointerCapture: () => true } },

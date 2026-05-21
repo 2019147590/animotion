@@ -41,3 +41,10 @@ test("parentId takes priority when parentId and parentPartId both exist", () => 
   const part = { id: "head", parentId: "body", parentPartId: "legacy-body" };
   assert.equal(rigConnection.parentIdFor(part), "body");
 });
+
+test("parentPartId remains a fallback parent identifier", () => {
+  const part = { id: "head", parentId: null, parentPartId: "legacy-body" };
+  const metadata = rigConnection.metadataForPart(part, { id: "legacy-body", type: "body", rect: { x: 0, y: 0, w: 20, h: 40 } });
+  assert.equal(rigConnection.parentIdFor(part), "legacy-body");
+  assert.equal(metadata.parentPartId, "legacy-body");
+});

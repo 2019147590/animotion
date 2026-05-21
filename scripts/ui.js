@@ -151,16 +151,21 @@
       if (candidate.id === part.id || isDescendant(candidate.id, part.id)) continue;
       els.editParent.append(new Option(candidate.name, candidate.id));
     }
-    els.editParent.value = part.parentId || "";
+    els.editParent.value = parentIdFor(part) || "";
   }
 
   function isDescendant(candidateId, ancestorId) {
     let current = state.parts.find((part) => part.id === candidateId);
-    while (current?.parentId) {
-      if (current.parentId === ancestorId) return true;
-      current = state.parts.find((part) => part.id === current.parentId);
+    while (parentIdFor(current)) {
+      const currentParentId = parentIdFor(current);
+      if (currentParentId === ancestorId) return true;
+      current = state.parts.find((part) => part.id === currentParentId);
     }
     return false;
+  }
+
+  function parentIdFor(part) {
+    return Animotion.rigConnection?.parentIdFor?.(part) || part?.parentId || part?.parentPartId || null;
   }
 
   function escapeHtml(value) {
