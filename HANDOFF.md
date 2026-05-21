@@ -55,7 +55,15 @@ The hardcoded demo genga cut remains available, but it should be treated as the 
 Implemented command layer:
 
 - `scripts/part-commands.js`: create/update/delete parts, apply part masks, validate parent updates, sync project parts.
-- `tests/part-commands.test.js`: part creation/project sync, cyclic parent rejection, child parent clearing on delete.
+- `tests/part-commands.test.js`: part creation/project sync, cyclic parent rejection, child parent clearing on delete, `parentId`/`parentPartId` compatibility, and out-of-rect pivot/joint preservation during shape edits.
+
+Recent stability pass:
+
+- `ce43f68 Stabilize rigging and motion authoring state` keeps inspector parent selection aligned with the selected part, including legacy `parentPartId` fallback.
+- Shape edits preserve pivot and joint image positions even when the resulting local coordinates sit outside the new part rect.
+- Project rig serialization now uses the shared parent compatibility path so `parentPartId` fallback links still produce the expected parent bones.
+- Pointer arbitration has regression coverage for overlapping rig handles, trajectory handles, and active motion target hits.
+- `motionDraft` plus `hiddenCompletionPatch` guide data now has save/load/save round-trip coverage together.
 
 ### Panel Quality Setup
 
@@ -86,10 +94,14 @@ Implemented in `scripts/motion-planner.js`, `scripts/action-timeline-model.js`, 
 - Punch and kick now read their beat timing from `scripts/action-timeline-model.js` while preserving the existing `motionPlanner -> cutsceneBridge -> part.keyframes` flow.
 - Punch timeline: `guard -> windup -> drive -> extension -> impact -> recover`.
 - Kick timeline: `ready -> compress -> chamber -> extend -> impact -> recover`.
+- Punch/kick timing and root/body follow were refined in `58b1056 Refine punch kick motion timing`.
+- Punch impact now includes hand, torso, and hip/root participation through the existing anchor/keyframe flow; kick keeps distinct chamber, extension, impact, and recovery phases.
+- `humanRole` metadata is preferred for body/limb/head role detection when available, with legacy `part.type` fallback preserved.
 - Action timeline normalization preserves `durationFrames`, `impactFrame`, `beats`, `primaryPartRole`, and `rootMotionHint`.
 - Legacy `motionPlan.template: "punch"` and `"kick"` continue to normalize and generate cutscene bridge actions.
 - Punch/kick plans now create `cutsceneBridge.jointAction.impactExaggeration` from the action timeline impact beat.
 - Impact exaggeration metadata is stored on `cutsceneBridge.jointAction` only. Do not introduce a duplicate `project.effects` editor state for this.
+- `PUNCH_KICK_VISUAL_QA.md` documents the current visual QA checklist for punch/kick motion quality.
 - Target point picking on the preview canvas.
 - Template-based beat generation.
 - Joint trajectory draft from current A rig plus target.
@@ -125,9 +137,19 @@ Important behavior:
 - Anchor direct-picking is now implemented for generated anchors. A separate full anchor-management UI is still future work.
 - Current generation still requires selecting a part and then generating beats; simply placing a target does not create motion until `beat/trajectory generation` is clicked.
 
+### Punch/Kick Motion Status Visibility
+
+Implemented on `master` in `f2536d3 Add cutscene motion status visibility`.
+
+- `scripts/cutscene-motion-status.js` extracts display-only punch/kick status from `cutsceneBridge.jointAction`.
+- The motion panel now shows a lightweight status line for active punch/kick cutscene drafts.
+- The status reports action type, current beat, impact frame, primary role/id, body/root assist, hip/root anchor presence, primary impact target, and recoil/recover timing where available.
+- This is read-only debug/status visibility. It does not add editing UI, duplicate state, or persisted schema fields.
+- `tests/cutscene-motion-status.test.js` covers status extraction and UI shell wiring.
+
 ### Impact Exaggeration Layer
 
-Implemented in the current working tree in `scripts/impact-exaggeration-layer.js`, `scripts/motion-planner.js`, `scripts/cutscene-model.js`, `scripts/preview.js`, `scripts/ui.js`, and `scripts/events.js`.
+Implemented on `master` in `scripts/impact-exaggeration-layer.js`, `scripts/motion-planner.js`, `scripts/cutscene-model.js`, `scripts/preview.js`, `scripts/ui.js`, and `scripts/events.js`.
 
 - `normalizeImpactExaggerationLayer()` normalizes `kind`, `enabled`, `frame`, `holdFrames`, `strength`, `targetPartIds`, `scaleHints`, and `stretchHints`.
 - `createDefaultImpactExaggerationForActionTimeline()` reads the punch/kick action timeline impact beat and creates default impact exaggeration metadata.
@@ -170,7 +192,7 @@ Recent commit:
 
 ### Scripted Genga Cut Generator
 
-Implemented in the current working tree.
+Implemented on `master`.
 
 - `scripts/scripted-genga-runner.js`: restricted script runner for declarative genga cut definitions.
 - `scripts/scripted-genga-sample-definition.js`: first sample/internal reference definition for the demo anime/genga cut.
@@ -416,6 +438,7 @@ node tests\motion-commands.test.js
 node tests\session-commands.test.js
 node tests\human-rig-schema.test.js
 node tests\action-timeline-model.test.js
+node tests\cutscene-motion-status.test.js
 node tests\impact-exaggeration-layer.test.js
 node tests\scripted-genga-generator.test.js
 node tests\panel-commands.test.js
@@ -424,6 +447,7 @@ node tests\motion-draft-editor.test.js
 node tests\motion-target-propagation.test.js
 node tests\motion-target-state.test.js
 node tests\rig-connection.test.js
+node tests\ui-inspector.test.js
 node tests\edit-target-inspector.test.js
 node tests\preview-coordinate.test.js
 node tests\preview-pose-drag.test.js
@@ -445,26 +469,25 @@ $env:PYTHONPATH='src'; python -m unittest discover -s tests
 
 ## Suggested Next Work Unit
 
-Stabilize creator-controlled rigging and motion authoring before adding more automatic generation.
+Continue stabilizing creator-controlled rigging and motion authoring before adding more automatic generation.
 
 Smallest next scope:
 
 ```text
-part selection and inspector consistency
--> pivot/joint editing with out-of-rect coordinates preserved
--> parent-child transform evaluation and debug output
--> trajectory control point editing without preview target conflicts
--> save/load/save round-trip coverage for motionDraft and hiddenCompletionPatch guide data
--> undo/redo records for the remaining command helpers
+undo/redo records for remaining command helpers
+-> parent-child transform debug output in the inspector/status flow
+-> explicit trajectory control point editing separate from evaluated samples
+-> save/load/save round-trip coverage for remaining motionDraft edge cases
+-> browser smoke check for inspector parent fallback and out-of-rect rig handles
 ```
 
 Why this is next:
 
-- The new product center is direct character rigging and motion editing, so the edit loop must be dependable before AI or A/B reference features expand.
-- Correspondence, manual target, active target, root anchor, and trajectory sample concepts are separated in state, but creator-facing UI still needs stronger visual distinction.
-- Hidden-completion guide assets now exist; their coordinates and asset references must round-trip reliably before generated patches become a production feature.
+- The new product center is direct character rigging and motion editing, so the edit loop must remain dependable before AI or A/B reference features expand.
+- The first stability pass covered inspector parent fallback, out-of-rect pivot/joint preservation, pointer arbitration regressions, and motionDraft/hiddenCompletionPatch guide round trips.
+- Remaining work should stay in the current command, inspector/status, `motionPlan`, `cutsceneBridge.jointAction`, `hiddenCompletionPatch`, and `project.assets` flows.
 
-Do not change `HiddenCompletionRequestPayload`, hidden-completion provider contracts, Stability/Local SD provider logic, or B impact snap timing while doing this rigging/motion stability pass.
+Do not change `HiddenCompletionRequestPayload`, hidden-completion provider contracts, Stability/Local SD provider logic, or B impact snap timing while continuing this rigging/motion stability pass.
 
 ## GitHub State
 
@@ -480,23 +503,29 @@ Branch:
 master
 ```
 
-Latest known committed baseline:
+Latest known implementation baseline:
 
 ```text
-abb9f2b Add human rig schema and action timelines
+ce43f68 Stabilize rigging and motion authoring state
 ```
 
 Current upload status:
 
 ```text
-impact exaggeration work is still uncommitted/unpushed in the working tree
+master includes implementation work through ce43f68. This handoff document is a documentation-only follow-up update.
 ```
 
-## Current Working Tree Notes
+## Current Project Notes
 
-As of this handoff update on 2026-05-20, the scripted genga generator, demo motion preset, planning-doc updates, UI demo entrypoints, basic human rig schema, and action timeline model have been committed and pushed to `master`. The impact exaggeration layer and enabled-toggle UI are implemented locally but not committed or pushed.
+As of this handoff update on 2026-05-21, implementation work is current through `ce43f68 Stabilize rigging and motion authoring state`. Impact exaggeration, punch/kick timing refinement, punch/kick motion status visibility, and rigging/motion authoring stability pass 1 are committed and pushed.
 
-Recently completed in the working tree:
+Latest completed implementation commits:
+
+- `f2536d3 Add cutscene motion status visibility`: read-only punch/kick cutscene status line in the motion panel, backed by `scripts/cutscene-motion-status.js` and `tests/cutscene-motion-status.test.js`.
+- `ce43f68 Stabilize rigging and motion authoring state`: inspector parent fallback, `parentId`/`parentPartId` compatibility, out-of-rect pivot/joint preservation, pointer arbitration regressions, and motionDraft plus hiddenCompletionPatch guide round-trip coverage.
+- No persisted schema changes, duplicate editor state, provider contract changes, or new AI generation features were added in these units.
+
+Previously completed implementation history:
 
 - Planning/product direction update:
   - Updated the planning spec and README direction around creator-controlled 2D/2.5D animation, rights-safe original/licensed IP workflows, scripted genga fixtures, and planning documents as living documents.
@@ -653,7 +682,7 @@ Recently completed in the working tree:
   - `tests/preview-pose-drag.test.js`
   - `tests/preview-pointer-arbitration.test.js`
 
-Latest completed in this working tree before upload:
+Latest completed before the motion status and stability pass uploads:
 
 - Unified runtime/preview parent checks around `rigConnection.parentIdFor(part)` for parentId/parentPartId compatibility, with parentId priority regression coverage.
 - Fixed parented-head and root-follow cutscene regressions so parented heads inherit through parent transforms instead of receiving duplicate root follow.
