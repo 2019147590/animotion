@@ -169,6 +169,33 @@ test("project restore returns the motion UI to cutscene mode when a cutscene bri
   assert.equal(Animotion.dom.els.motionTemplate.value, "cutscene");
 });
 
+test("project restore preserves saved old punch joint action and part keyframes", () => {
+  const Animotion = loadAnimotion();
+  const oldBeat = { id: "impact", at: 24, pose: { lHand: [70, 8], lElbow: [68, -16], hip: [50, 63] } };
+  const oldKeyframes = [{ frame: 24, pose: { x: 0, y: 0, rotate: 0, scaleY: 0, jointX: 52, jointY: -40, phase: 0 } }];
+  const parts = [{ id: "arm_01", name: "arm_01", type: "arm", rect: { x: 16, y: 28, w: 18, h: 32 }, keyframes: oldKeyframes }];
+  const project = Animotion.projectModel.normalizeProject({
+    format: "animotion-project",
+    version: "1.0.0",
+    metadata: { name: "Project", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+    canvas: { width: 100, height: 80, fps: 24, durationFrames: 36 },
+    parts: [],
+    editor: {
+      selectedPartId: "arm_01",
+      cutsceneBridge: {
+        primaryPartId: "arm_01",
+        durationFrames: 36,
+        impactFrame: 24,
+        jointAction: { source: "motion-planner-punch-anchors-v1", focusKey: "lHand", actionTimeline: { template: "punch" }, beats: [oldBeat] },
+      },
+    },
+  });
+  Animotion.sessionCommands.restoreProject(project, parts, null);
+  assert.deepEqual(JSON.parse(JSON.stringify(Animotion.state.cutsceneBridge.jointAction.beats[0].pose.lHand)), oldBeat.pose.lHand);
+  assert.deepEqual(JSON.parse(JSON.stringify(Animotion.state.cutsceneBridge.jointAction.beats[0].pose.lElbow)), oldBeat.pose.lElbow);
+  assert.deepEqual(JSON.parse(JSON.stringify(Animotion.state.parts[0].keyframes)), oldKeyframes);
+});
+
 test("empty parts project sync and serialization stays valid after image reset", () => {
   const Animotion = loadAnimotion();
   const image = { naturalWidth: 320, naturalHeight: 240 };

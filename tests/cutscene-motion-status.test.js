@@ -59,7 +59,11 @@ test("punch cutscene status reports type beat impact body root and target reach"
   assert.equal(status.hipRootAnchorPresent, true);
   assert.deepEqual(JSON.parse(JSON.stringify(status.primaryImpactTarget)), { key: "rHand", x: 160, y: 30 });
   assert.equal(status.recoverFrame, 36);
-  assert.equal(Animotion.cutsceneMotionStatus.statusText(status).includes("punch"), true);
+  const text = Animotion.cutsceneMotionStatus.statusText(status);
+  assert.equal(text.includes("punch"), true);
+  assert.equal(text.includes("windup 6"), true);
+  assert.equal(text.includes("recoil 6"), false);
+  assert.equal(text.includes("recover 36"), true);
 });
 
 test("kick cutscene status reports chamber and extension timing", () => {

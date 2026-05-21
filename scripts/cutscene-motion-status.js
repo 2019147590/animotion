@@ -35,7 +35,7 @@
     if (!status.active) return "Punch/kick motion status: no active punch/kick draft";
     const target = status.primaryImpactTarget ? `${status.primaryImpactTarget.key} ${status.primaryImpactTarget.x},${status.primaryImpactTarget.y}` : "none";
     const timing = compact([
-      status.recoilFrame ? `recoil ${status.recoilFrame}` : null,
+      status.recoilFrame ? `${recoilLabel(status.actionType)} ${status.recoilFrame}` : null,
       status.driveFrame ? `drive ${status.driveFrame}` : null,
       status.chamberFrame ? `chamber ${status.chamberFrame}` : null,
       status.extendFrame ? `extend ${status.extendFrame}` : null,
@@ -91,6 +91,10 @@
   function recoilFrame(beats = []) {
     const beat = beats.find((entry) => Number(entry.recoil) < 0);
     return beat?.at || null;
+  }
+
+  function recoilLabel(actionType) {
+    return actionType === "punch" ? "windup" : "recoil";
   }
 
   function frameFor(beats = [], id) {

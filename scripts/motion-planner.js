@@ -123,8 +123,9 @@
     const targetDebug = Animotion.motionTargetDebug?.analyzeTarget?.(plan, base, active, target) || {};
     targetDebug.activeMotionTarget = Animotion.motionTargetState?.activeMotionTargetDebug?.({ ...plan, activeMotionTarget }) || null;
     const scopedPlan = { ...plan, targetDebug };
+    const punchStyle = Animotion.motionAnchors?.punchStyleFor?.(scopedPlan, parts, primary, base, active, direction, target) || "jab";
     const anchors = Animotion.motionAnchors?.anchorsFromPlan?.(scopedPlan, parts, primary, base, active, direction, target) || [], actionTimeline = actionTimelineFor(plan.template, bridge);
-    const beats = templateBeats(plan.template, bridge).map((spec) => poseBeat(spec, base, active, target, direction, anchors));
+    const beats = templateBeats(plan.template, bridge).map((spec) => poseBeat(spec, base, active, target, direction, anchors, punchStyle));
     const trajectorySamples = Animotion.motionTargetState?.trajectorySamples?.(beats, active.end) || [];
     Object.assign(targetDebug, Animotion.characterRootMotion?.debugForPlan?.(parts, primary, beats, base, plan, targetDebug) || {});
     return {
@@ -153,14 +154,21 @@
     const impact = normalized.impactFrame;
     return TEMPLATES[template].beats.map(([id, n, recoil, lift, reach]) => ({ id, at: Math.max(1, Math.round(1 + (impact - 1) * n)), recoil, lift, reach }));
   }
-  function poseBeat(spec, base, active, target, direction, anchors) {
+  function poseBeat(spec, base, active, target, direction, anchors, punchStyle = "jab") {
+    const rearCross = punchStyle === "rear-cross";
+    const strikeDirection = rearCross ? directionFrom(base[active.end], target, direction) : direction;
     const pose = shiftBody(base, { x: 0, y: 0 }, spec.recoil, direction);
     applyAnchorPose(pose, base, anchors, spec.reach, [active.end, active.mid]);
     const root = pointFromArray(pose[active.root] || pose.hip);
     const startEnd = pointFromArray(base[active.end] || base.head);
     const end = lerpPoint(startEnd, Animotion.motionAnchors?.anchorPoint?.(anchors, active.end) || target, spec.reach);
-    end.x += direction.x * spec.recoil * 80;
-    end.y += spec.lift * 40;
+    end.x += strikeDirection.x * spec.recoil * 80;
+    end.y += rearCross ? strikeDirection.y * spec.recoil * 40 + spec.lift * 20 : spec.lift * 40;
+    if (rearCross && spec.recoil < 0) {
+      const targetSide = Math.sign(target.x - startEnd.x) || Math.sign(strikeDirection.x) || Math.sign(direction.x) || 1;
+      end.x = startEnd.x - targetSide * Math.abs(spec.recoil) * 45;
+      end.y = startEnd.y - strikeDirection.y * Math.abs(spec.recoil) * 20 + spec.lift * 10;
+    }
     if (active.motion === "translate") {
       pose[active.end] = rounded(end);
       return { id: spec.id, at: spec.at, pose };
@@ -255,6 +263,7 @@
   function templateFor(template) { return TEMPLATES[template] || (Animotion.actionTimelineModel?.hasTemplate?.(template) ? Animotion.actionTimelineModel.timelineForTemplate(template) : null); } function actionTimelineFor(template, bridge) { return Animotion.actionTimelineModel?.hasTemplate?.(template) ? Animotion.actionTimelineModel.timelineForTemplate(template, bridge) : null; }
   function impactExaggerationFor(actionTimeline, parts, primary) { return Animotion.impactExaggerationLayer?.createDefaultImpactExaggerationForActionTimeline?.(actionTimeline, { parts, primaryPartId: primary?.id }) || null; }
   function parentIdFor(part) { return Animotion.rigConnection?.parentIdFor?.(part) || null; }
+  function directionFrom(startPoint, endPoint, fallback) { const start = pointFromArray(startPoint), end = pointFromArray(endPoint), dx = end.x - start.x, dy = end.y - start.y, length = Math.hypot(dx, dy); return length > 0.001 ? { x: dx / length, y: dy / length } : fallback; }
   function bendNormal(baseRoot, baseMid, baseEnd, root, end) {
     const sign = Math.sign((baseMid.x - baseRoot.x) * (baseEnd.y - baseRoot.y) - (baseMid.y - baseRoot.y) * (baseEnd.x - baseRoot.x)) || 1;
     const dx = end.x - root.x;

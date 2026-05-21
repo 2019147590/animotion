@@ -84,6 +84,74 @@ test("punch has distinct windup drive impact and recover transforms with body fo
   assert.equal(Math.abs(bodyPoseAt(plan, "body", beats.impact.at).x) > 0, true);
 });
 
+test("front hand punch keeps the existing jab motion", () => {
+  const Animotion = loadAnimotion();
+  const bridge = Animotion.cutsceneModel.normalizeBridge({ durationFrames: 36, impactFrame: 24 });
+  const plan = Animotion.motionPlanner.createPlan(boxingParts(), "front_forearm", bridge, { template: "punch", target: { x: 160, y: 30 } });
+  const impact = beatMap(plan.jointAction).impact;
+  const primary = bodyPoseAt(plan, "front_forearm", impact.at);
+  const body = bodyPoseAt(plan, "body", impact.at);
+  assert.equal(impact.pose.rHand[0], 160);
+  assert.equal(impact.pose.rHand[1], 30);
+  assert.equal(primary.jointX, 80);
+  assert.equal(primary.jointY, -22);
+  assert.equal(body.x, 9);
+});
+
+test("rear hand punch stays a punch while the hand drives toward impact", () => {
+  const Animotion = loadAnimotion();
+  const bridge = Animotion.cutsceneModel.normalizeBridge({ durationFrames: 36, impactFrame: 24 });
+  const parts = boxingParts();
+  const base = Animotion.jointCoordinates.inferJointPose(parts);
+  const plan = Animotion.motionPlanner.createPlan(parts, "back_forearm", bridge, { template: "punch", target: { x: 160, y: 30 } });
+  const beats = beatMap(plan.jointAction);
+  assert.equal(plan.jointAction.actionTimeline.template, "punch");
+  assert.equal(beats.impact.pose.lHand[0], 160);
+  assert.equal(beats.impact.pose.lHand[1], 30);
+  assert.equal(beats.impact.pose.lHand[0] > base.lHand[0], true);
+});
+
+test("rear hand punch does not send the hand forward during windup", () => {
+  const Animotion = loadAnimotion();
+  const bridge = Animotion.cutsceneModel.normalizeBridge({ durationFrames: 36, impactFrame: 24 });
+  const parts = boxingParts();
+  const base = Animotion.jointCoordinates.inferJointPose(parts);
+  const plan = Animotion.motionPlanner.createPlan(parts, "back_forearm", bridge, { template: "punch", target: { x: 160, y: 30 } });
+  const windup = beatMap(plan.jointAction).windup;
+  assert.equal(windup.pose.lHand[0] <= base.lHand[0], true);
+});
+
+test("rear hand punch keeps elbow support smaller than hand drive and adds stronger body follow", () => {
+  const Animotion = loadAnimotion();
+  const bridge = Animotion.cutsceneModel.normalizeBridge({ durationFrames: 36, impactFrame: 24 });
+  const parts = boxingParts();
+  const base = Animotion.jointCoordinates.inferJointPose(parts);
+  const front = Animotion.motionPlanner.createPlan(parts, "front_forearm", bridge, { template: "punch", target: { x: 160, y: 30 } });
+  const rear = Animotion.motionPlanner.createPlan(parts, "back_forearm", bridge, { template: "punch", target: { x: 160, y: 30 } });
+  const rearImpact = beatMap(rear.jointAction).impact;
+  const handMove = distance(base.lHand, rearImpact.pose.lHand);
+  const elbowMove = distance(base.lElbow, rearImpact.pose.lElbow);
+  assert.equal(elbowMove < handMove * 0.55, true);
+  assert.equal(Math.abs(bodyPoseAt(rear, "body", 24).x) > Math.abs(bodyPoseAt(front, "body", 24).x), true);
+});
+
+test("geometry fallback treats unnamed rear arm as rear-hand punch on regeneration", () => {
+  const Animotion = loadAnimotion();
+  const bridge = Animotion.cutsceneModel.normalizeBridge({ durationFrames: 36, impactFrame: 24 });
+  const parts = numberedBoxingParts();
+  const base = Animotion.jointCoordinates.inferJointPose(parts);
+  const front = Animotion.motionPlanner.createPlan(parts, "arm_02", bridge, { template: "punch", target: { x: 160, y: 30 } });
+  const rear = Animotion.motionPlanner.createPlan(parts, "arm_01", bridge, { template: "punch", target: { x: 160, y: 30 } });
+  const rearBeats = beatMap(rear.jointAction);
+  const handMove = distance(base.lHand, rearBeats.impact.pose.lHand);
+  const elbowMove = distance(base.lElbow, rearBeats.impact.pose.lElbow);
+  assert.equal(rear.jointAction.actionTimeline.template, "punch");
+  assert.equal(rearBeats.windup.pose.lHand[0] <= base.lHand[0], true);
+  assert.equal(rearBeats.impact.pose.lHand[0], 160);
+  assert.equal(elbowMove < handMove * 0.55, true);
+  assert.equal(Math.abs(bodyPoseAt(rear, "body", 24).x) > Math.abs(bodyPoseAt(front, "body", 24).x), true);
+});
+
 test("kick has chamber extend impact and recover transforms with body follow", () => {
   const Animotion = loadAnimotion();
   const bridge = Animotion.cutsceneModel.normalizeBridge({ durationFrames: 36, impactFrame: 24 });
@@ -143,6 +211,24 @@ function roleOnlyParts() {
   ];
 }
 
+function boxingParts() {
+  return [
+    { id: "body", type: "body", humanRole: "torso", rect: { x: 40, y: 20, w: 20, h: 50 }, pivot: { x: 10, y: 25 }, joint: { x: 10, y: 40 } },
+    { id: "head", type: "head", humanRole: "head", rect: { x: 38, y: 4, w: 24, h: 20 }, pivot: { x: 12, y: 10 }, joint: { x: 12, y: 16 } },
+    { id: "back_forearm", name: "back forearm", type: "arm", humanRole: "forearm", rect: { x: 16, y: 28, w: 18, h: 32 }, pivot: { x: 16, y: 6 }, joint: { x: 2, y: 24 } },
+    { id: "front_forearm", name: "front forearm", type: "arm", humanRole: "forearm", rect: { x: 64, y: 28, w: 18, h: 32 }, pivot: { x: 2, y: 6 }, joint: { x: 16, y: 24 } },
+  ];
+}
+
+function numberedBoxingParts() {
+  return [
+    { id: "body", type: "body", humanRole: "torso", rect: { x: 40, y: 20, w: 20, h: 50 }, pivot: { x: 10, y: 25 }, joint: { x: 10, y: 40 } },
+    { id: "head", type: "head", humanRole: "head", rect: { x: 38, y: 4, w: 24, h: 20 }, pivot: { x: 12, y: 10 }, joint: { x: 12, y: 16 } },
+    { id: "arm_01", name: "arm_01", type: "arm", humanRole: "forearm", rect: { x: 16, y: 28, w: 18, h: 32 }, pivot: { x: 16, y: 6 }, joint: { x: 2, y: 24 } },
+    { id: "arm_02", name: "arm_02", type: "arm", humanRole: "forearm", rect: { x: 64, y: 28, w: 18, h: 32 }, pivot: { x: 2, y: 6 }, joint: { x: 16, y: 24 } },
+  ];
+}
+
 function ids(timeline) {
   return JSON.parse(JSON.stringify(timeline.beats.map((beat) => beat.id)));
 }
@@ -153,4 +239,8 @@ function beatMap(action) {
 
 function bodyPoseAt(plan, partId, frame) {
   return plan.partTracks.find((track) => track.partId === partId).keyframes.find((keyframe) => keyframe.frame === frame).pose;
+}
+
+function distance(a, b) {
+  return Math.hypot(Number(b[0]) - Number(a[0]), Number(b[1]) - Number(a[1]));
 }

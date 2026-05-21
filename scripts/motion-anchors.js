@@ -27,7 +27,7 @@
     const primaryAnchor = anchor(active.end, primary?.id, "primary", target, true);
     const primaryKind = roleKind(primary);
     if (primaryKind === "leg") return legAnchors(parts, primary, base, active, primaryAnchor, plan);
-    if (primaryKind === "arm") return armAnchors(parts, primary, base, active, primaryAnchor, plan);
+    if (primaryKind === "arm") return armAnchors(parts, primary, base, active, primaryAnchor, plan, direction);
     if (primaryKind === "body") return bodyAnchors(parts, primary, base, primaryAnchor);
     return [primaryAnchor, followAnchor(parts, "head", ["head"], base.head, target, 0.7)].filter(Boolean);
   }
@@ -63,8 +63,15 @@
     ].filter(Boolean);
   }
 
-  function armAnchors(parts, primary, base, active, primaryAnchor, plan) {
+  function armAnchors(parts, primary, base, active, primaryAnchor, plan, direction) {
     const rootShift = rootShiftFor(plan, base, active, primaryAnchor.point);
+    if (isRearPunchArm(plan, parts, primary, base, active, direction, primaryAnchor.point)) return [
+      primaryAnchor,
+      anchor(active.mid, primary?.id, "bendHint", straightArmHint(base, active, primaryAnchor.point), false),
+      anchor("hip", bodyPartId(parts), "root", add(base.hip, scaled(rootShift, 1.15, secondaryFollow(plan))), false),
+      anchor("chest", bodyPartId(parts), "balance", add(base.chest, scaled(rootShift, 1.35, secondaryFollow(plan))), false),
+      followAnchor(parts, "head", ["head"], base.head, add(base.head, scaled(rootShift, 0.65, secondaryFollow(plan))), 1),
+    ].filter(Boolean);
     return [
       primaryAnchor,
       anchor(active.mid, primary?.id, "bendHint", kneeHint(base, active, primaryAnchor.point), false),
@@ -109,6 +116,55 @@
     const end = normalizePoint(target);
     const midpoint = lerp(root, end, 0.52);
     return { x: midpoint.x + (current.x - midpoint.x) * 0.55, y: midpoint.y + (current.y - midpoint.y) * 0.55 };
+  }
+
+  function straightArmHint(base, active, target) {
+    const root = pointFromArray(base[active.root] || base.hip);
+    return lerp(root, normalizePoint(target), 0.48);
+  }
+
+  function punchStyleFor(plan, parts, primary, base, active, direction, target) {
+    return isRearPunchArm(plan, parts, primary, base, active, direction, target) ? "rear-cross" : "jab";
+  }
+
+  function isRearPunchArm(plan = {}, parts = [], primary = {}, base = {}, active = {}, direction = {}, target = null) {
+    if (plan.template !== "punch") return false;
+    const namedRear = namedRearState(primary);
+    return namedRear !== null ? namedRear : geometryRearArm(parts, primary, base, active, direction, target);
+  }
+
+  function namedRearState(part = {}) {
+    const text = partText(part);
+    if (/\b(back|rear|trailing)\b/i.test(text)) return true;
+    if (/\b(front|lead|leading)\b/i.test(text)) return false;
+    return null;
+  }
+
+  function geometryRearArm(parts, primary, base, active, direction, target) {
+    if (roleKind(primary) !== "arm") return false;
+    const torso = torsoPoint(parts, base);
+    const selected = pointFromArray(base[active.end] || endPoint(primary));
+    const targetSide = Math.sign((target?.x ?? selected.x + Number(direction?.x || 0)) - torso.x) || Math.sign(Number(direction?.x || 0)) || 1;
+    const selectedSide = Math.sign(selected.x - torso.x);
+    if (selectedSide) return selectedSide !== targetSide;
+    const opposite = oppositeHandPoint(base, active.end);
+    return opposite ? Math.sign(selected.x - opposite.x) === -targetSide : false;
+  }
+
+  function torsoPoint(parts, base) {
+    const chest = pointFromArray(base.chest);
+    const hip = pointFromArray(base.hip);
+    if (base.chest || base.hip) return { x: (chest.x + hip.x) / 2, y: (chest.y + hip.y) / 2 };
+    return centerPoint(parts.find((part) => roleKind(part) === "body") || parts[0]);
+  }
+
+  function oppositeHandPoint(base, key) {
+    const oppositeKey = key === "lHand" ? "rHand" : key === "rHand" ? "lHand" : null;
+    return oppositeKey && base[oppositeKey] ? pointFromArray(base[oppositeKey]) : null;
+  }
+
+  function partText(part = {}) {
+    return `${part.id || ""} ${part.name || ""}`.replace(/[_-]+/g, " ");
   }
 
   function rootShiftFor(plan, base, active, target) {
@@ -172,6 +228,17 @@
     return { x: Number(point?.[0]) || 0, y: Number(point?.[1]) || 0 };
   }
 
+  function centerPoint(part = {}) {
+    const rect = part.rect || {};
+    return { x: Number(rect.x || 0) + Number(rect.w || 0) * 0.5, y: Number(rect.y || 0) + Number(rect.h || 0) * 0.5 };
+  }
+
+  function endPoint(part = {}) {
+    const rect = part.rect || {};
+    const joint = part.joint || { x: Number(rect.w || 0) * 0.5, y: Number(rect.h || 0) * 0.88 };
+    return { x: Number(rect.x || 0) + Number(joint.x || 0), y: Number(rect.y || 0) + Number(joint.y || 0) };
+  }
+
   function add(point, delta) {
     const base = pointFromArray(point);
     return { x: Math.round(base.x + delta.x), y: Math.round(base.y + delta.y) };
@@ -185,7 +252,7 @@
     return Math.hypot(a.x - b.x, a.y - b.y);
   }
 
-  Animotion.motionAnchors = { normalizeAnchors, anchorsFromPlan, anchorPoint };
+  Animotion.motionAnchors = { normalizeAnchors, anchorsFromPlan, anchorPoint, punchStyleFor };
 
   if (typeof module !== "undefined") module.exports = Animotion.motionAnchors;
 }

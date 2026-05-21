@@ -133,6 +133,10 @@ Implemented in `scripts/motion-planner.js`, `scripts/action-timeline-model.js`, 
 - Punch generation writes generated transforms to `part.keyframes`; `cutsceneBridge.jointAction` remains the generated action/trajectory draft source, while `part.keyframes` are the preview/playback transform source.
 - In cutscene/keyframe mode, pose dragging now syncs every part's `customMotion` from the current frame before the drag starts. Manual hand/arm/body edits are therefore applied on top of the generated punch frame instead of overwriting related body keyframes with stale poses.
 - A manual pose drag at windup/recoil/impact commits a keyframe at `state.currentFrame`; that keyframe is used by preview evaluation and remains in the same punch draft until the user explicitly regenerates punch tracks.
+- Punch status labels now map the pre-impact `recoil` beat to user-facing `windup` while keeping the internal action timeline key and the post-impact `recover` beat unchanged.
+- Front-hand punch keeps the existing jab-style template. Rear/back/trailing hand punch generation uses an internal rear-cross style while preserving `cutsceneBridge.jointAction.actionTimeline.template === "punch"`.
+- Rear-hand punch selection first honors `back`, `rear`, `trailing`, `front`, or `lead` name/id hints. If older JSON uses neutral names such as `arm_01`, `arm_02`, `hand_01`, or `hand_02`, regeneration falls back to geometry: torso center, selected hand position, target/effect direction, and opposite hand position.
+- Existing saved JSON is not migrated on load. Old generated `cutsceneBridge.jointAction` beats and `part.keyframes` are restored as saved; the new rear-hand planner is applied only when the user explicitly regenerates punch for the selected rear hand.
 - B correspondence anchors, manual motion targets, active motion targets, character root anchors, and trajectory points are separated in state/debug.
 - `activeMotionTarget.source` records whether motion generation is driven by `manual`, `correspondence`, or `generated` input.
 - If a manual target is active, B correspondence is preserved but shown as not driving the current motion. The UI now exposes `Use B correspondence as motion target` and `Clear manual target`.
@@ -495,6 +499,8 @@ For the browser-only app test suite, this work unit also used:
 Get-ChildItem tests -Filter *.test.js | ForEach-Object { node $_.FullName }
 ```
 
+The latest punch/rear-hand work unit verified the same full JS suite after adding regressions for unnamed rear arm geometry fallback, load-time preservation of old generated punch data, pre-impact `windup` status labeling, and front-hand jab preservation.
+
 ## Suggested Next Work Unit
 
 Continue stabilizing creator-controlled rigging and motion authoring before adding more automatic generation.
@@ -535,7 +541,7 @@ master
 Latest known implementation baseline:
 
 ```text
-current upload builds on the motion authoring baseline with punch/kick draft context invalidation and boxer punch manual-edit workflow stabilization
+current upload builds on the motion authoring baseline with punch/kick draft context invalidation, boxer punch manual-edit workflow stabilization, punch windup status labeling, and rear-hand punch regeneration fallback
 ```
 
 Current upload status:
@@ -555,6 +561,8 @@ Latest completed implementation commits:
 - Current upload: normal image upload no longer crashes when there are no parts or selected part, project restore no longer merges in stale current bridge data, restored cutscene projects set the motion UI back to cutscene mode, stale normalized runtime geometry is ignored during project save, and punch/kick selected-part draft generation reuses the canonical motion planner path.
 - Current upload also prevents punch/kick generation from reusing stale target/anchor/draft data when the action type or selected primary part changes, while preserving manual trajectory edits for the same action plus same part.
 - Boxer punch action demo is now the active 1st-priority scope: generated punch `part.keyframes` can be scrubbed, hand/arm/body pose drags commit frame keyframes, preview evaluation uses those manual keyframes, and edits persist until explicit punch regeneration.
+- Current upload maps pre-impact punch `recoil` status to user-facing `windup`, keeps `recover` as the post-impact beat, and adds rear-hand punch regeneration fallback for legacy neutral part names by using torso/hand geometry when name/id hints are unavailable.
+- Existing project JSON load remains backward compatible: saved old punch `jointAction` beats and `part.keyframes` are restored unchanged and are only replaced when the user explicitly regenerates the selected punch.
 - No persisted schema changes, duplicate editor state, provider contract changes, Stability/Local SD changes, kick quality tuning, or B impact snap timing changes were added in these units.
 
 Previously completed implementation history:
