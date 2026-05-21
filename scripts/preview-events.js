@@ -35,6 +35,7 @@
     state.selectedEditPoint = editPointSelection(target.role, target.label);
     const mode = dragMode(target.role);
     freezePlayback();
+    if (mode === "pose") syncTimelinePosesToFrame();
     state.previewDrag = dragSession(event, part, target.role, mode, target.hit);
     els.pivotEditTarget.value = target.role === "joint" ? "joint" : "anchor";
     if (mode === "pose") updateControlPose(part.id, { x: 0, y: 0 });
@@ -98,6 +99,13 @@
       Animotion.motionCommands.insertKeyframe(part, state.currentFrame, part.customMotion, { recordHistory: false });
     }
     Animotion.poseDragHistory?.record?.(before, Animotion.poseDragHistory.snapshot(state.parts));
+  }
+
+  function syncTimelinePosesToFrame() {
+    if (!timelineLikeMode()) return;
+    for (const part of state.parts) {
+      Animotion.motionCommands.syncPartPoseToFrame(part, state.currentFrame);
+    }
   }
 
   function moveRigPoint(part, pointerPreviewPosition) {

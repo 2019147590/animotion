@@ -20,12 +20,13 @@
     if (!primary) return { handled: canonical, generated: false, reason: "missing-primary" };
     blockedStatus = null;
     const previous = Animotion.cutsceneModel.normalizeBridge(Animotion.state.cutsceneBridge);
+    const generationPlan = planForGeneration(plan, template, primary, previous);
     const bridge = Animotion.cutsceneControls.preservePanelTransform(
       Animotion.cutsceneModel.createBridge(Animotion.state.parts, primary.id),
       previous
     );
-    const result = Animotion.motionPlanner.createPlan(Animotion.state.parts, primary.id, bridge, plan);
-    Animotion.motionCommands.applyMotionPlanResult(bridge, plan, result);
+    const result = Animotion.motionPlanner.createPlan(Animotion.state.parts, primary.id, bridge, generationPlan);
+    Animotion.motionCommands.applyMotionPlanResult(bridge, generationPlan, result);
     Animotion.dom.els.motionTemplate.value = "cutscene";
     if (options.setFrame !== false) Animotion.timelineControls.setCurrentFrame(bridge.impactFrame);
     else refresh();
@@ -54,6 +55,43 @@
 
   function isCanonicalAction(template) {
     return template === "punch" || template === "kick";
+  }
+
+  function planForGeneration(plan, template, primary, previousBridge) {
+    if (!isCanonicalAction(template)) return plan;
+    const previousAction = previousBridge?.jointAction;
+    if (!previousAction) return plan;
+    if (sameActionContext(previousBridge, previousAction, template, primary?.id)) return plan;
+    return invalidatedDraftPlan(plan);
+  }
+
+  function sameActionContext(previousBridge, previousAction, template, selectedPartId) {
+    return actionTemplate(previousAction) === template && previousBridge?.primaryPartId === selectedPartId;
+  }
+
+  function actionTemplate(action) {
+    const timelineTemplate = action?.actionTimeline?.template;
+    if (isCanonicalAction(timelineTemplate)) return timelineTemplate;
+    const source = String(action?.source || "");
+    const match = source.match(/^motion-planner-(punch|kick)-anchors-v1$/);
+    return match?.[1] || null;
+  }
+
+  function invalidatedDraftPlan(plan) {
+    return {
+      ...plan,
+      target: null,
+      targetNormalized: null,
+      targetSource: null,
+      manualMotionTarget: null,
+      activeMotionTarget: null,
+      anchors: [],
+      trajectoryPoints: [],
+      selectedBeatId: null,
+      targetDebug: null,
+      motionHints: null,
+      motionDraft: null,
+    };
   }
 
   function partKind(part = {}) {

@@ -117,7 +117,7 @@
     const primary = parts.find((part) => part.id === primaryId) || parts[0];
     const active = activeKeys(primary, parts);
     const direction = Animotion.cutsceneModel.inferEffectDirection(parts, primaryId);
-    const rawTarget = activeTargetPoint(plan) || Animotion.motionAnchors?.anchorPoint?.(plan.anchors, active.end) || autoTarget(base[active.end], direction, primary);
+    const rawTarget = Animotion.motionAnchors?.anchorPoint?.(plan.anchors, active.end) || activeTargetPoint(plan) || autoTarget(base[active.end], direction, primary);
     const target = Animotion.motionTargetDebug?.primaryLeadTarget?.(plan, base[active.end], rawTarget) || rawTarget;
     const activeMotionTarget = motionTargetForPlan(plan, target);
     const targetDebug = Animotion.motionTargetDebug?.analyzeTarget?.(plan, base, active, target) || {};

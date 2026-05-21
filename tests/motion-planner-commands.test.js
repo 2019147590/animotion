@@ -138,6 +138,73 @@ test("auto cutscene button generates canonical kick action for a leg part", () =
   assert.equal(Animotion.state.cutsceneBridge.jointAction.actionTimeline.template, "kick");
 });
 
+test("auto cutscene button invalidates stale punch target and anchors before kick generation", () => {
+  const Animotion = loadAnimotion();
+  Animotion.state.selectedPartId = "arm";
+  Animotion.state.motionPlan = {
+    template: "punch",
+    target: { x: 160, y: 30 },
+    anchors: [{ key: "rHand", role: "primary", point: { x: 160, y: 30 } }],
+    motionDraft: { source: "test", hiddenCompletion: { needed: true } },
+  };
+  clickAuto(Animotion);
+
+  Animotion.state.selectedPartId = "leg";
+  Animotion.state.motionPlan = {
+    ...Animotion.state.motionPlan,
+    template: "kick",
+  };
+  clickAuto(Animotion);
+
+  assert.equal(Animotion.state.cutsceneBridge.primaryPartId, "leg");
+  assert.equal(Animotion.state.cutsceneBridge.jointAction.actionTimeline.template, "kick");
+  assert.notDeepEqual(Animotion.state.motionPlan.target, { x: 160, y: 30 });
+  assert.equal(Animotion.state.cutsceneBridge.jointAction.motionDraft, undefined);
+  assert.equal(
+    Animotion.state.cutsceneBridge.jointAction.anchors.some((anchor) => anchor.key === "rHand"),
+    false
+  );
+});
+
+test("auto cutscene button invalidates stale target when selected primary part changes", () => {
+  const Animotion = loadAnimotion();
+  Animotion.state.parts.push(part("leg-left", "leg", { x: 10, y: 60, w: 18, h: 45 }));
+  Animotion.state.selectedPartId = "leg";
+  Animotion.state.motionPlan = { template: "kick", target: { x: 160, y: 70 } };
+  clickAuto(Animotion);
+
+  Animotion.state.selectedPartId = "leg-left";
+  Animotion.state.motionPlan = {
+    ...Animotion.state.motionPlan,
+    template: "kick",
+  };
+  clickAuto(Animotion);
+
+  assert.equal(Animotion.state.cutsceneBridge.primaryPartId, "leg-left");
+  assert.equal(Animotion.state.cutsceneBridge.jointAction.actionTimeline.template, "kick");
+  assert.notDeepEqual(Animotion.state.motionPlan.target, { x: 160, y: 70 });
+});
+
+test("auto cutscene button preserves adjusted trajectory for the same action and part", () => {
+  const Animotion = loadAnimotion();
+  Animotion.state.selectedPartId = "arm";
+  Animotion.state.motionPlan = { template: "punch", target: { x: 160, y: 30 } };
+  clickAuto(Animotion);
+
+  Animotion.motionCommands.setMotionPlan({
+    target: { x: 150, y: 26 },
+    anchors: [{ key: "rHand", role: "primary", point: { x: 150, y: 26 }, locked: true }],
+  });
+  clickAuto(Animotion);
+
+  assert.equal(Animotion.state.motionPlan.target.x, 150);
+  assert.equal(Animotion.state.motionPlan.target.y, 26);
+  assert.equal(Animotion.state.cutsceneBridge.jointAction.actionTimeline.template, "punch");
+  const primaryAnchor = Animotion.state.cutsceneBridge.jointAction.anchors.find((anchor) => anchor.key === "rHand");
+  assert.equal(primaryAnchor.point.x, 150);
+  assert.equal(primaryAnchor.point.y, 26);
+});
+
 test("auto cutscene button blocks punch and kick for an invalid selected part", () => {
   const Animotion = loadAnimotion();
   Animotion.state.selectedPartId = "mouth";

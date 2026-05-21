@@ -125,8 +125,14 @@ Implemented in `scripts/motion-planner.js`, `scripts/action-timeline-model.js`, 
 - `scripts/motion-planner-commands.js` centralizes the canonical selected-part punch/kick generation path used by both `비트/이동 궤적 생성` and `선택 파츠 기준 컷신 초안 생성`.
 - When the selected cutscene action type is punch or kick, the selected-part cutscene draft button now generates `motion-planner-punch-anchors-v1` or `motion-planner-kick-anchors-v1` with `cutsceneBridge.jointAction.actionTimeline.template` set to `punch` or `kick`.
 - Punch generation requires an arm/forearm/hand role or type, and kick generation requires a thigh/shin/foot/leg role or type. Invalid selections show a status message and do not fall back to the legacy `part-pivots-v1` draft.
+- Punch/kick regeneration now compares the previous `cutsceneBridge.jointAction` action type and `primaryPartId` against the current template and selected primary part. If either differs, stale `motionPlan.target`, `activeMotionTarget`, `anchors`, trajectory points, hints, and motionDraft input are invalidated before creating the next draft.
+- Same action type plus same selected primary part is the only path that preserves a user-adjusted target/primary anchor. This protects manual trajectory edits inside one punch draft while preventing a previous punch target from driving a later kick draft.
 - The legacy selected-part `part-pivots-v1` draft path remains only for non-punch/kick action types.
 - Timeline keyframe edits, generated track application, cutscene bridge updates, motion plan updates, anchor regeneration, and trajectory regeneration now go through `scripts/motion-commands.js`.
+- Boxer punch action demo is the current 1st-priority motion quality target. Kick quality tuning is intentionally deferred.
+- Punch generation writes generated transforms to `part.keyframes`; `cutsceneBridge.jointAction` remains the generated action/trajectory draft source, while `part.keyframes` are the preview/playback transform source.
+- In cutscene/keyframe mode, pose dragging now syncs every part's `customMotion` from the current frame before the drag starts. Manual hand/arm/body edits are therefore applied on top of the generated punch frame instead of overwriting related body keyframes with stale poses.
+- A manual pose drag at windup/recoil/impact commits a keyframe at `state.currentFrame`; that keyframe is used by preview evaluation and remains in the same punch draft until the user explicitly regenerates punch tracks.
 - B correspondence anchors, manual motion targets, active motion targets, character root anchors, and trajectory points are separated in state/debug.
 - `activeMotionTarget.source` records whether motion generation is driven by `manual`, `correspondence`, or `generated` input.
 - If a manual target is active, B correspondence is preserved but shown as not driving the current motion. The UI now exposes `Use B correspondence as motion target` and `Clear manual target`.
@@ -146,6 +152,7 @@ Important behavior:
 - Far leg targets move body anchors more; near leg targets keep body movement small so the leg can move locally.
 - Anchor direct-picking is now implemented for generated anchors. A separate full anchor-management UI is still future work.
 - Current generation still requires selecting a part and then generating beats; simply placing a target does not create motion until `beat/trajectory generation` is clicked.
+- For the current boxer punch demo, verify the workflow as: generate punch trajectory, scrub to windup/impact/recover frames, drag hand/arm/body rig points, confirm saved `part.keyframes`, preview playback, and only then regenerate if the user wants to discard/rebuild the draft.
 
 ### Punch/Kick Motion Status Visibility
 
@@ -495,18 +502,19 @@ Continue stabilizing creator-controlled rigging and motion authoring before addi
 Smallest next scope:
 
 ```text
-undo/redo records for remaining command helpers
--> parent-child transform debug output in the inspector/status flow
--> explicit trajectory control point editing separate from evaluated samples
--> save/load/save round-trip coverage for remaining motionDraft edge cases
--> browser smoke check for inspector parent fallback and out-of-rect rig handles
+boxer punch browser smoke demo
+-> punch windup/impact/recover manual edit QA
+-> visible keyframe/frame feedback for hand, arm, and torso edits
+-> explicit "regenerate punch" vs "keep manual edits" UX language
+-> only after punch demo is stable, resume kick quality tuning
 ```
 
 Why this is next:
 
 - The new product center is direct character rigging and motion editing, so the edit loop must remain dependable before AI or A/B reference features expand.
 - The first stability pass covered inspector parent fallback, out-of-rect pivot/joint preservation, pointer arbitration regressions, and motionDraft/hiddenCompletionPatch guide round trips.
-- Remaining work should stay in the current command, inspector/status, `motionPlan`, `cutsceneBridge.jointAction`, `hiddenCompletionPatch`, and `project.assets` flows.
+- The current motion target is narrower: make the boxer punch auto-generation plus manual correction loop reliable before spending time on kick tuning.
+- Remaining work should stay in the current command, inspector/status, `motionPlan`, `cutsceneBridge.jointAction`, `part.keyframes`, `hiddenCompletionPatch`, and `project.assets` flows.
 
 Do not change `HiddenCompletionRequestPayload`, hidden-completion provider contracts, Stability/Local SD provider logic, or B impact snap timing while continuing this rigging/motion stability pass.
 
@@ -527,7 +535,7 @@ master
 Latest known implementation baseline:
 
 ```text
-current upload builds on ce43f68 with image upload/session restore, canonical punch/kick selected-part draft generation, and project save geometry stabilization
+current upload builds on the motion authoring baseline with punch/kick draft context invalidation and boxer punch manual-edit workflow stabilization
 ```
 
 Current upload status:
@@ -538,14 +546,16 @@ this upload includes implementation, tests, and this handoff update on origin/ma
 
 ## Current Project Notes
 
-As of this handoff update on 2026-05-21, implementation work includes the previous `ce43f68 Stabilize rigging and motion authoring state` baseline plus the current image upload/session restore, punch/kick selected-part generation, and project save geometry stabilization work unit.
+As of this handoff update on 2026-05-21, implementation work includes the previous `ce43f68 Stabilize rigging and motion authoring state` baseline, the image upload/session restore and canonical punch/kick selected-part generation work, plus the current punch/kick draft context invalidation and boxer punch manual-edit workflow stabilization.
 
 Latest completed implementation commits:
 
 - `f2536d3 Add cutscene motion status visibility`: read-only punch/kick cutscene status line in the motion panel, backed by `scripts/cutscene-motion-status.js` and `tests/cutscene-motion-status.test.js`.
 - `ce43f68 Stabilize rigging and motion authoring state`: inspector parent fallback, `parentId`/`parentPartId` compatibility, out-of-rect pivot/joint preservation, pointer arbitration regressions, and motionDraft plus hiddenCompletionPatch guide round-trip coverage.
 - Current upload: normal image upload no longer crashes when there are no parts or selected part, project restore no longer merges in stale current bridge data, restored cutscene projects set the motion UI back to cutscene mode, stale normalized runtime geometry is ignored during project save, and punch/kick selected-part draft generation reuses the canonical motion planner path.
-- No persisted schema changes, duplicate editor state, provider contract changes, Stability/Local SD changes, or B impact snap timing changes were added in these units.
+- Current upload also prevents punch/kick generation from reusing stale target/anchor/draft data when the action type or selected primary part changes, while preserving manual trajectory edits for the same action plus same part.
+- Boxer punch action demo is now the active 1st-priority scope: generated punch `part.keyframes` can be scrubbed, hand/arm/body pose drags commit frame keyframes, preview evaluation uses those manual keyframes, and edits persist until explicit punch regeneration.
+- No persisted schema changes, duplicate editor state, provider contract changes, Stability/Local SD changes, kick quality tuning, or B impact snap timing changes were added in these units.
 
 Previously completed implementation history:
 

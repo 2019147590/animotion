@@ -17,9 +17,21 @@ function loadAnimotion() {
   vm.createContext(context);
   for (const path of [
     "scripts/geometry.js",
+    "scripts/coordinate-spaces.js",
     "scripts/motion-model.js",
+    "scripts/motion-hints.js",
+    "scripts/motion-drafts.js",
     "scripts/timeline.js",
+    "scripts/motion-target-state.js",
+    "scripts/motion-target-debug.js",
+    "scripts/character-root-motion.js",
+    "scripts/action-timeline-model.js",
+    "scripts/impact-exaggeration-layer.js",
     "scripts/pose-assist.js",
+    "scripts/joint-coordinates.js",
+    "scripts/cutscene-model.js",
+    "scripts/motion-anchors.js",
+    "scripts/motion-planner.js",
     "scripts/preview-coordinate.js",
     "scripts/preview-rig-points.js",
     "scripts/command-history.js",
@@ -31,6 +43,7 @@ function loadAnimotion() {
     previewCanvas: canvas,
     els: {
       motionTemplate: { value: "cutscene" },
+      motionStrength: { value: "1" },
       pivotEditTarget: { value: "joint" },
       playPause: { textContent: "" },
     },
@@ -39,6 +52,8 @@ function loadAnimotion() {
     currentFrame: 3,
     parts: sampleParts(),
     selectedPartId: "arm",
+    cutsceneBridge: null,
+    motionPlan: { template: "punch", target: null, targetMode: false },
     previewView: { x: 0, y: 0, w: 100, h: 80 },
     previewSourceFrame: { x: 0, y: 0, w: 100, h: 80, sourceWidth: 100, sourceHeight: 80 },
     previewSourceTransform: { x: 0, y: 0, scale: 1 },
@@ -55,6 +70,7 @@ function loadAnimotion() {
   Animotion.previewPointerArbitration = { setActiveDragOwner() {}, clearActiveDragOwner() {} };
   runScript(context, "scripts/part-commands.js");
   runScript(context, "scripts/motion-commands.js");
+  runScript(context, "scripts/motion.js");
   runScript(context, "scripts/preview-events.js");
   return Animotion;
 }
@@ -89,8 +105,8 @@ function beginJointDrag(Animotion) {
 
 function sampleParts() {
   return [
-    { id: "spine", type: "spine", rect: { x: 40, y: 20, w: 20, h: 50 }, customMotion: {}, keyframes: [] },
-    { id: "arm", type: "arm", rect: { x: 0, y: 0, w: 10, h: 10 }, pivot: { x: 0, y: 0 }, joint: { x: 5, y: 5 }, customMotion: {}, keyframes: [] },
+    { id: "spine", type: "spine", humanRole: "torso", rect: { x: 40, y: 20, w: 20, h: 50 }, pivot: { x: 10, y: 25 }, joint: { x: 10, y: 40 }, customMotion: {}, keyframes: [] },
+    { id: "arm", type: "arm", humanRole: "hand", rect: { x: 0, y: 0, w: 10, h: 10 }, pivot: { x: 0, y: 0 }, joint: { x: 5, y: 5 }, customMotion: {}, keyframes: [] },
   ];
 }
 
@@ -192,3 +208,74 @@ test("pose drag commit can be undone back to the pre-drag pose and keyframes", (
   assert.equal(arm.keyframes.length, 0);
   assert.equal(JSON.stringify(arm.customMotion), JSON.stringify(Animotion.motionModel.defaultCustomMotion()));
 });
+
+test("punch impact hand drag stores a manual keyframe at the current frame", () => {
+  const Animotion = loadAnimotion();
+  const impactFrame = generatePunch(Animotion);
+  const arm = Animotion.state.parts.find((part) => part.id === "arm");
+  const before = Animotion.timeline.evaluatePartAtFrame(arm, impactFrame);
+
+  beginJointDrag(Animotion);
+  Animotion.previewEvents.updateDrag(pointer(20, 5));
+  Animotion.previewEvents.endDrag(pointer(20, 5));
+
+  const impact = arm.keyframes.find((keyframe) => keyframe.frame === impactFrame);
+  assert.equal(impact.pose.jointX, before.jointX + 15);
+});
+
+test("punch preview evaluation uses the manually edited keyframe", () => {
+  const Animotion = loadAnimotion();
+  const impactFrame = generatePunch(Animotion);
+  const arm = Animotion.state.parts.find((part) => part.id === "arm");
+
+  beginJointDrag(Animotion);
+  Animotion.previewEvents.updateDrag(pointer(20, 5));
+  Animotion.previewEvents.endDrag(pointer(20, 5));
+
+  const evaluated = Animotion.timeline.evaluatePartAtFrame(arm, impactFrame);
+  const preview = Animotion.motion.motionFor(arm, 0);
+  assert.equal(preview.jointX, evaluated.jointX);
+  assert.equal(preview.jointY, evaluated.jointY);
+});
+
+test("punch manual edit is retained until explicit punch regeneration", () => {
+  const Animotion = loadAnimotion();
+  const impactFrame = generatePunch(Animotion);
+  const arm = Animotion.state.parts.find((part) => part.id === "arm");
+
+  beginJointDrag(Animotion);
+  Animotion.previewEvents.updateDrag(pointer(20, 5));
+  Animotion.previewEvents.endDrag(pointer(20, 5));
+  const edited = Animotion.timeline.evaluatePartAtFrame(arm, impactFrame);
+
+  Animotion.motionCommands.syncPartPoseToFrame(arm, impactFrame);
+  Animotion.motionCommands.syncPartPoseToFrame(arm, 1);
+  Animotion.motionCommands.syncPartPoseToFrame(arm, impactFrame);
+
+  assert.equal(Animotion.timeline.evaluatePartAtFrame(arm, impactFrame).jointX, edited.jointX);
+});
+
+test("punch hand drag keeps generated torso pose as the base for manual adjustment", () => {
+  const Animotion = loadAnimotion();
+  const impactFrame = generatePunch(Animotion);
+  const spine = Animotion.state.parts.find((part) => part.id === "spine");
+  const generated = Animotion.timeline.evaluatePartAtFrame(spine, impactFrame);
+
+  beginJointDrag(Animotion);
+  Animotion.previewEvents.updateDrag(pointer(20, 5));
+  Animotion.previewEvents.endDrag(pointer(20, 5));
+
+  const edited = Animotion.timeline.evaluatePartAtFrame(spine, impactFrame);
+  assert.equal(edited.x, generated.x + 1.2);
+});
+
+function generatePunch(Animotion) {
+  const bridge = Animotion.cutsceneModel.normalizeBridge({ primaryPartId: "arm", durationFrames: 36, impactFrame: 24 });
+  const result = Animotion.motionPlanner.createPlan(Animotion.state.parts, "arm", bridge, {
+    template: "punch",
+    target: { x: 90, y: 5 },
+  });
+  Animotion.state.currentFrame = result.jointAction.actionTimeline.impactFrame;
+  Animotion.motionCommands.applyMotionPlanResult(bridge, { template: "punch" }, result);
+  return Animotion.state.currentFrame;
+}
