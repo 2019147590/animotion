@@ -123,7 +123,7 @@
     els.pivotY.value = part.rect.h ? part.pivot.y / part.rect.h : 0.5;
     els.jointX.value = part.rect.w ? part.joint.x / part.rect.w : 0.5;
     els.jointY.value = part.rect.h ? part.joint.y / part.rect.h : 0.5;
-    const handTip = part.handTip || part.joint;
+    const handTip = Animotion.rigging?.handTipForPart?.(part) || part.joint;
     els.handTipX.value = part.rect.w ? handTip.x / part.rect.w : 0.5;
     els.handTipY.value = part.rect.h ? handTip.y / part.rect.h : 0.5;
     els.handTipX.disabled = part.type !== "arm";

@@ -109,6 +109,7 @@
   }
 
   function localEnd(part, type) {
+    if (type === "arm" && Animotion.rigging?.handTipForPart) return Animotion.rigging.handTipForPart(part);
     if (type === "arm" && part.handTip) return part.handTip;
     if (part.joint) return part.joint;
     return { x: part.rect.w * 0.5, y: part.rect.h * 0.88 };

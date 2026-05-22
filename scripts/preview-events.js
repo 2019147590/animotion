@@ -256,7 +256,7 @@
   }
 
   function pointLocal(part, role) {
-    const fallback = role === "handTip" ? part.handTip || part.joint : part.pivot;
+    const fallback = role === "handTip" ? Animotion.rigging?.handTipForPart?.(part) || part.handTip || part.joint : part.pivot;
     return Animotion.previewRigPoints.localPoint(part, { role, localPoint: fallback }, { timelineLike: timelineLikeMode() });
   }
 

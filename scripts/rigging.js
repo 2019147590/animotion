@@ -21,6 +21,23 @@
     return limbJoint(rect, parentRect, 0.88);
   }
 
+  function handTipForPart(part = {}) {
+    if (part.handTip) return part.handTip;
+    return inferredHandTipForPart(part);
+  }
+
+  function inferredHandTipForPart(part = {}) {
+    if (part.type !== "arm" && part.humanRole !== "forearm" && part.humanRole !== "upperArm") return null;
+    const rect = part.rect || {};
+    const pivot = part.pivot || { x: Number(rect.w || 0) * 0.5, y: Number(rect.h || 0) * 0.16 };
+    const joint = part.joint || { x: Number(rect.w || 0) * 0.5, y: Number(rect.h || 0) * 0.88 };
+    const dx = Number(joint.x || 0) - Number(pivot.x || 0);
+    const dy = Number(joint.y || 0) - Number(pivot.y || 0);
+    const length = Math.max(1, Math.hypot(dx, dy));
+    const extension = Math.max(8, Math.min(length * 0.42, Math.max(Number(rect.w || 0), Number(rect.h || 0)) * 0.45));
+    return { x: Math.round(Number(joint.x || 0) + dx / length * extension), y: Math.round(Number(joint.y || 0) + dy / length * extension) };
+  }
+
   function armShoulderPivot(rect, parentRect) {
     if (!parentRect) return { x: rect.w * 0.5, y: rect.h * 0.12 };
     return sidePivot(rect, parentRect, SIDE_PIVOT.armY);
@@ -52,7 +69,7 @@
     };
   }
 
-  Animotion.rigging = { defaultPivotForPart, defaultJointForPart, defaultHandTipForPart, localPointFromImagePoint };
+  Animotion.rigging = { defaultPivotForPart, defaultJointForPart, defaultHandTipForPart, handTipForPart, inferredHandTipForPart, localPointFromImagePoint };
 
   if (typeof module !== "undefined") module.exports = Animotion.rigging;
 }

@@ -267,7 +267,7 @@ test("joint coordinates hard-code lookism-style pose keys from pivots", () => {
   const pose = jointCoordinates.inferJointPose(parts);
   assert.deepEqual(pose.chest, [50, 29]);
   assert.deepEqual(pose.rShoulder, [69, 31]);
-  assert.deepEqual(pose.rHand, [83, 57]);
+  assert.deepEqual(pose.rHand, [89, 68]);
 });
 
 test("cutscene bridge stores generated joint action beats", () => {

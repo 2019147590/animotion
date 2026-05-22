@@ -3,7 +3,7 @@
   const Animotion = global.Animotion || (global.Animotion = {});
 
   function localPoint(part, spec = {}, options = {}) {
-    if (spec.role === "handTip") return part?.handTip || spec.localPoint || part?.joint || null;
+    if (spec.role === "handTip") return Animotion.rigging?.handTipForPart?.(part) || part?.handTip || spec.localPoint || part?.joint || null;
     if (spec.role !== "joint") return spec.localPoint || part?.pivot || null;
     const base = part?.joint || spec.localPoint || null;
     if (!base || !options.timelineLike) return base;

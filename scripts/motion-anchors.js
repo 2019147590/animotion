@@ -283,7 +283,7 @@
 
   function endPoint(part = {}) {
     const rect = part.rect || {};
-    const joint = part.handTip || part.joint || { x: Number(rect.w || 0) * 0.5, y: Number(rect.h || 0) * 0.88 };
+    const joint = Animotion.rigging?.handTipForPart?.(part) || part.handTip || part.joint || { x: Number(rect.w || 0) * 0.5, y: Number(rect.h || 0) * 0.88 };
     return { x: Number(rect.x || 0) + Number(joint.x || 0), y: Number(rect.y || 0) + Number(joint.y || 0) };
   }
 
@@ -294,6 +294,7 @@
   function endpointSource(part = {}) {
     if (part.type === "hand" || part.humanRole === "hand") return "terminal hand";
     if (part.handTip) return "handTip";
+    if (Animotion.rigging?.handTipForPart?.(part)) return "inferred handTip";
     return part.joint ? "joint" : "part center";
   }
 

@@ -283,7 +283,7 @@
     const part = Animotion.parts.selectedPart();
     if (!part) return;
     const sizeKey = axis === "x" ? "w" : "h";
-    updateSelectedPart({ [pointKey]: { ...(part[pointKey] || part.joint || part.pivot), [axis]: ratio * part.rect[sizeKey] } });
+    updateSelectedPart({ [pointKey]: { ...((pointKey === "handTip" ? Animotion.rigging?.handTipForPart?.(part) : part[pointKey]) || part.joint || part.pivot), [axis]: ratio * part.rect[sizeKey] } });
   }
 
   function updateMotion(key, value) {
