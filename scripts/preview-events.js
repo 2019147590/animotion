@@ -187,9 +187,9 @@
     const tolerance = Animotion.config.hitTolerancePx / sourceScale();
     const hits = rigPointSpecs(part)
       .map((spec) => ({ ...spec, distance: geometry.distance(point, rigPointImagePoint(part, spec, matrix)) }))
-      .filter((hit) => hit.distance <= tolerance)
-      .sort((a, b) => a.distance - b.distance);
-    return hits[0] || null;
+      .filter((hit) => hit.distance <= tolerance);
+    const sorted = Animotion.previewHitTest?.sortRigPointHits?.(hits) || hits.sort((a, b) => a.distance - b.distance);
+    return sorted[0] || null;
   }
 
   function rigPointImagePoint(part, spec, matrix) {

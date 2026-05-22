@@ -20,9 +20,39 @@
     const matrix = currentPartMatrix(part);
     const hits = rigPointSpecs(part)
       .map((spec) => ({ ...spec, distance: Animotion.geometry.distance(point, rigPointImagePoint(part, spec, matrix)) }))
-      .filter((hit) => hit.distance <= tolerance)
-      .sort((a, b) => a.distance - b.distance);
-    return hits[0] || null;
+      .filter((hit) => hit.distance <= tolerance);
+    return sortRigPointHits(hits)[0] || null;
+  }
+
+  function sortRigPointHits(hits = []) {
+    const preferredRole = preferredRigPointRole();
+    const tieDistance = preferredRole ? hitTolerance() : handTipTieDistance();
+    return [...hits].sort((a, b) => compareRigPointHits(a, b, preferredRole, tieDistance));
+  }
+
+  function compareRigPointHits(a, b, preferredRole, tieDistance) {
+    const distanceDelta = a.distance - b.distance;
+    if (Math.abs(distanceDelta) > tieDistance) return distanceDelta;
+    const preferredDelta = preferredRank(a, preferredRole) - preferredRank(b, preferredRole);
+    return preferredDelta || endpointTieRank(a) - endpointTieRank(b) || distanceDelta;
+  }
+
+  function preferredRank(hit, preferredRole) {
+    return preferredRole && hit.role === preferredRole ? 0 : 1;
+  }
+
+  function endpointTieRank(hit) {
+    if (hit.role === "handTip") return 0;
+    if (hit.role === "joint") return 1;
+    return 2;
+  }
+
+  function preferredRigPointRole() {
+    return Animotion.dom?.els?.pivotEditTarget?.value === "handTip" ? "handTip" : null;
+  }
+
+  function handTipTieDistance() {
+    return Math.max(0.5 / hitSourceScale(), 0.001);
   }
 
   function rigPointImagePoint(part, spec, matrix) {
@@ -61,7 +91,11 @@
   }
 
   function hitTolerance() {
-    return Animotion.config.hitTolerancePx / Animotion.previewTransform.sourceScale(
+    return Animotion.config.hitTolerancePx / hitSourceScale();
+  }
+
+  function hitSourceScale() {
+    return Animotion.previewTransform.sourceScale(
       Animotion.state.previewView,
       Animotion.state.previewSourceFrame,
       Animotion.state.previewSourceTransform
@@ -78,6 +112,6 @@
     return Animotion.dom?.els?.motionTemplate?.value === "keyframes" || Animotion.dom?.els?.motionTemplate?.value === "cutscene";
   }
 
-  Animotion.previewHitTest = { selectedEditableRigPoint, selectedEditableRigPointAtImagePoint };
+  Animotion.previewHitTest = { selectedEditableRigPoint, selectedEditableRigPointAtImagePoint, sortRigPointHits };
   if (typeof module !== "undefined") module.exports = Animotion.previewHitTest;
 }

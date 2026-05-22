@@ -49,7 +49,7 @@ function setup(part) {
     },
     dom: {
       previewCanvas: { getBoundingClientRect: () => ({ left: 0, top: 0 }) },
-      els: { motionTemplate: { value: "cutscene" } },
+      els: { motionTemplate: { value: "cutscene" }, pivotEditTarget: { value: "anchor" } },
     },
     parts: { selectedPart: () => part },
     preview: { worldMatrix: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }) },
@@ -96,5 +96,20 @@ test("hit testing can select an arm hand tip endpoint", () => {
   const selected = { ...part(), type: "arm", handTip: { x: -8, y: 30 } };
   setup(selected);
   const hit = previewHitTest.selectedEditableRigPoint({ clientX: 12, clientY: 60 });
+  assert.equal(hit.role, "handTip");
+});
+
+test("overlapped arm elbow and hand tip selects the terminal fist handle", () => {
+  const selected = { ...part(), type: "arm", handTip: { x: 12, y: 7 } };
+  setup(selected);
+  const hit = previewHitTest.selectedEditableRigPoint({ clientX: 32, clientY: 37 });
+  assert.equal(hit.role, "handTip");
+});
+
+test("hand tip edit intent wins when the elbow is slightly closer", () => {
+  const selected = { ...part(), type: "arm", handTip: { x: 14, y: 7 } };
+  setup(selected);
+  globalThis.Animotion.dom.els.pivotEditTarget.value = "handTip";
+  const hit = previewHitTest.selectedEditableRigPoint({ clientX: 32, clientY: 37 });
   assert.equal(hit.role, "handTip");
 });
