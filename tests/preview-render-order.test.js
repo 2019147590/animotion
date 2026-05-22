@@ -29,7 +29,7 @@ function loadPreview() {
   Animotion.parts = { selectedPart: () => Animotion.state.parts.find((part) => part.id === Animotion.state.selectedPartId) };
   Animotion.previewRigPoints = { localPoint: (part, spec) => spec.localPoint || part.pivot, imagePoint: (part, spec) => ({ x: part.rect.x + (spec.localPoint || part.pivot).x, y: part.rect.y + (spec.localPoint || part.pivot).y }) };
   Animotion.previewTransform.imagePointToScreen = (point) => point;
-  for (const path of ["scripts/motion-model.js", "scripts/timeline.js", "scripts/rig-connection.js", "scripts/render-layer-utils.js", "scripts/render-order-debug.js", "scripts/arm-extension.js", "scripts/arm-extension-render.js", "scripts/cutscene-depth.js"]) runScript(context, path);
+  for (const path of ["scripts/motion-model.js", "scripts/timeline.js", "scripts/rig-connection.js", "scripts/render-layer-utils.js", "scripts/render-order-debug.js", "scripts/arm-extension-controls.js", "scripts/arm-extension.js", "scripts/arm-extension-render.js", "scripts/cutscene-depth.js"]) runScript(context, path);
   Animotion.motion = { motionFor: (part) => Animotion.motionModel.poseToTransform(Animotion.timeline.evaluatePartAtFrame(part, Animotion.state.currentFrame)) };
   runScript(context, "scripts/preview.js");
   return Animotion;

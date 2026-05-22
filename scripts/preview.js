@@ -287,6 +287,7 @@
       fallbackUsed: Boolean(result.fallbackUsed),
       renderMode: result.renderMode || "segmented-arm",
       actionPatch: result.actionPatch || null,
+      leadingControl: result.leadingControl || null,
       shoulder: result.shoulder || null,
       elbow: result.elbow || null,
       handTip: result.handTip || null,

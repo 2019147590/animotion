@@ -31,6 +31,7 @@ function loadAnimotion() {
     "scripts/action-timeline-model.js",
     "scripts/impact-exaggeration-layer.js",
     "scripts/timeline.js",
+    "scripts/arm-extension-controls.js",
     "scripts/arm-extension.js",
     "scripts/motion-planner.js",
     "scripts/motion-path-explainer.js",

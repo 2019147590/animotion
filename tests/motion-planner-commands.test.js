@@ -33,6 +33,7 @@ function loadAnimotion() {
     "scripts/cutscene-model.js",
     "scripts/motion-anchors.js",
     "scripts/timeline.js",
+    "scripts/arm-extension-controls.js",
     "scripts/arm-extension.js",
     "scripts/motion-planner.js",
     "scripts/motion-primary-selection.js",

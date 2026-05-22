@@ -15,6 +15,7 @@ function test(name, fn) {
 function loadRender() {
   const context = { window: { Animotion: {} } };
   vm.createContext(context);
+  vm.runInContext(fs.readFileSync("scripts/arm-extension-controls.js", "utf8"), context, { filename: "scripts/arm-extension-controls.js" });
   vm.runInContext(fs.readFileSync("scripts/arm-extension-render.js", "utf8"), context, { filename: "scripts/arm-extension-render.js" });
   return context.window.Animotion.armExtensionRender;
 }
@@ -101,6 +102,7 @@ test("segmented renderer pins the visual glove edge to the target hand", () => {
   assert.equal(result.handTip.x, hint.controls.target.hand.x);
   assert.equal(result.handTip.y, hint.controls.target.hand.y);
   assert.equal(result.drawnBounds.x + result.drawnBounds.w, hint.controls.target.hand.x);
+  assert.equal(result.leadingControl, "handTip");
   assert.equal(ctx.calls.filter((call) => call.name === "drawImage").length, 3);
 });
 

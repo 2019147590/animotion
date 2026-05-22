@@ -226,6 +226,7 @@
   function result(ok, reason, part, hint, segments, drawnBounds) {
     return {
       ok, reason, drawnBounds, sourceBounds: rectBounds(part?.rect), segmentCount: segments.length, fallbackUsed: !ok,
+      leadingControl: Animotion.armExtensionControls?.leadingControl?.(hint?.controls?.target) || null,
       shoulder: hint?.controls?.target?.shoulder || null, elbow: hint?.controls?.target?.elbow || null, handTip: hint?.controls?.target?.hand || null,
       segments,
     };

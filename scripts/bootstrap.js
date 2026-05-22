@@ -44,6 +44,7 @@
     "joint-coordinates",
     "cutscene-model",
     "motion-anchors",
+    "arm-extension-controls",
     "arm-extension",
     "arm-extension-render",
     "motion-panel-mapper",

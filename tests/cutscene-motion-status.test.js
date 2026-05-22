@@ -35,6 +35,7 @@ function loadAnimotion() {
     "scripts/render-order-debug.js",
     "scripts/cutscene-depth.js",
     "scripts/timeline.js",
+    "scripts/arm-extension-controls.js",
     "scripts/arm-extension.js",
     "scripts/motion-planner.js",
     "scripts/cutscene-motion-status.js",

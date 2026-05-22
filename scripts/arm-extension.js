@@ -162,12 +162,7 @@
     const match = String(focusKey || "").match(/^([lr])Hand$/);
     if (!match) return null;
     const side = match[1];
-    const base = {
-      shoulder: `${side}Shoulder`,
-      elbow: `${side}Elbow`,
-      hand: `${side}Hand`,
-    };
-    return base;
+    return { shoulder: `${side}Shoulder`, elbow: `${side}Elbow`, hand: `${side}Hand` };
   }
 
   function controlsFromBeat(beat, keys) {
@@ -184,6 +179,7 @@
   }
 
   function straightCrossControls(base, target) {
+    const fistLed = Animotion.armExtensionControls?.fistLedControls?.(base, target); if (fistLed) return fistLed;
     const line = unitVector(target.shoulder, target.hand);
     if (!line) return target;
     const length = distance(target.shoulder, target.hand);
