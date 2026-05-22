@@ -124,7 +124,7 @@
 
   function controlsForActionFrame(part, localHandTip, action, frame, fallbackPose) {
     const base = baseControls(part, localHandTip);
-    const target = actionControlsForFrame(action, frame);
+    const target = actionControlsForFrame(action, frame) || Animotion.armExtensionControls?.legacyHandTargetControls?.(base, action, frame);
     return target ? { base, target: straightCrossControls(base, target) } : { base, target: transformedControls(part, base, fallbackPose) };
   }
 

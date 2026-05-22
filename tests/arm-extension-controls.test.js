@@ -37,10 +37,19 @@ function rearCrossAction() {
   };
 }
 
-function hintAt(frame) {
+function legacyHandOnlyAction() {
+  return {
+    focusKey: "lHand",
+    actionTimeline: { template: "punch" },
+    targetDebug: { primaryPartId: "arm_01", punchStyle: "rear-cross" },
+    beats: [{ id: "impact", at: 24, pose: { lHand: [170, 40] } }],
+  };
+}
+
+function hintAt(frame, action = rearCrossAction()) {
   const Animotion = loadArmExtension();
   const part = rearArm();
-  return Animotion.armExtension.renderHintForPart(part, { parts: [part], frame, selectedPartId: part.id, bridge: { primaryPartId: part.id, jointAction: rearCrossAction() } });
+  return Animotion.armExtension.renderHintForPart(part, { parts: [part], frame, selectedPartId: part.id, bridge: { primaryPartId: part.id, jointAction: action } });
 }
 
 function distance(a, b) {
@@ -84,6 +93,21 @@ test("rear arm-only debug controls report the fist as the leading control", () =
   const Animotion = loadArmExtension();
   const hint = hintAt(24);
 
+  assert.equal(Animotion.armExtensionControls.leadingControl(hint.controls.target), "handTip");
+});
+
+test("legacy hand-only loaded action gets runtime fist-led controls without mutating beats", () => {
+  const Animotion = loadArmExtension();
+  const part = rearArm();
+  const action = legacyHandOnlyAction();
+  const savedAction = JSON.stringify(action);
+  const hint = Animotion.armExtension.renderHintForPart(part, { parts: [part], frame: 24, selectedPartId: part.id, bridge: { primaryPartId: part.id, jointAction: action } });
+  const target = { x: 170, y: 40 };
+
+  assert.equal(JSON.stringify(action), savedAction);
+  assert.equal(hint.controls.target.hand.x, target.x);
+  assert.equal(hint.controls.target.hand.y, target.y);
+  assert.equal(distance(hint.controls.target.hand, target) < distance(hint.controls.target.elbow, target), true);
   assert.equal(Animotion.armExtensionControls.leadingControl(hint.controls.target), "handTip");
 });
 

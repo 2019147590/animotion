@@ -28,6 +28,30 @@
     return candidates.sort((a, b) => distance(a[1], target) - distance(b[1], target))[0][0];
   }
 
+  function legacyHandTargetControls(base, action = {}, frame) {
+    if (!validControls(base)) return null;
+    const handKey = String(action.focusKey || "");
+    if (!/^[lr]Hand$/.test(handKey)) return null;
+    const controls = (action.beats || [])
+      .map((beat) => ({ frame: Math.round(Number(beat.at) || 0), controls: controlsFromHandBeat(base, beat, handKey) }))
+      .filter((beat) => beat.frame > 0 && beat.controls)
+      .sort((a, b) => a.frame - b.frame);
+    if (!controls.length) return null;
+    const current = Math.round(Number(frame) || controls[0].frame);
+    const exact = controls.find((beat) => beat.frame === current);
+    if (exact) return exact.controls;
+    const previous = [...controls].reverse().find((beat) => beat.frame < current);
+    const next = controls.find((beat) => beat.frame > current);
+    if (!previous) return controls[0].controls;
+    if (!next) return controls[controls.length - 1].controls;
+    return lerpControls(previous.controls, next.controls, (current - previous.frame) / Math.max(1, next.frame - previous.frame));
+  }
+
+  function controlsFromHandBeat(base, beat, handKey) {
+    const hand = pointFromArray(beat?.pose?.[handKey]);
+    return hand ? { shoulder: base.shoulder, elbow: base.elbow, hand } : null;
+  }
+
   function clampedElbow(base, raw, shoulder, hand, axis, length, straighten, handMove) {
     const ratio = elbowRatio(base, raw, shoulder, hand, straighten);
     const offset = elbowOffset(base, raw, shoulder, hand, length, straighten);
@@ -97,11 +121,13 @@
 
   function validControls(controls = {}) { return finitePoint(controls.shoulder) && finitePoint(controls.elbow) && finitePoint(controls.hand); }
   function finitePoint(point) { return Number.isFinite(Number(point?.x)) && Number.isFinite(Number(point?.y)); }
+  function pointFromArray(point) { if (!point) return null; const next = { x: Number(point.x ?? point[0]), y: Number(point.y ?? point[1]) }; return finitePoint(next) ? next : null; }
+  function lerpControls(a, b, ratio) { return Object.fromEntries(Object.keys(a).map((key) => [key, { x: lerp(a[key].x, b[key].x, ratio), y: lerp(a[key].y, b[key].y, ratio) }])); }
   function unitVector(start, end) { const length = distance(start, end); return length > 0.001 ? { x: (end.x - start.x) / length, y: (end.y - start.y) / length } : null; }
   function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
   function lerp(a, b, ratio) { return a + (b - a) * ratio; }
   function clamp(value, min, max) { return Math.min(max, Math.max(min, Number(value) || 0)); }
 
-  Animotion.armExtensionControls = { fistLedControls, leadingControl };
+  Animotion.armExtensionControls = { fistLedControls, leadingControl, legacyHandTargetControls };
   if (typeof module !== "undefined") module.exports = Animotion.armExtensionControls;
 }
