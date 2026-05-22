@@ -22,12 +22,20 @@
   }
 
   function handTipForPart(part = {}) {
-    if (part.handTip) return part.handTip;
+    if (validHandTipForPart(part, part.handTip)) return localPoint(part.handTip);
     return inferredHandTipForPart(part);
   }
 
+  function validHandTipForPart(part = {}, point = part.handTip) {
+    if (!isArmPart(part)) return false;
+    const handTip = localPoint(point);
+    const joint = localPoint(part.joint);
+    if (!handTip || !joint) return false;
+    return distance(handTip, joint) >= minimumHandTipGap(part);
+  }
+
   function inferredHandTipForPart(part = {}) {
-    if (part.type !== "arm" && part.humanRole !== "forearm" && part.humanRole !== "upperArm") return null;
+    if (!isArmPart(part)) return null;
     const rect = part.rect || {};
     const pivot = part.pivot || { x: Number(rect.w || 0) * 0.5, y: Number(rect.h || 0) * 0.16 };
     const joint = part.joint || { x: Number(rect.w || 0) * 0.5, y: Number(rect.h || 0) * 0.88 };
@@ -69,7 +77,27 @@
     };
   }
 
-  Animotion.rigging = { defaultPivotForPart, defaultJointForPart, defaultHandTipForPart, handTipForPart, inferredHandTipForPart, localPointFromImagePoint };
+  function isArmPart(part = {}) {
+    return part.type === "arm" || part.humanRole === "forearm" || part.humanRole === "upperArm";
+  }
+
+  function localPoint(point = null) {
+    if (!point) return null;
+    const x = Number(point.x ?? point[0]);
+    const y = Number(point.y ?? point[1]);
+    return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+  }
+
+  function minimumHandTipGap(part = {}) {
+    const rect = part.rect || {};
+    return Math.max(2, Math.min(8, Math.max(Number(rect.w) || 0, Number(rect.h) || 0) * 0.12));
+  }
+
+  function distance(a, b) {
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+
+  Animotion.rigging = { defaultPivotForPart, defaultJointForPart, defaultHandTipForPart, handTipForPart, validHandTipForPart, inferredHandTipForPart, localPointFromImagePoint };
 
   if (typeof module !== "undefined") module.exports = Animotion.rigging;
 }

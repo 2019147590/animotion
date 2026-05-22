@@ -32,8 +32,22 @@ test("missing arm handTip infers a distinct fist point beyond the elbow", () => 
   assert.equal(handTip.y > arm.joint.y, true);
 });
 
+test("saved handTip at the elbow is treated as invalid legacy data", () => {
+  const arm = { ...armWithoutHandTip(), handTip: { x: 30, y: 34 } };
+  const handTip = rigging.handTipForPart(arm);
+  assert.equal(rigging.validHandTipForPart(arm, arm.handTip), false);
+  assert.notDeepEqual(handTip, arm.joint);
+});
+
 test("rig preview handTip handle does not fall back to the elbow", () => {
   const arm = armWithoutHandTip();
+  const point = rigConnection.previewPoints(arm).find((candidate) => candidate.role === "handTip").localPoint;
+  assert.deepEqual(point, rigging.handTipForPart(arm));
+  assert.notDeepEqual(point, arm.joint);
+});
+
+test("rig preview ignores an invalid saved handTip at the elbow", () => {
+  const arm = { ...armWithoutHandTip(), handTip: { x: 30, y: 34 } };
   const point = rigConnection.previewPoints(arm).find((candidate) => candidate.role === "handTip").localPoint;
   assert.deepEqual(point, rigging.handTipForPart(arm));
   assert.notDeepEqual(point, arm.joint);

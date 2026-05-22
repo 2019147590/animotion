@@ -106,7 +106,8 @@
   }
 
   function inferredHandTip(part = {}) {
-    if (part.handTip) return part.handTip;
+    if (part.handTip && !Animotion.rigging?.validHandTipForPart) return part.handTip;
+    if (Animotion.rigging?.validHandTipForPart?.(part, part.handTip)) return part.handTip;
     const shared = Animotion.rigging?.inferredHandTipForPart?.(part);
     if (shared) return shared;
     const rect = part.rect || {};
@@ -119,9 +120,10 @@
   }
 
   function handTipWithSource(part) {
-    if (part?.handTip) return { source: "saved", point: part.handTip };
+    if (part?.handTip && !Animotion.rigging?.validHandTipForPart) return { source: "saved", point: part.handTip };
+    if (Animotion.rigging?.validHandTipForPart?.(part, part?.handTip)) return { source: "saved", point: part.handTip };
     const inferred = inferredHandTip(part);
-    return inferred ? { source: "inferred", point: inferred } : { source: "missing", point: null };
+    return inferred ? { source: part?.handTip ? "invalid-saved-inferred" : "inferred", point: inferred } : { source: "missing", point: null };
   }
 
   function controlsForActionFrame(part, localHandTip, action, frame, fallbackPose) {

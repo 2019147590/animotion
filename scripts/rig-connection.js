@@ -76,7 +76,7 @@
 
   function handTipPoint(part = {}) {
     if (part.type !== "arm" && part.humanRole !== "forearm" && part.humanRole !== "upperArm") return null;
-    return pointSpec("handTip", "handTip", localPoint(Animotion.rigging?.handTipForPart?.(part) || part.handTip || part.joint, part.rect), "손끝점");
+    return pointSpec("handTip", "handTip", localPoint(Animotion.rigging?.handTipForPart?.(part) || part.handTip, part.rect), "손끝점");
   }
 
   function selfAttachKey(part, parent) {

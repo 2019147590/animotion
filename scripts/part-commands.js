@@ -70,6 +70,7 @@
     Object.assign(part, change.after);
     syncProjectParts();
     recordPartUpdate(part.id, change, options);
+    Animotion.motionCommands?.regenerateForRigChange?.(part.id, change, options);
     return part;
   }
 

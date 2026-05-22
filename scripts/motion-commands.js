@@ -53,6 +53,15 @@
     return result;
   }
 
+  function regenerateForRigChange(partId, change = {}, options = {}) {
+    if (options.regenerateMotion === false || !rigGeometryChanged(change)) return null;
+    const bridge = Animotion.cutsceneModel?.normalizeBridge?.(state.cutsceneBridge, { assets: projectAssets() });
+    if (!regenerablePunchBridge(bridge, partId)) return null;
+    const plan = { ...currentMotionPlan(), template: "punch", selectedPartId: partId };
+    const result = Animotion.motionPlanner?.createPlan?.(state.parts, partId, bridge, plan);
+    return result ? applyMotionPlanResult(bridge, plan, result) : null;
+  }
+
   function currentMotionPlan() {
     state.motionPlan = normalizeMotionPlan(state.motionPlan);
     return state.motionPlan;
@@ -131,6 +140,17 @@
     return Animotion.motionPlanner?.normalizePlan?.(plan, { assets: projectAssets() }) || { ...plan };
   }
 
+  function rigGeometryChanged(change = {}) {
+    return ["handTip", "joint", "pivot"].some((key) => hasOwn(change.after || {}, key));
+  }
+
+  function regenerablePunchBridge(bridge, partId) {
+    const action = bridge?.jointAction;
+    if (!action || !partId || bridge.primaryPartId !== partId) return false;
+    if (action.actionTimeline?.template === "punch") return true;
+    return /^motion-planner-punch-/.test(String(action.source || ""));
+  }
+
   function hasOwn(value, key) {
     return Object.prototype.hasOwnProperty.call(value, key);
   }
@@ -160,6 +180,7 @@
     deleteKeyframe,
     applyGeneratedTracks,
     applyMotionPlanResult,
+    regenerateForRigChange,
     setPartKeyframes,
     setCutsceneBridge,
     updateJointAction,
