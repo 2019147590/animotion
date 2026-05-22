@@ -211,24 +211,24 @@ test("running cutscene playback still draws ghost parts when enabled", () => {
   assert.equal(Animotion.state.previewDrawSequenceDebug.sequence.some((entry) => entry.pass === "ghost-part"), true);
 });
 
-test("legacy loaded rear arm-only punch uses runtime depth compatibility without mutating saved data", () => {
+test("explicit loaded rear arm-only punch replaces whole-arm translation without mutating saved data", () => {
   const Animotion = loadPreview();
   const arm = Animotion.state.parts.find((part) => part.id === "arm_01");
   arm.keyframes = [{ frame: 24, pose: { x: 34, y: -6, rotate: 0, scaleY: 0, jointX: 0, jointY: 0, phase: 0 } }];
   Animotion.state.cutsceneBridge = legacyBridge();
-  const savedAction = JSON.parse(JSON.stringify(Animotion.state.cutsceneBridge.jointAction));
-  const savedKeyframes = JSON.parse(JSON.stringify(arm.keyframes));
+  Animotion.state.cutsceneBridge.jointAction.targetDebug = { primaryPartId: "arm_01", punchStyle: "rear-cross" };
+  const savedAction = JSON.parse(JSON.stringify(Animotion.state.cutsceneBridge.jointAction)), savedKeyframes = JSON.parse(JSON.stringify(arm.keyframes));
 
   assert.deepEqual(Animotion.cutsceneDepth.orderedParts(Animotion.state.parts, { parts: Animotion.state.parts, bridge: Animotion.state.cutsceneBridge, frame: 1 }).map((part) => part.id), ["body", "arm_01", "face_layer", "hair_front"]);
   assert.deepEqual(Animotion.cutsceneDepth.orderedParts(Animotion.state.parts, { parts: Animotion.state.parts, bridge: Animotion.state.cutsceneBridge, frame: 36 }).map((part) => part.id), ["body", "arm_01", "face_layer", "hair_front"]);
 
   Animotion.preview.drawPreview(0, () => {}, () => {});
 
-  const sequence = Animotion.state.previewDrawSequenceDebug.sequence;
-  const armDraw = sequence.find((entry) => entry.partId === "arm_01" && entry.pass === "main-part");
+  const sequence = Animotion.state.previewDrawSequenceDebug.sequence, armDraw = sequence.find((entry) => entry.partId === "arm_01" && entry.pass === "main-part");
   assert.equal(armDraw.drawPath, "segmented-arm");
-  assert.equal(armDraw.punchStyleSource, "inferredLegacy");
-  assert.equal(armDraw.legacyDepthCompat, true);
+  assert.equal(armDraw.punchStyleSource, "explicit");
+  assert.equal(armDraw.segmentedRenderResult.leadingControl, "handTip");
+  assert.equal(armDraw.legacyDepthCompat, false);
   assert.equal(sequence.some((entry) => entry.partId === "arm_01" && entry.drawPath === "normal-part" && entry.pass === "main-part"), false);
   for (const id of ["face_layer", "hair_front"]) assert.equal(armDraw.index > sequence.find((entry) => entry.partId === id && entry.pass === "main-part").index, true);
   assert.deepEqual(Animotion.state.cutsceneBridge.jointAction, savedAction);

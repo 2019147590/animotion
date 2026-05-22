@@ -46,7 +46,7 @@
     if (!handTip.point) return { active: false, reason: "missing-handTip", handTipSource: handTip.source };
     const controls = controlsForActionFrame(part, handTip.point, action, context.frame, pose);
     const legacyWholeTranslation = legacyTranslationPose(pose);
-    return { active: style.legacyDepthCompat || !legacyWholeTranslation, mode: "arm-extension-segmented", handTipSource: handTip.source, legacyWholeTranslation, pose, controls, punchStyleSource: style.source, legacyDepthCompat: style.legacyDepthCompat };
+    return { active: style.legacyDepthCompat || !legacyWholeTranslation || controls.source === "action", mode: "arm-extension-segmented", handTipSource: handTip.source, legacyWholeTranslation, pose, controls, punchStyleSource: style.source, legacyDepthCompat: style.legacyDepthCompat };
   }
 
   function debugForFrame(context = {}) {
@@ -125,7 +125,7 @@
   function controlsForActionFrame(part, localHandTip, action, frame, fallbackPose) {
     const base = baseControls(part, localHandTip);
     const target = actionControlsForFrame(action, frame) || Animotion.armExtensionControls?.legacyHandTargetControls?.(base, action, frame);
-    return target ? { base, target: straightCrossControls(base, target) } : { base, target: transformedControls(part, base, fallbackPose) };
+    return target ? { base, target: straightCrossControls(base, target), source: "action" } : { base, target: transformedControls(part, base, fallbackPose), source: "pose" };
   }
 
   function baseControls(part, localHandTip) {

@@ -111,6 +111,20 @@ test("legacy hand-only loaded action gets runtime fist-led controls without muta
   assert.equal(Animotion.armExtensionControls.leadingControl(hint.controls.target), "handTip");
 });
 
+test("explicit rear-cross loaded whole-arm keyframe still activates replacement render", () => {
+  const Animotion = loadArmExtension();
+  const part = rearArm();
+  part.customMotion = { x: 60, y: 0, rotate: 0, scaleY: 0, jointX: 0, jointY: 0, phase: 0 };
+  const action = legacyHandOnlyAction();
+  const hint = Animotion.armExtension.renderHintForPart(part, { parts: [part], frame: 24, selectedPartId: part.id, bridge: { primaryPartId: part.id, jointAction: action } });
+
+  assert.equal(hint.legacyWholeTranslation, true);
+  assert.equal(hint.punchStyleSource, "explicit");
+  assert.equal(hint.controls.source, "action");
+  assert.equal(hint.active, true);
+  assert.equal(Animotion.armExtensionControls.leadingControl(hint.controls.target), "handTip");
+});
+
 test("front jab remains outside the rear arm-only extension path", () => {
   const Animotion = loadArmExtension();
   const part = rearArm();
