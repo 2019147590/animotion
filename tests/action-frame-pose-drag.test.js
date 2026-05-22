@@ -33,6 +33,8 @@ function loadAnimotion() {
     "scripts/motion-anchors.js",
     "scripts/arm-extension-controls.js",
     "scripts/arm-extension.js",
+    "scripts/motion-replacement-layer.js",
+    "scripts/motion-replacement-render.js",
     "scripts/motion-planner.js",
     "scripts/action-frame-editor.js",
     "scripts/preview-coordinate.js",
@@ -124,6 +126,31 @@ test("handTip pose drag at selected impact frame writes an impact keyframe", () 
   Animotion.previewEvents.endDrag(pointer(18, 5));
   assert.equal(poseAt(arm, 24).jointX, before.jointX + 10);
   assert.equal(Animotion.timeline.evaluatePartAtFrame(arm, 24).jointX, before.jointX + 10);
+});
+
+test("replacement plan uses edited impact handTip pose", () => {
+  const Animotion = loadAnimotion();
+  const arm = Animotion.state.parts.find((part) => part.id === "arm");
+  Animotion.actionFrameEditor.selectBeat("impact");
+  const beforePlan = Animotion.motionReplacementLayer.planForPart(arm, {
+    parts: Animotion.state.parts,
+    bridge: Animotion.state.cutsceneBridge,
+    frame: 24,
+    selectedPartId: "arm",
+  });
+  beginHandTipDrag(Animotion);
+  Animotion.previewEvents.updateDrag(pointer(18, 5));
+  Animotion.previewEvents.endDrag(pointer(18, 5));
+  const afterPlan = Animotion.motionReplacementLayer.planForPart(arm, {
+    parts: Animotion.state.parts,
+    bridge: Animotion.state.cutsceneBridge,
+    frame: 24,
+    selectedPartId: "arm",
+  });
+
+  assert.equal(afterPlan.active, true);
+  assert.notDeepEqual(JSON.parse(JSON.stringify(afterPlan.handTip)), JSON.parse(JSON.stringify(beforePlan.handTip)));
+  assert.equal(poseAt(arm, 24).jointX > beforePlan.evaluatedPose.jointX, true);
 });
 
 test("windup action-frame drag does not overwrite the impact keyframe", () => {

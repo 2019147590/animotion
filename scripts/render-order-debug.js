@@ -43,24 +43,31 @@
     const selectedDraws = sequence.filter((entry) => entry.kind === "part" && entry.partId === selectedId);
     const segmentedDraws = selectedDraws.filter((entry) => entry.drawPath === "segmented-arm" || entry.drawPath === "action-pose-patch");
     const segmentedFailures = selectedDraws.filter((entry) => entry.segmentedRenderFailure || entry.drawPath === "segmented-arm-failed");
-    const replacementDraws = selectedDraws.filter((entry) => entry.drawPath === "segmented-arm" || entry.drawPath === "action-pose-patch" || entry.drawPath === "normal-part");
-    const selectedDraw = segmentedDraws[segmentedDraws.length - 1] || selectedDraws[selectedDraws.length - 1] || null;
+    const motionReplacementDraws = selectedDraws.filter((entry) => entry.drawPath === "motion-replacement");
+    const motionReplacementFailures = selectedDraws.filter((entry) => entry.replacementRenderFailure || entry.drawPath === "motion-replacement-failed");
+    const visualDraws = selectedDraws.filter((entry) => entry.drawPath === "segmented-arm" || entry.drawPath === "action-pose-patch" || entry.drawPath === "motion-replacement" || entry.drawPath === "normal-part");
+    const selectedDraw = motionReplacementDraws[motionReplacementDraws.length - 1] || segmentedDraws[segmentedDraws.length - 1] || selectedDraws[selectedDraws.length - 1] || null;
     const selectedBounds = selectedDraw?.bounds || rectBounds((options.parts || []).find((part) => part.id === selectedId)?.rect);
     const coverDraws = sequence.filter((entry) => entry.kind === "part" && entry.partId !== selectedId && (entry.likelyCoveringLayer || boundsOverlap(entry.bounds, selectedBounds)));
     const comparisons = coverDraws.map((entry) => ({ partId: entry.partId, name: entry.name, type: entry.type, humanRole: entry.humanRole, drawPath: entry.drawPath, index: entry.index, selectedAfter: selectedDraw ? selectedDraw.index > entry.index : false }));
     const sourcePanel = [...sequence].reverse().find((entry) => entry.kind === "panel" && entry.pass === "source-panel") || null;
     const sourceErased = new Set(sourcePanel?.erasedPartIds || []);
     const sourcePanelConflictRisk = sourcePanel ? !sourceErased.has(selectedId) && sourcePanel.sourcePanelMode === "source-original" : null;
-    const sourceEraseWithoutReplacement = Boolean(sourcePanel && sourceErased.has(selectedId) && !replacementDraws.length);
+    const sourceEraseWithoutReplacement = Boolean(sourcePanel && sourceErased.has(selectedId) && !visualDraws.length);
     return {
       finalDrawSequence: sequence,
       selectedDrawIndex: selectedDraw?.index ?? null,
       selectedDrawPath: selectedDraw?.drawPath || null,
       coveringComparisons: comparisons,
       selectedAfterCoveringParts: comparisons.length ? comparisons.every((entry) => entry.selectedAfter) : null,
-      segmentedReplacesNormal: Boolean(selectedDraw && (selectedDraw.drawPath === "segmented-arm" || selectedDraw.drawPath === "action-pose-patch") && !selectedDraws.some((entry) => entry.drawPath === "normal-part")),
+      segmentedReplacesNormal: Boolean(selectedDraw && (selectedDraw.drawPath === "segmented-arm" || selectedDraw.drawPath === "action-pose-patch" || selectedDraw.drawPath === "motion-replacement") && !selectedDraws.some((entry) => entry.drawPath === "normal-part")),
       segmentedRenderFailure: segmentedFailures.length > 0,
       segmentedRenderReason: segmentedFailures[segmentedFailures.length - 1]?.segmentedRenderReason || null,
+      replacementRenderOk: motionReplacementDraws.length > 0,
+      replacementRenderFailure: motionReplacementFailures.length > 0,
+      replacementRenderReason: motionReplacementFailures[motionReplacementFailures.length - 1]?.replacementRenderReason || null,
+      skippedNormalArmDraw: Boolean(selectedDraw?.skippedNormalArmDraw && !selectedDraws.some((entry) => entry.drawPath === "normal-part")),
+      fallbackToNormalArm: selectedDraws.some((entry) => entry.fallbackToNormalArm === true),
       sourceEraseWithoutReplacement,
       postPassesAfterSelected: selectedDraw ? sequence.filter((entry) => entry.index > selectedDraw.index && entry.kind !== "part") : [],
       punchStyleSource: selectedDraw?.punchStyleSource || null,

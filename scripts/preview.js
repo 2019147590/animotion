@@ -159,7 +159,34 @@
   }
   function drawPart(part, t, matrixCache, view, alpha = 1, cutscene = null, pass = null) {
     const drawPass = pass || (alpha === 1 ? "main-part" : "ghost-part");
-    const frame = state.running ? currentMotionFrame(t) : state.currentFrame, hint = Animotion.armExtension?.renderHintForPart?.(part, { parts: state.parts, bridge: cutscene?.bridge, frame, selectedPartId: state.selectedPartId });
+    const frame = state.running ? currentMotionFrame(t) : state.currentFrame;
+    const context = { parts: state.parts, bridge: cutscene?.bridge, frame, selectedPartId: state.selectedPartId };
+    const replacementPlan = Animotion.motionReplacementLayer?.planForPart?.(part, context);
+    const replacement = replacementPlan?.active
+      ? Animotion.motionReplacementRender?.draw?.(previewCtx, part, replacementPlan, alpha) || { ok: false, reason: "missing-replacement-renderer", fallbackUsed: true }
+      : null;
+    if (replacement?.ok) {
+      recordPartDraw(part, "motion-replacement", drawPass, replacement.drawnBounds, {
+        handTipSource: replacementPlan.handTipSource,
+        punchStyleSource: replacementPlan.punchStyleSource,
+        legacyDepthCompat: replacementPlan.legacyDepthCompat,
+        replacementRenderOk: true,
+        skippedNormalArmDraw: true,
+        replacementRenderResult: compactReplacementResult(replacement),
+      });
+      return;
+    }
+    if (replacement && replacement.ok === false) {
+      recordPartDraw(part, "motion-replacement-failed", drawPass, replacement.drawnBounds || Animotion.renderOrderDebug?.boundsFromControls?.(replacementPlan.controls), {
+        handTipSource: replacementPlan.handTipSource,
+        punchStyleSource: replacementPlan.punchStyleSource,
+        legacyDepthCompat: replacementPlan.legacyDepthCompat,
+        replacementRenderFailure: true,
+        replacementRenderReason: replacement.reason,
+        replacementRenderResult: compactReplacementResult(replacement),
+      });
+    }
+    const hint = replacement ? null : Animotion.armExtension?.renderHintForPart?.(part, context);
     const segmented = hint?.active ? Animotion.armExtension.drawSegmentedPart(previewCtx, part, hint, alpha) : null;
     if (segmented?.ok) {
       const drawPath = segmented.renderMode === "action-pose-patch" ? "action-pose-patch" : "segmented-arm";
@@ -172,7 +199,7 @@
     applyMatrix(previewCtx, matrix);
     previewCtx.globalAlpha = part.alpha * alpha;
     previewCtx.drawImage(part.canvas, part.rect.x, part.rect.y, part.rect.w, part.rect.h);
-    recordPartDraw(part, "normal-part", drawPass, Animotion.renderOrderDebug?.boundsFromMatrix?.(part, matrix), { fallbackForSegmentedRender: Boolean(segmented && segmented.ok === false), segmentedRenderReason: segmented?.reason || null });
+    recordPartDraw(part, "normal-part", drawPass, Animotion.renderOrderDebug?.boundsFromMatrix?.(part, matrix), { fallbackForSegmentedRender: Boolean(segmented && segmented.ok === false), segmentedRenderReason: segmented?.reason || null, fallbackToNormalArm: Boolean(replacement && replacement.ok === false), replacementRenderReason: replacement?.reason || null });
     if (drawPass === "main-part" && alpha === 1 && editingLayerVisible() && part.id === state.selectedPartId) {
       previewCtx.lineWidth = 2 / sourceScale(view);
       previewCtx.strokeStyle = "#e1462e";
@@ -291,6 +318,22 @@
       shoulder: result.shoulder || null,
       elbow: result.elbow || null,
       handTip: result.handTip || null,
+    };
+  }
+  function compactReplacementResult(result = {}) {
+    return {
+      ok: Boolean(result.ok),
+      reason: result.reason || null,
+      partId: result.partId || null,
+      frame: result.frame || null,
+      beatLabel: result.beatLabel || null,
+      skippedNormalDraw: Boolean(result.skippedNormalDraw),
+      drawnBounds: result.drawnBounds || null,
+      sourceBounds: result.sourceBounds || null,
+      shoulder: result.shoulder || null,
+      elbow: result.elbow || null,
+      handTip: result.handTip || null,
+      target: result.target || null,
     };
   }
   function worldMatrix(part, t, cache) {

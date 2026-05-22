@@ -29,7 +29,7 @@ function loadPreview() {
   Animotion.parts = { selectedPart: () => Animotion.state.parts.find((part) => part.id === Animotion.state.selectedPartId) };
   Animotion.previewRigPoints = { localPoint: (part, spec) => spec.localPoint || part.pivot, imagePoint: (part, spec) => ({ x: part.rect.x + (spec.localPoint || part.pivot).x, y: part.rect.y + (spec.localPoint || part.pivot).y }) };
   Animotion.previewTransform.imagePointToScreen = (point) => point;
-  for (const path of ["scripts/motion-model.js", "scripts/timeline.js", "scripts/rig-connection.js", "scripts/render-layer-utils.js", "scripts/render-order-debug.js", "scripts/arm-extension-controls.js", "scripts/arm-extension.js", "scripts/arm-extension-render.js", "scripts/cutscene-depth.js"]) runScript(context, path);
+  for (const path of ["scripts/motion-model.js", "scripts/timeline.js", "scripts/rig-connection.js", "scripts/render-layer-utils.js", "scripts/render-order-debug.js", "scripts/arm-extension-controls.js", "scripts/arm-extension.js", "scripts/arm-extension-render.js", "scripts/motion-replacement-layer.js", "scripts/motion-replacement-render.js", "scripts/cutscene-depth.js"]) runScript(context, path);
   Animotion.motion = { motionFor: (part) => Animotion.motionModel.poseToTransform(Animotion.timeline.evaluatePartAtFrame(part, Animotion.state.currentFrame)) };
   runScript(context, "scripts/preview.js");
   return Animotion;
@@ -89,11 +89,11 @@ class Matrix {
   multiply(right) { return new Matrix({ a: this.a * right.a + this.c * right.b, b: this.b * right.a + this.d * right.b, c: this.a * right.c + this.c * right.d, d: this.b * right.c + this.d * right.d, e: this.a * right.e + this.c * right.f + this.e, f: this.b * right.e + this.d * right.f + this.f }); }
 }
 
-test("actual cutscene preview draw sequence puts segmented rear arm after face and front hair", () => {
+test("actual cutscene preview draw sequence puts replacement rear arm after face and front hair", () => {
   const Animotion = loadPreview();
   Animotion.preview.drawPreview(0, () => {}, () => {});
   const sequence = Animotion.state.previewDrawSequenceDebug.sequence;
-  const arm = sequence.find((entry) => entry.partId === "arm_01" && entry.drawPath === "segmented-arm" && entry.pass === "main-part");
+  const arm = sequence.find((entry) => entry.partId === "arm_01" && entry.drawPath === "motion-replacement" && entry.pass === "main-part");
   assert.ok(arm);
   assert.equal(sequence.some((entry) => entry.partId === "arm_01" && entry.drawPath === "normal-part" && entry.pass === "main-part"), false);
   for (const id of ["face_layer", "hair_front"]) {
@@ -102,13 +102,13 @@ test("actual cutscene preview draw sequence puts segmented rear arm after face a
     assert.equal(arm.index > covering.index, true);
   }
   const topUp = sequence.find((entry) => entry.partId === "arm_01" && entry.pass === "depth-top-up");
-  assert.equal(topUp.drawPath, "segmented-arm");
+  assert.equal(topUp.drawPath, "motion-replacement");
   assert.equal(topUp.index > sequence.find((entry) => entry.pass === "impact-panel").index, true);
   assert.equal(topUp.index > sequence.find((entry) => entry.pass === "flash").index, true);
   assert.equal(topUp.index < sequence.find((entry) => entry.pass === "panel-mask").index, true);
 });
 
-test("arm-only rear punch segmented controls land the glove while keeping elbow behind it", () => {
+test("arm-only rear punch replacement uses evaluated impact hand tip", () => {
   const Animotion = loadPreview();
   Animotion.state.cutsceneBridge.jointAction = {
     ...Animotion.state.cutsceneBridge.jointAction,
@@ -122,11 +122,11 @@ test("arm-only rear punch segmented controls land the glove while keeping elbow 
 
   Animotion.preview.drawPreview(0, () => {}, () => {});
 
-  const arm = Animotion.state.previewDrawSequenceDebug.sequence.find((entry) => entry.partId === "arm_01" && entry.drawPath === "segmented-arm" && entry.pass === "main-part");
+  const arm = Animotion.state.previewDrawSequenceDebug.sequence.find((entry) => entry.partId === "arm_01" && entry.drawPath === "motion-replacement" && entry.pass === "main-part");
   assert.ok(arm);
-  assert.deepEqual(point(arm.segmentedRenderResult.handTip), { x: 96, y: 96 });
-  assert.equal(arm.segmentedRenderResult.elbow.x < 90, true);
-  assert.equal(arm.segmentedRenderResult.elbow.y < 82, true);
+  assert.deepEqual(point(arm.replacementRenderResult.handTip), point(Animotion.motionReplacementLayer.planForPart(Animotion.state.parts[1], { parts: Animotion.state.parts, bridge: Animotion.state.cutsceneBridge, frame: 24, selectedPartId: "arm_01" }).handTip));
+  assert.equal(arm.replacementRenderResult.beatLabel, "impact");
+  assert.equal(arm.skippedNormalArmDraw, true);
 });
 
 test("cutscene preview erases runtime rigged character from source panel before drawing animated parts", () => {
@@ -147,31 +147,32 @@ test("cutscene preview erases runtime rigged character from source panel before 
   assert.equal(Animotion.state.separateCharacter, savedSeparateCharacter);
 });
 
-test("segmented arm render failure falls back to normal arm draw", () => {
+test("replacement render failure falls back to normal arm draw", () => {
   const Animotion = loadPreview();
   const arm = Animotion.state.parts.find((part) => part.id === "arm_01");
-  arm.joint = { ...arm.pivot };
+  arm.handTip = { ...arm.pivot };
 
   Animotion.preview.drawPreview(0, () => {}, () => {});
 
   const sequence = Animotion.state.previewDrawSequenceDebug.sequence;
-  const failed = sequence.find((entry) => entry.partId === "arm_01" && entry.drawPath === "segmented-arm-failed" && entry.pass === "main-part");
+  const failed = sequence.find((entry) => entry.partId === "arm_01" && entry.drawPath === "motion-replacement-failed" && entry.pass === "main-part");
   const fallback = sequence.find((entry) => entry.partId === "arm_01" && entry.drawPath === "normal-part" && entry.pass === "main-part");
   const analysis = Animotion.renderOrderDebug.analyze(Animotion.state.previewDrawSequenceDebug, { selectedPartId: "arm_01", bridge: Animotion.state.cutsceneBridge, parts: Animotion.state.parts });
   assert.ok(failed);
-  assert.equal(failed.segmentedRenderFailure, true);
-  assert.equal(failed.segmentedRenderReason, "degenerate-segment");
+  assert.equal(failed.replacementRenderFailure, true);
+  assert.equal(failed.replacementRenderReason, "degenerate-shoulder-handTip");
   assert.ok(fallback);
-  assert.equal(fallback.fallbackForSegmentedRender, true);
-  assert.equal(analysis.segmentedRenderFailure, true);
+  assert.equal(fallback.fallbackToNormalArm, true);
+  assert.equal(analysis.replacementRenderFailure, true);
+  assert.equal(analysis.fallbackToNormalArm, true);
   assert.equal(analysis.segmentedReplacesNormal, false);
 });
 
-test("runtime source erase is safe when segmented arm falls back to normal draw", () => {
+test("runtime source erase is safe when replacement falls back to normal draw", () => {
   const Animotion = loadPreview();
   Animotion.dom.els.backgroundOpacity.value = "1";
   const arm = Animotion.state.parts.find((part) => part.id === "arm_01");
-  arm.joint = { ...arm.pivot };
+  arm.handTip = { ...arm.pivot };
 
   Animotion.preview.drawPreview(0, () => {}, () => {});
 
@@ -182,6 +183,7 @@ test("runtime source erase is safe when segmented arm falls back to normal draw"
   assert.equal(sourcePanel.sourcePanelMode, "runtime-part-erased");
   assert.equal(sourcePanel.erasedPartIds.includes("arm_01"), true);
   assert.ok(fallback);
+  assert.equal(analysis.fallbackToNormalArm, true);
   assert.equal(analysis.sourceEraseWithoutReplacement, false);
   assert.equal(analysis.sourcePanelConflictRisk, false);
 });
@@ -225,9 +227,9 @@ test("explicit loaded rear arm-only punch replaces whole-arm translation without
   Animotion.preview.drawPreview(0, () => {}, () => {});
 
   const sequence = Animotion.state.previewDrawSequenceDebug.sequence, armDraw = sequence.find((entry) => entry.partId === "arm_01" && entry.pass === "main-part");
-  assert.equal(armDraw.drawPath, "segmented-arm");
+  assert.equal(armDraw.drawPath, "motion-replacement");
   assert.equal(armDraw.punchStyleSource, "explicit");
-  assert.equal(armDraw.segmentedRenderResult.leadingControl, "handTip");
+  assert.equal(armDraw.replacementRenderResult.beatLabel, "impact");
   assert.equal(armDraw.legacyDepthCompat, false);
   assert.equal(sequence.some((entry) => entry.partId === "arm_01" && entry.drawPath === "normal-part" && entry.pass === "main-part"), false);
   for (const id of ["face_layer", "hair_front"]) assert.equal(armDraw.index > sequence.find((entry) => entry.partId === id && entry.pass === "main-part").index, true);
@@ -247,7 +249,7 @@ test("selected legacy rear arm stays above Korean face layer when primary metada
   const sequence = Animotion.state.previewDrawSequenceDebug.sequence;
   const armDraw = sequence.find((entry) => entry.partId === "arm_01" && entry.pass === "main-part");
   const faceDraw = sequence.find((entry) => entry.partId === "face_layer" && entry.pass === "main-part");
-  assert.equal(armDraw.drawPath, "segmented-arm");
+  assert.equal(armDraw.drawPath, "motion-replacement");
   assert.equal(armDraw.index > faceDraw.index, true);
 });
 
@@ -265,7 +267,7 @@ test("selected covered legacy punch without target metadata still gets depth top
   Animotion.preview.drawPreview(0, () => {}, () => {});
 
   const topUp = Animotion.state.previewDrawSequenceDebug.sequence.find((entry) => entry.partId === "arm_01" && entry.pass === "depth-top-up");
-  assert.equal(topUp.drawPath, "segmented-arm");
+  assert.equal(topUp.drawPath, "motion-replacement");
   assert.equal(topUp.punchStyleSource, "inferredLegacyLayer");
 });
 
@@ -280,9 +282,9 @@ test("actual preview draw uses selected rear arm depth when loaded JSON still ha
   const sequence = Animotion.state.previewDrawSequenceDebug.sequence;
   const armDraw = sequence.find((entry) => entry.partId === "arm_01" && entry.pass === "main-part");
   const topUp = sequence.find((entry) => entry.partId === "arm_01" && entry.pass === "depth-top-up");
-  assert.equal(armDraw.drawPath, "segmented-arm");
+  assert.equal(armDraw.drawPath, "motion-replacement");
   assert.equal(armDraw.punchStyleSource, "selectedOverrideFromLoadedJab");
-  assert.equal(topUp.drawPath, "segmented-arm");
+  assert.equal(topUp.drawPath, "motion-replacement");
   assert.equal(topUp.evaluatedDepthBias > 0, true);
   assert.equal(topUp.finalSortKey > sequence.find((entry) => entry.partId === "hair_front" && entry.pass === "main-part").baseOrder, true);
   assert.equal(topUp.index > sequence.find((entry) => entry.partId === "face_layer" && entry.pass === "main-part").index, true);

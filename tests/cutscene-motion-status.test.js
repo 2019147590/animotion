@@ -37,6 +37,8 @@ function loadAnimotion() {
     "scripts/timeline.js",
     "scripts/arm-extension-controls.js",
     "scripts/arm-extension.js",
+    "scripts/motion-replacement-layer.js",
+    "scripts/motion-replacement-render.js",
     "scripts/motion-planner.js",
     "scripts/cutscene-motion-status.js",
   ]) runScript(context, path);
@@ -102,6 +104,9 @@ test("rear arm-only punch status reports extension and depth runtime debug", () 
   assert.equal(status.runtime.armExtensionActive, true);
   assert.equal(status.runtime.handTipSource, "inferred");
   assert.equal(status.runtime.oldWholeArmTranslationReplaced, true);
+  assert.equal(status.runtime.replacementActive, true);
+  assert.equal(status.runtime.replacementFrame, 24);
+  assert.equal(status.runtime.replacementBeat, "impact");
   assert.equal(status.runtime.impactPoseMode, "arm-extension");
   assert.equal(status.runtime.cutsceneDepthActive, true);
   assert.equal(status.runtime.selectedAboveCoveringParts, true);
@@ -109,6 +114,7 @@ test("rear arm-only punch status reports extension and depth runtime debug", () 
   assert.equal(status.runtime.punchStyleSource, "explicit");
   assert.equal(Animotion.cutsceneMotionStatus.statusText(status).includes("뒷손 arm-only"), true);
   assert.equal(Animotion.cutsceneMotionStatus.debugText(status).includes("runtime rearCrossArmOnly=yes"), true);
+  assert.equal(Animotion.cutsceneMotionStatus.debugText(status).includes("replacement=yes"), true);
 });
 
 test("legacy rear arm-only punch status reports inferred style and depth compatibility", () => {
@@ -162,7 +168,7 @@ test("cutscene status reports target-generation failure separately from source-p
   assert.equal(Animotion.cutsceneMotionStatus.debugText(status).includes("targetFailure=yes"), true);
 });
 
-test("cutscene status separates segmented render and source erase replacement failures", () => {
+test("cutscene status separates replacement render and source erase failures", () => {
   const Animotion = loadAnimotion();
   const punchParts = rearArmOnlyParts();
   const bridge = {
@@ -180,16 +186,17 @@ test("cutscene status separates segmented render and source erase replacement fa
   const previewDrawSequence = {
     sequence: [
       { index: 0, kind: "panel", pass: "source-panel", sourcePanelMode: "runtime-part-erased", erasedPartIds: ["arm_01"] },
-      { index: 1, kind: "part", partId: "arm_01", drawPath: "segmented-arm-failed", pass: "main-part", segmentedRenderFailure: true, segmentedRenderReason: "degenerate-segment" },
+      { index: 1, kind: "part", partId: "arm_01", drawPath: "motion-replacement-failed", pass: "main-part", replacementRenderFailure: true, replacementRenderReason: "degenerate-shoulder-handTip" },
     ],
   };
 
   const status = Animotion.cutsceneMotionStatus.statusForBridge(bridge, { parts: punchParts, currentFrame: 24, selectedPartId: "arm_01", motionTemplate: "cutscene", previewDrawSequence });
 
-  assert.equal(status.runtime.segmentedRenderFailure, true);
+  assert.equal(status.runtime.replacementRenderFailure, true);
+  assert.equal(status.runtime.replacementRenderReason, "degenerate-shoulder-handTip");
   assert.equal(status.runtime.sourceEraseWithoutReplacement, true);
   assert.equal(status.runtime.sourcePanelOverlapFailure, false);
-  assert.equal(Animotion.cutsceneMotionStatus.statusText(status).includes("분절 렌더 실패"), true);
+  assert.equal(Animotion.cutsceneMotionStatus.statusText(status).includes("대체 렌더 실패"), true);
   assert.equal(Animotion.cutsceneMotionStatus.debugText(status).includes("sourceEraseWithoutReplacement=yes"), true);
 });
 

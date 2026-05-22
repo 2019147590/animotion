@@ -97,6 +97,20 @@ Latest rear arm-only punch visual QA on 2026-05-22:
 - Runtime debug/status now separates target generation, source-panel overlap, actual draw-order failure, segmented render failure, and source erase without replacement.
 - These are preview/runtime safeguards only. Existing JSON load still preserves saved `cutsceneBridge.jointAction`, saved `part.keyframes`, saved layer order, and schema.
 
+Current upload adds a frame-specific motion replacement layer for arm-only punch frames:
+
+- `scripts/motion-replacement-layer.js` derives a runtime replacement plan for arm-only rear-cross punch extension/impact frames from `cutsceneBridge.jointAction`, evaluated `part.keyframes`, and part geometry.
+- `scripts/motion-replacement-render.js` validates and draws a deterministic proxy replacement arm/fist layer. It rejects invalid source rects, non-finite points, degenerate shoulder-to-hand/target vectors, and absurd replacement bounds before any normal arm draw is skipped.
+- The replacement plan is frame-local and visual-only. It does not change punch targets, rear/front classification, trajectory generation, depth rules, saved `state.parts` order, or saved project schema.
+- Preview checks the replacement plan before drawing the normal selected arm. A successful replacement draws at the same evaluated arm depth position and skips the normal whole-arm sprite for that part/frame, avoiding a duplicate bent arm under or over the replacement.
+- If replacement rendering fails, preview records `motion-replacement-failed`, keeps the normal arm fallback, and avoids source-erase blank holes without a replacement.
+- `cutscene-motion-status` and render-order debug now expose `replacementActive`, `replacementReason`, `replacementFrame`, `replacementBeat`, `replacementRenderOk`, `replacementRenderFailure`, `skippedNormalArmDraw`, `fallbackToNormalArm`, and source-erase risk data.
+- Action-frame pose edits remain the source of final pose truth: dragging the impact handTip/joint updates `part.keyframes`, and replacement geometry is derived from the edited evaluated pose. Windup/recover keyframes are not overwritten by an impact edit.
+- Separate hand/forearm rigs are not forced into replacement mode; the normal rig/keyframe path remains primary when a terminal hand part exists.
+- No AI generation, inpainting, replacement sprite authoring UI, trajectory-to-motion replanning, kick behavior changes, global depth rewrite, or old JSON migration was added.
+- New regression coverage includes `tests/motion-replacement-layer.test.js`, updated preview render-order tests, updated action-frame pose-drag tests, and updated motion-status tests.
+- Local verification: all JavaScript tests under `tests/*.test.js` passed. Python `ai-rig-server` tests were not run because the local Python environment does not have `pytest` installed.
+
 ### Panel Quality Setup
 
 Implemented in `scripts/panel-editor.js` and `scripts/panel-commands.js`.
@@ -601,7 +615,11 @@ Latest completed implementation commits:
 - Current upload: explicit punch regeneration after loading legacy elbow-only keyframes replaces generated punch tracks, keeps `actionTimeline.template === "punch"`, and uses base geometry for rear/front classification, target computation, windup, impact, and recover.
 - Current upload: cutscene preview/playback evaluates a temporary rear-cross depth bias from `cutsceneBridge.jointAction` and current frame, so the punching rear hand/arm renders above the head during drive/impact and returns to base order during recover without changing saved part order.
 - Current upload: latest rear arm-only punch QA showed target/classification were already correct, so the remaining fix is scoped to render/compositing safety: segmented arm validation, normal arm fallback, source erase safety, and paused-preview ghost suppression.
+- Current upload: arm-only rear-cross punch extension/impact frames now have a runtime-only motion replacement layer. The replacement is derived from `jointAction`, evaluated `part.keyframes`, shoulder/elbow/handTip geometry, and target metadata; successful replacement skips the normal bent whole-arm draw only for that frame/part, while failures fall back to normal drawing.
+- Current upload: replacement debug/status fields report activation, frame/beat, render success/failure, skipped normal arm drawing, fallback-to-normal-arm behavior, and source-erase-without-replacement risk.
+- Current upload: replacement rendering responds to manual action-frame pose edits through existing keyframe evaluation, without changing trajectory handling, punch planning, depth classification, saved schema, or old JSON load behavior.
 - Current upload: new regressions include `tests/punch-hand-tip-regression.test.js`, `tests/cutscene-depth.test.js`, `tests/arm-extension-render.test.js`, and `tests/preview-render-order.test.js`; the full `tests/*.test.js` suite passed locally.
+- Current upload: `tests/motion-replacement-layer.test.js` covers arm-only rear punch detection, separate-hand rig opt-out, edited impact pose response, safe render skip, safe fallback, and old JSON save preservation.
 - Current upload: normal image upload no longer crashes when there are no parts or selected part, project restore no longer merges in stale current bridge data, restored cutscene projects set the motion UI back to cutscene mode, stale normalized runtime geometry is ignored during project save, and punch/kick selected-part draft generation reuses the canonical motion planner path.
 - Current upload also prevents punch/kick generation from reusing stale target/anchor/draft data when the action type or selected primary part changes, while preserving manual trajectory edits for the same action plus same part.
 - Boxer punch action demo is now the active 1st-priority scope: generated punch `part.keyframes` can be scrubbed, hand/arm/body pose drags commit frame keyframes, preview evaluation uses those manual keyframes, and edits persist until explicit punch regeneration.

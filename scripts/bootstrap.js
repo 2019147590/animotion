@@ -47,6 +47,8 @@
     "arm-extension-controls",
     "arm-extension",
     "arm-extension-render",
+    "motion-replacement-layer",
+    "motion-replacement-render",
     "motion-panel-mapper",
     "motion-planner",
     "motion-primary-selection",
