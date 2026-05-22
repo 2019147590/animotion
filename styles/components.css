@@ -135,6 +135,41 @@
   padding: 10px;
 }
 
+.action-frame-tools {
+  display: grid;
+  gap: 8px;
+  border: 2px solid var(--line);
+  border-radius: 7px;
+  background: #eef8f4;
+  padding: 10px;
+}
+
+.action-frame-tools.hidden {
+  display: none;
+}
+
+.action-frame-title {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.action-frame-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.action-frame-button {
+  min-width: 0;
+  padding: 7px 6px;
+  font-size: 12px;
+}
+
+.action-frame-button.selected {
+  background: var(--accent-3);
+  box-shadow: 2px 2px 0 var(--line);
+}
+
 .motion-path-explainer {
   display: grid;
   gap: 8px;

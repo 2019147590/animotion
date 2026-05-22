@@ -29,6 +29,7 @@
       chamberFrame: frameFor(timelineBeats, "chamber"),
       extendFrame: frameFor(timelineBeats, "extend"),
       recoverFrame: frameFor(timelineBeats, "recover") || frameFor(beats, "recover"),
+      actionFrame: normalizeActionFrameStatus(options.actionFrame),
       runtime,
     };
   }
@@ -39,6 +40,7 @@
     return compact([
       `motion ${status.actionType}`,
       status.currentBeatId ? `${status.currentBeatId}@${status.currentBeatFrame}` : null,
+      actionFrameText(status.actionFrame),
       `impact ${status.impactFrame}`,
       `target ${target}`,
       conciseRuntimeText(status.runtime),
@@ -75,6 +77,24 @@
       debug.sourceEraseWithoutReplacement ? "원본 보강 누락" : null,
       debug.selectedAfterCoveringParts === false || debug.selectedAboveCoveringParts === false ? "가림 위험" : null,
     ]).join(" / ") || null;
+  }
+
+  function normalizeActionFrameStatus(actionFrame = null) {
+    if (!actionFrame) return null;
+    return {
+      selectedBeatId: actionFrame.selectedBeatId || null,
+      selectedFrame: Number.isFinite(Number(actionFrame.selectedFrame)) ? Math.round(Number(actionFrame.selectedFrame)) : null,
+      selectedLabel: actionFrame.selectedLabel || actionFrame.selectedBeatId || null,
+      writesToKeyframes: actionFrame.writesToKeyframes === true,
+      trajectoryReadOnly: actionFrame.trajectoryReadOnly === true,
+    };
+  }
+
+  function actionFrameText(actionFrame = null) {
+    if (!actionFrame?.selectedFrame) return null;
+    const write = actionFrame.writesToKeyframes ? "keyframes edit" : "view";
+    const trajectory = actionFrame.trajectoryReadOnly ? "trajectory read-only" : null;
+    return compact([`frame ${actionFrame.selectedLabel}@${actionFrame.selectedFrame}`, write, trajectory]).join(" / ");
   }
 
   function yesNo(value) { return value ? "yes" : "no"; }

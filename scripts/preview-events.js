@@ -226,7 +226,12 @@
   }
 
   function dragMode(role) {
+    if (Animotion.actionFrameEditor?.isEditingActionFrame?.() && actionFramePoseRole(role) && timelineLikeMode()) return "pose";
     return role === "joint" && timelineLikeMode() ? "pose" : "rig";
+  }
+
+  function actionFramePoseRole(role) {
+    return role === "joint" || role === "handTip";
   }
 
   function previewImagePoint(event) {

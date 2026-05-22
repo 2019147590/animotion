@@ -27,6 +27,7 @@
     els.separateCharacter.checked = state.separateCharacter;
     Animotion.panelEditor?.refreshControls?.();
     Animotion.motionPlanner?.refreshControls?.();
+    Animotion.actionFrameEditor?.refreshControls?.();
     Animotion.motionAnchorPicker?.refreshControls?.();
     Animotion.motionPathExplainer?.refreshControls?.();
     Animotion.motionDraftEditor?.refreshControls?.();
@@ -76,7 +77,7 @@
 
   function renderCutsceneMotionStatus() {
     if (!els.cutsceneMotionStatus) return;
-    const status = Animotion.cutsceneMotionStatus?.statusForBridge?.(state.cutsceneBridge, { parts: state.parts, currentFrame: state.currentFrame, selectedPartId: state.selectedPartId, motionTemplate: els.motionTemplate.value, previewDrawSequence: state.previewDrawSequenceDebug });
+    const status = Animotion.cutsceneMotionStatus?.statusForBridge?.(state.cutsceneBridge, { parts: state.parts, currentFrame: state.currentFrame, selectedPartId: state.selectedPartId, motionTemplate: els.motionTemplate.value, previewDrawSequence: state.previewDrawSequenceDebug, actionFrame: Animotion.actionFrameEditor?.selectionStatus?.() });
     els.cutsceneMotionStatus.textContent = Animotion.cutsceneMotionStatus?.statusText?.(status) || "Punch/kick motion status: unavailable";
   }
 

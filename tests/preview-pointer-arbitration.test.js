@@ -75,6 +75,15 @@ test("rig handle wins when trajectory sample control and active target overlap",
   assert.equal(targets.some((candidate) => candidate.kind === "motion-trajectory-point"), true);
 });
 
+test("action-frame mode makes trajectory controls read-only for pointer arbitration", () => {
+  reset({
+    actionFrameEditor: { trajectoryReadOnly: () => true },
+    trajectoryEditor: { hitTarget: () => ({ type: "beat", label: "impact" }) },
+  });
+  const targets = arbitration.collectTargets(eventStub());
+  assert.equal(targets.some((candidate) => candidate.kind === "motion-trajectory-point"), false);
+});
+
 test("active drag session wins over new pointerdown candidates", () => {
   reset({
     dom: { previewCanvas: { hasPointerCapture: () => true } },

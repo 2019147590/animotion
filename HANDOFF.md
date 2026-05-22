@@ -85,6 +85,18 @@ Current upload adds an arm-only hand endpoint and cutscene-only punch depth pass
 - For arm-only rigs the depth bias applies to the punching arm. For separate hand rigs the terminal hand receives the strongest bias and the parent forearm receives a smaller supporting bias.
 - New regressions cover loaded legacy elbow-only punch preservation, explicit handTip-based regeneration, rear windup, recover, front jab preservation, and cutscene-only depth ordering.
 
+Latest rear arm-only punch visual QA on 2026-05-22:
+
+- The latest failing video was `화면 녹화 중 2026-05-22 095255.mp4` at about 4.17 seconds, 2560x1594, 30 fps.
+- The video confirmed `arm_02 handTip`, explicit rear-cross classification, and a forward target near `1023,270` with delta about `596,-35`. That made target generation and rear/front classification no longer the primary remaining failure.
+- The visible failure was runtime rendering/compositing: source-panel erase removed the original rear arm area, segmented arm rendering replaced the normal whole-arm draw, and the segmented output could create detached glove/arm fragments instead of a safe replacement.
+- A second runtime issue was stale generic ghost rendering while the preview was paused/editing. Previous-frame arm/glove positions could remain visible and be mistaken for the current impact pose.
+- `scripts/arm-extension-render.js` now validates segmented arm output and returns an explicit render result object. Preview skips the normal whole-arm draw only when segmented rendering succeeds.
+- Segment validation rejects invalid controls, degenerate or tiny segments, non-finite transforms, oversized bounds, and overly wide source/target fragments with reasons such as `source-segment-too-wide` and `segment-too-wide`.
+- If segmented rendering fails, `scripts/preview.js` draws the normal arm fallback so source-panel erase does not leave an empty hole.
+- Runtime debug/status now separates target generation, source-panel overlap, actual draw-order failure, segmented render failure, and source erase without replacement.
+- These are preview/runtime safeguards only. Existing JSON load still preserves saved `cutsceneBridge.jointAction`, saved `part.keyframes`, saved layer order, and schema.
+
 ### Panel Quality Setup
 
 Implemented in `scripts/panel-editor.js` and `scripts/panel-commands.js`.
@@ -172,6 +184,16 @@ Important behavior:
 - Current generation still requires selecting a part and then generating beats; simply placing a target does not create motion until `beat/trajectory generation` is clicked.
 - For the current boxer punch demo, verify the workflow as: generate punch trajectory, scrub to windup/impact/recover frames, drag hand/arm/body rig points, confirm saved `part.keyframes`, preview playback, and only then regenerate if the user wants to discard/rebuild the draft.
 
+Current upload shifts punch editing toward an action-frame-first workflow:
+
+- `scripts/action-frame-editor.js` derives selectable punch action frames from `cutsceneBridge.jointAction.actionTimeline.beats` and existing action beats without adding persisted schema.
+- The motion panel now shows compact punch beat buttons such as guard, windup, drive, extension, impact, and recover with frame numbers.
+- Selecting a beat sets the preview/current frame to that action frame and marks trajectory editing as read-only for pointer arbitration.
+- While a punch action frame is selected, handTip/hand and joint/bend rig drags use the existing pose-drag path and commit edits into `part.keyframes` at the selected frame.
+- Trajectory remains a visualization/diagnostic surface in this pass. Arbitrary trajectory handle drags are not used to reinterpret punch motion while action-frame editing is active.
+- `cutscene-motion-status` reports the selected beat label/frame, that edits write to keyframes, and that trajectory controls are read-only in action-frame mode.
+- Old JSON is not migrated. Existing saved `cutsceneBridge.jointAction` and `part.keyframes` load as-is, and action-frame controls degrade to available beat metadata when timeline metadata is missing.
+
 ### Punch/Kick Motion Status Visibility
 
 Implemented on `master` in `f2536d3 Add cutscene motion status visibility`.
@@ -218,6 +240,7 @@ Implemented in `scripts/cutscene-options.js`, `scripts/preview.js`, and `scripts
 - Default keeps body assist enabled for better motion draft quality.
 - When body assist is disabled, generated and regenerated tracks keep body/head auxiliary movement at zero while the selected part still follows the trajectory.
 - Source/impact panel transform and cutscene option updates now call session/motion command helpers.
+- Paused/editing cutscene preview no longer draws stale generic ghost parts from previous frames. Ghost parts remain available during running playback.
 
 Recent commit:
 
@@ -577,10 +600,13 @@ Latest completed implementation commits:
 - Current upload: punch generation uses the selected arm's `handTip` as the actual endpoint when no separate hand part exists, while separate hand-part rigs still resolve to the terminal hand part.
 - Current upload: explicit punch regeneration after loading legacy elbow-only keyframes replaces generated punch tracks, keeps `actionTimeline.template === "punch"`, and uses base geometry for rear/front classification, target computation, windup, impact, and recover.
 - Current upload: cutscene preview/playback evaluates a temporary rear-cross depth bias from `cutsceneBridge.jointAction` and current frame, so the punching rear hand/arm renders above the head during drive/impact and returns to base order during recover without changing saved part order.
-- Current upload: new regressions include `tests/punch-hand-tip-regression.test.js` and `tests/cutscene-depth.test.js`; the full `tests/*.test.js` suite passed locally.
+- Current upload: latest rear arm-only punch QA showed target/classification were already correct, so the remaining fix is scoped to render/compositing safety: segmented arm validation, normal arm fallback, source erase safety, and paused-preview ghost suppression.
+- Current upload: new regressions include `tests/punch-hand-tip-regression.test.js`, `tests/cutscene-depth.test.js`, `tests/arm-extension-render.test.js`, and `tests/preview-render-order.test.js`; the full `tests/*.test.js` suite passed locally.
 - Current upload: normal image upload no longer crashes when there are no parts or selected part, project restore no longer merges in stale current bridge data, restored cutscene projects set the motion UI back to cutscene mode, stale normalized runtime geometry is ignored during project save, and punch/kick selected-part draft generation reuses the canonical motion planner path.
 - Current upload also prevents punch/kick generation from reusing stale target/anchor/draft data when the action type or selected primary part changes, while preserving manual trajectory edits for the same action plus same part.
 - Boxer punch action demo is now the active 1st-priority scope: generated punch `part.keyframes` can be scrubbed, hand/arm/body pose drags commit frame keyframes, preview evaluation uses those manual keyframes, and edits persist until explicit punch regeneration.
+- Current upload shifts punch editing from trajectory-first to action-frame-first: generated punch beats are exposed as selectable frame buttons, selecting a beat moves preview to that frame, handTip/joint pose drags write to `part.keyframes`, and trajectory hit targets are read-only while action-frame editing is active.
+- Current upload adds `tests/action-frame-editor.test.js`, `tests/action-frame-pose-drag.test.js`, and preview pointer arbitration coverage for trajectory read-only mode.
 - Current upload maps pre-impact punch `recoil` status to user-facing `windup`, keeps `recover` as the post-impact beat, and adds rear-hand punch regeneration fallback for legacy neutral part names by using torso/hand geometry when name/id hints are unavailable.
 - Existing project JSON load remains backward compatible: saved old punch `jointAction` beats and `part.keyframes` are restored unchanged and are only replaced when the user explicitly regenerates the selected punch.
 - No persisted schema changes, duplicate editor state, provider contract changes, Stability/Local SD changes, kick quality tuning, or B impact snap timing changes were added in these units.
@@ -734,6 +760,11 @@ Previously completed implementation history:
   - `tests/motion-target-propagation.test.js`
   - `tests/motion-target-state.test.js`
   - `tests/cutscene-options.test.js`
+  - `tests/cutscene-depth.test.js`
+  - `tests/cutscene-motion-status.test.js`
+  - `tests/punch-hand-tip-regression.test.js`
+  - `tests/arm-extension-render.test.js`
+  - `tests/preview-render-order.test.js`
   - `tests/edit-target-inspector.test.js`
   - `tests/events-history-shortcuts.test.js`
   - `tests/hidden-completion-part-panel.test.js`
@@ -741,6 +772,8 @@ Previously completed implementation history:
   - `tests/preview-coordinate.test.js`
   - `tests/preview-pose-drag.test.js`
   - `tests/preview-pointer-arbitration.test.js`
+  - `tests/action-frame-editor.test.js`
+  - `tests/action-frame-pose-drag.test.js`
 
 Latest completed before the motion status and stability pass uploads:
 

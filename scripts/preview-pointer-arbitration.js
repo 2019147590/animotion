@@ -85,6 +85,7 @@
   }
 
   function trajectoryTarget(event) {
+    if (Animotion.actionFrameEditor?.trajectoryReadOnly?.()) return null;
     const hit = Animotion.trajectoryEditor?.hitTarget?.(event);
     return hit ? { kind: "motion-trajectory-point", editorKey: "trajectoryEditor", label: hit.label || "motion trajectory", hit, payload: hit } : null;
   }

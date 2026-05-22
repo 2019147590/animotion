@@ -51,6 +51,7 @@
     "motion-planner",
     "motion-primary-selection",
     "motion-planner-commands",
+    "action-frame-editor",
     "motion-anchor-picker",
     "motion-trajectory-tracks",
     "preview-hit-test",
