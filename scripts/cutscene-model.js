@@ -110,9 +110,34 @@
     const primary = parts.find((part) => part.id === primaryPartId) || parts[0];
     const body = parts.find((part) => part.type === "spine") || parts.find((part) => part.type === "body");
     if (!primary || !body) return { ...DEFAULT_BRIDGE.effectDirection };
-    const side = centerX(primary) >= centerX(body) ? 1 : -1;
+    const side = faceDirection(parts, body) || (centerX(primary) >= centerX(body) ? 1 : -1);
     const upward = primary.type === "leg" || primary.type === "arm" ? -0.25 : -0.08;
     return normalizeDirection({ x: side, y: upward });
+  }
+
+  function faceDirection(parts = [], body) {
+    const face = faceBounds(parts);
+    if (!face || !body) return 0;
+    const delta = face.x + face.w * 0.5 - centerX(body);
+    const threshold = Math.max(4, Number(body.rect?.w || 0) * 0.15);
+    return Math.abs(delta) > threshold ? Math.sign(delta) : 0;
+  }
+
+  function faceBounds(parts = []) {
+    const faces = parts.filter((part) => likelyFacePart(part) && part.rect);
+    if (!faces.length) return null;
+    const minX = Math.min(...faces.map((part) => Number(part.rect.x) || 0));
+    const minY = Math.min(...faces.map((part) => Number(part.rect.y) || 0));
+    const maxX = Math.max(...faces.map((part) => Number(part.rect.x || 0) + Number(part.rect.w || 0)));
+    const maxY = Math.max(...faces.map((part) => Number(part.rect.y || 0) + Number(part.rect.h || 0)));
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+  }
+
+  function likelyFacePart(part = {}) {
+    const text = `${part.id || ""} ${part.name || ""} ${part.type || ""} ${part.humanRole || ""}`;
+    return /\b(head|face|hair_front|front_hair|eye|eyes|mouth|nose|facial)\b|얼굴|머리|앞머리|눈|입|코/i.test(text)
+      || ["head", "face", "eye", "mouth", "nose"].includes(part.type)
+      || ["head", "face", "eye", "mouth", "nose"].includes(part.humanRole);
   }
 
   function normalizeDirection(direction = DEFAULT_BRIDGE.effectDirection) {

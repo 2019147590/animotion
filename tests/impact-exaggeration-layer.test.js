@@ -167,6 +167,20 @@ test("toggling enabled preserves save load normalization", () => {
   assert.equal(restored.jointAction.impactExaggeration.enabled, false);
 });
 
+test("impact exaggeration summary stays concise for the motion UI", () => {
+  const Animotion = loadAnimotion();
+  const text = Animotion.impactExaggerationLayer.summaryText({
+    enabled: true,
+    frame: 24,
+    holdFrames: 6,
+    strength: 1.8,
+    targetPartIds: ["right-hand"],
+  }, parts());
+  assert.equal(text, "타격 과장 켜짐 · right-hand");
+  assert.equal(text.includes("hold"), false);
+  assert.equal(text.includes("strength"), false);
+});
+
 test("app shell exposes impact exaggeration status in the motion UI", () => {
   const html = fs.readFileSync("index.html", "utf8");
   const config = fs.readFileSync("scripts/config.js", "utf8");

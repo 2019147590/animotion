@@ -69,7 +69,7 @@
   function setAnchorAndRegenerate(anchorKey, point) {
     const state = Animotion.state;
     const bridge = Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge);
-    const primaryId = bridge.primaryPartId || state.selectedPartId;
+    const primaryId = Animotion.motionPrimarySelection?.runtimePrimaryId?.(state.parts, bridge, state.selectedPartId) || bridge.primaryPartId || state.selectedPartId;
     const anchors = updateAnchorPoint(bridge.jointAction?.anchors, anchorKey, point);
     const primary = anchors.find((anchor) => anchor.key === bridge.jointAction?.focusKey && anchor.role === "primary");
     const plan = { ...currentPlan(), anchors, target: primary?.point || currentPlan().target };

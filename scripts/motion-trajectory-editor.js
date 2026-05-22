@@ -12,9 +12,9 @@
   }
   function hitTarget(event) {
     const anchorHit = hitAnchor(event);
-    if (anchorHit) return { type: "anchor", label: "궤적 조정점", hit: anchorHit };
+    if (anchorHit) return { type: "anchor", label: anchorSelection(anchorHit.anchor).label, hit: anchorHit };
     const hit = hitBeat(event);
-    return hit ? { type: "beat", label: "이동 경로점", hit } : null;
+    return hit ? { type: "beat", label: beatSelection(hit.beat, hit.focusKey).label, hit } : null;
   }
   function beginDragFromTarget(event, target) {
     const hit = target?.payload || target?.hit || target;
@@ -25,7 +25,7 @@
   function beginBeatDrag(event, hit) {
     freezePlayback();
     Animotion.motionCommands.setMotionPlan({ selectedBeatId: hit.beat.id });
-    Animotion.state.selectedEditPoint = { kind: "trajectory", role: "이동 경로점", label: hit.beat.id };
+    Animotion.state.selectedEditPoint = beatSelection(hit.beat, hit.focusKey);
     Animotion.state.trajectoryDrag = { beatIndex: hit.index, focusKey: hit.focusKey };
     Animotion.timelineControls?.setCurrentFrame?.(hit.beat.at);
     Animotion.dom.previewCanvas.setPointerCapture(event.pointerId);
@@ -68,12 +68,13 @@
     if (cutscene?.active) for (const track of tracks) if (track.samples.length >= 2) drawTrajectory(ctx, view, track.samples.map((sample) => sample.point), cutscene.values.n, track.key);
     drawBeatHandles(ctx, view, action, tracks);
     drawActionAnchors(ctx, view, action);
+    Animotion.motionPathExplainer?.drawOverlay?.(ctx, view, cutscene);
     drawTarget(ctx, view);
   }
   function beginAnchorDrag(event, hit) {
     freezePlayback();
     Animotion.motionCommands.setMotionPlan({ selectedBeatId: null });
-    Animotion.state.selectedEditPoint = { kind: "trajectory", role: "궤적 조정점", label: `${hit.anchor.key} · ${hit.anchor.role}` };
+    Animotion.state.selectedEditPoint = anchorSelection(hit.anchor);
     Animotion.state.trajectoryDrag = { anchorKey: hit.anchor.key };
     Animotion.dom.previewCanvas.setPointerCapture(event.pointerId);
     Animotion.previewPointerArbitration?.setActiveDragOwner?.("trajectoryEditor", event, { kind: "trajectory-anchor", label: hit.anchor.key });
@@ -173,7 +174,7 @@
   function regenerateActionFromAnchors() {
     const state = Animotion.state;
     const bridge = Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge);
-    const primaryId = bridge.primaryPartId || state.selectedPartId;
+    const primaryId = runtimePrimaryId(bridge);
     const plan = { ...currentPlan(), anchors: currentAction()?.anchors || [] };
     const primary = plan.anchors.find((anchor) => anchor.key === bridge.jointAction?.focusKey && anchor.role === "primary");
     if (primary?.point) plan.target = { ...primary.point };
@@ -183,7 +184,7 @@
   function regenerateActionTracks() {
     const state = Animotion.state;
     const bridge = Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge);
-    const primaryId = bridge.primaryPartId || state.selectedPartId;
+    const primaryId = runtimePrimaryId(bridge);
     const tracks = Animotion.motionPlanner.tracksForJointAction(state.parts, primaryId, bridge);
     Animotion.motionCommands.applyGeneratedTracks(tracks);
     for (const track of tracks) Animotion.motionCommands.syncPartPoseToFrame(track.partId, state.currentFrame);
@@ -193,8 +194,24 @@
     return Animotion.state?.cutsceneBridge?.jointAction || null;
   }
 
+  function beatSelection(beat, focusKey) {
+    const info = Animotion.previewPointInfo?.trajectoryBeatInfo?.(beat, focusKey, currentAction()) || {};
+    return { kind: "trajectory", role: info.role || "이동 경로점", label: info.label || beat?.id || "", detail: info.detail || "", participatesInTrajectory: true, trajectoryRole: info.trajectoryRole || "beat" };
+  }
+
+  function anchorSelection(anchor) {
+    const info = Animotion.previewPointInfo?.anchorInfo?.(anchor) || {};
+    return { kind: "trajectory", role: info.role || "궤적 조정점", label: info.label || `${anchor?.key || ""} · ${anchor?.role || ""}`, detail: info.detail || "", participatesInTrajectory: true, trajectoryRole: info.trajectoryRole || anchor?.role || "anchor" };
+  }
+
   function currentPlan() {
     return Animotion.motionCommands?.currentMotionPlan?.() || Animotion.motionPlanner.normalizePlan(Animotion.state.motionPlan);
+  }
+
+  function runtimePrimaryId(bridge) {
+    return Animotion.motionPrimarySelection?.runtimePrimaryId?.(Animotion.state.parts, bridge, Animotion.state.selectedPartId)
+      || bridge.primaryPartId
+      || Animotion.state.selectedPartId;
   }
 
   function trajectorySamples(action, focusKey) { return Animotion.motionTrajectoryTracks?.trajectorySamples?.(action, focusKey) || (action?.beats || []).map((beat) => beat.pose?.[focusKey]).filter(Boolean).map((point, index) => ({ id: `sample-${index}`, kind: "sample", editable: false, point: pointFrom(point) })); }

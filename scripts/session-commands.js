@@ -45,6 +45,7 @@
     setCorrespondences(payload.correspondences);
     Animotion.motionCommands.setMotionPlan(payload.motionPlan || state.motionPlan);
     setMergedBridge(payload.cutsceneBridge, currentBridge);
+    restoreMotionTemplate();
     clearHistory();
   }
 

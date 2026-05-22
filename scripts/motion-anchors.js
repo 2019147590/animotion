@@ -127,6 +127,39 @@
     return isRearPunchArm(plan, parts, primary, base, active, direction, target) ? "rear-cross" : "jab";
   }
 
+  function classificationDebug(plan, parts, primary, base, active, direction, target, options = {}) {
+    const torso = torsoPoint(parts, base);
+    const selected = pointFromArray(base[active.end] || endPoint(primary));
+    const shoulder = shoulderPoint(primary, base, active);
+    const opposite = oppositeHandPoint(base, active.end);
+    const targetPoint = normalizePoint(target) || { x: selected.x + Number(direction?.x || 0), y: selected.y + Number(direction?.y || 0) };
+    const targetSide = Math.sign(targetPoint.x - torso.x) || Math.sign(Number(direction?.x || 0)) || 1;
+    const selectedSide = Math.sign(selected.x - torso.x);
+    const shoulderSide = Math.sign(shoulder.x - torso.x);
+    const namedRear = namedRearState(primary);
+    const style = punchStyleFor(plan, parts, primary, base, active, direction, target);
+    return {
+      selectedPartId: options.selectedPartId || primary?.id || null,
+      resolvedPrimaryPartId: primary?.id || null,
+      endpointSource: endpointSource(primary),
+      torsoCenter: roundedPointObject(torso),
+      headFaceBounds: coveringBounds(parts),
+      handTipPositions: { left: pointObject(base.lHand), right: pointObject(base.rHand) },
+      facingDirection: roundedPointObject(direction),
+      selectedHandTipPosition: roundedPointObject(selected),
+      shoulderPosition: roundedPointObject(shoulder),
+      oppositeHandTipPosition: roundedPointObject(opposite),
+      targetPoint: roundedPointObject(targetPoint),
+      selectedSide,
+      shoulderSide,
+      targetSide,
+      namedRearOverride: namedRear,
+      result: style,
+      classificationBasis: classificationBasis(namedRear, shoulderSide, opposite, shoulder, targetSide, selectedSide),
+      explicitActionOverride: Boolean(options.explicitActionOverride ?? plan?.targetDebug?.punchStyle),
+    };
+  }
+
   function isRearPunchArm(plan = {}, parts = [], primary = {}, base = {}, active = {}, direction = {}, target = null) {
     if (plan.template !== "punch") return false;
     const namedRear = namedRearState(primary);
@@ -144,11 +177,22 @@
     if (roleKind(primary) !== "arm") return false;
     const torso = torsoPoint(parts, base);
     const selected = pointFromArray(base[active.end] || endPoint(primary));
+    const shoulder = shoulderPoint(primary, base, active);
     const targetSide = Math.sign((target?.x ?? selected.x + Number(direction?.x || 0)) - torso.x) || Math.sign(Number(direction?.x || 0)) || 1;
-    const selectedSide = Math.sign(selected.x - torso.x);
-    if (selectedSide) return selectedSide !== targetSide;
+    const shoulderSide = Math.sign(shoulder.x - torso.x);
+    if (shoulderSide) return shoulderSide !== targetSide;
     const opposite = oppositeHandPoint(base, active.end);
-    return opposite ? Math.sign(selected.x - opposite.x) === -targetSide : false;
+    if (opposite) return Math.sign(shoulder.x - opposite.x) === -targetSide;
+    const selectedSide = Math.sign(selected.x - torso.x);
+    return selectedSide ? selectedSide !== targetSide : false;
+  }
+
+  function classificationBasis(namedRear, shoulderSide, opposite, shoulder, targetSide, selectedSide) {
+    if (namedRear !== null) return "name-hint";
+    if (shoulderSide) return "shoulder-side";
+    if (opposite && Math.sign(shoulder.x - opposite.x) === -targetSide) return "opposite-hand";
+    if (selectedSide) return "handTip-fallback";
+    return "undetermined";
   }
 
   function torsoPoint(parts, base) {
@@ -161,6 +205,10 @@
   function oppositeHandPoint(base, key) {
     const oppositeKey = key === "lHand" ? "rHand" : key === "rHand" ? "lHand" : null;
     return oppositeKey && base[oppositeKey] ? pointFromArray(base[oppositeKey]) : null;
+  }
+
+  function shoulderPoint(primary, base, active) {
+    return pointFromArray(base[active.root]) || absolutePoint(primary, primary?.pivot) || centerPoint(primary);
   }
 
   function partText(part = {}) {
@@ -239,6 +287,43 @@
     return { x: Number(rect.x || 0) + Number(joint.x || 0), y: Number(rect.y || 0) + Number(joint.y || 0) };
   }
 
+  function absolutePoint(part = {}, local = null) {
+    return local ? { x: Number(part.rect?.x || 0) + Number(local.x || 0), y: Number(part.rect?.y || 0) + Number(local.y || 0) } : null;
+  }
+
+  function endpointSource(part = {}) {
+    if (part.type === "hand" || part.humanRole === "hand") return "terminal hand";
+    if (part.handTip) return "handTip";
+    return part.joint ? "joint" : "part center";
+  }
+
+  function coveringBounds(parts = []) {
+    const covering = parts.filter((part) => isLikelyFacePart(part)).map((part) => rectBounds(part.rect)).filter((rect) => rect.w || rect.h);
+    if (!covering.length) return null;
+    const minX = Math.min(...covering.map((rect) => rect.x)), minY = Math.min(...covering.map((rect) => rect.y));
+    const maxX = Math.max(...covering.map((rect) => rect.x + rect.w)), maxY = Math.max(...covering.map((rect) => rect.y + rect.h));
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+  }
+
+  function isLikelyFacePart(part = {}) {
+    const text = `${part.id || ""} ${part.name || ""} ${part.type || ""} ${part.humanRole || ""}`;
+    return /\b(head|face|hair_front|front_hair|eye|eyes|mouth|nose|facial)\b|얼굴|머리|앞머리|눈|입|코/i.test(text)
+      || ["head", "face", "eye", "mouth", "nose"].includes(part.type)
+      || ["head", "face", "eye", "mouth", "nose"].includes(part.humanRole);
+  }
+
+  function rectBounds(rect = {}) {
+    return { x: Number(rect.x) || 0, y: Number(rect.y) || 0, w: Number(rect.w) || 0, h: Number(rect.h) || 0 };
+  }
+
+  function pointObject(point) {
+    return point ? { x: Math.round(Number(point.x ?? point[0]) || 0), y: Math.round(Number(point.y ?? point[1]) || 0) } : null;
+  }
+
+  function roundedPointObject(point = {}) {
+    return point ? { x: Math.round(Number(point.x) || 0), y: Math.round(Number(point.y) || 0) } : null;
+  }
+
   function add(point, delta) {
     const base = pointFromArray(point);
     return { x: Math.round(base.x + delta.x), y: Math.round(base.y + delta.y) };
@@ -252,7 +337,7 @@
     return Math.hypot(a.x - b.x, a.y - b.y);
   }
 
-  Animotion.motionAnchors = { normalizeAnchors, anchorsFromPlan, anchorPoint, punchStyleFor };
+  Animotion.motionAnchors = { normalizeAnchors, anchorsFromPlan, anchorPoint, punchStyleFor, classificationDebug };
 
   if (typeof module !== "undefined") module.exports = Animotion.motionAnchors;
 }

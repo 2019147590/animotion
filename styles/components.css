@@ -135,6 +135,51 @@
   padding: 10px;
 }
 
+.motion-path-explainer {
+  display: grid;
+  gap: 8px;
+  border: 2px solid var(--line);
+  border-left-width: 8px;
+  border-radius: 7px;
+  border-left-color: var(--accent-2);
+  background: #fffdf5;
+  padding: 10px;
+}
+
+.motion-path-explainer.hidden {
+  display: none;
+}
+
+.motion-path-title {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.motion-path-grid {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 5px 8px;
+  font-size: 12px;
+}
+
+.motion-path-grid span {
+  color: var(--muted);
+}
+
+.motion-path-grid strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 800;
+}
+
+.motion-path-note {
+  border-top: 1px solid rgba(39, 34, 27, 0.22);
+  padding-top: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .correspondence-tools {
   display: grid;
   gap: 10px;

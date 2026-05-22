@@ -154,6 +154,32 @@ test("geometry fallback treats unnamed rear arm as rear-hand punch on regenerati
   assert.equal(Math.abs(bodyPoseAt(rear, "body", 24).x) > Math.abs(bodyPoseAt(front, "body", 24).x), true);
 });
 
+test("rear-cross auto target is pushed beyond face bounds instead of landing near the chin", () => {
+  const Animotion = loadAnimotion();
+  const bridge = Animotion.cutsceneModel.normalizeBridge({ durationFrames: 36, impactFrame: 24, effectDirection: { x: 1, y: 0 } });
+  const parts = videoLikeRearCrossParts();
+  const plan = Animotion.motionPlanner.createPlan(parts, "arm_01", bridge, { template: "punch" });
+  const target = plan.jointAction.targetDebug.convertedTarget;
+  const head = parts.find((part) => part.id === "head_01").rect;
+
+  assert.equal(plan.jointAction.targetDebug.punchStyle, "rear-cross");
+  assert.equal(target.x > head.x + head.w + 20, true);
+  assert.equal(pointInsideRect(target, head), false);
+});
+
+test("front jab auto target keeps the existing hand-tip offset behavior", () => {
+  const Animotion = loadAnimotion();
+  const bridge = Animotion.cutsceneModel.normalizeBridge({ durationFrames: 36, impactFrame: 24, effectDirection: { x: 1, y: 0 } });
+  const parts = videoLikeRearCrossParts();
+  const base = Animotion.jointCoordinates.inferJointPose(parts);
+  const plan = Animotion.motionPlanner.createPlan(parts, "arm_02", bridge, { template: "punch" });
+  const target = plan.jointAction.targetDebug.convertedTarget;
+
+  assert.equal(plan.jointAction.targetDebug.punchStyle, "jab");
+  assert.equal(Math.round(target.x), Math.round(base.rHand[0] + 120));
+  assert.equal(Math.round(target.y), Math.round(base.rHand[1]));
+});
+
 test("kick has chamber extend impact and recover transforms with body follow", () => {
   const Animotion = loadAnimotion();
   const bridge = Animotion.cutsceneModel.normalizeBridge({ durationFrames: 36, impactFrame: 24 });
@@ -231,6 +257,15 @@ function numberedBoxingParts() {
   ];
 }
 
+function videoLikeRearCrossParts() {
+  return [
+    { id: "body", type: "body", humanRole: "torso", rect: { x: 455, y: 255, w: 80, h: 260 }, pivot: { x: 40, y: 60 }, joint: { x: 40, y: 205 } },
+    { id: "head_01", name: "head_01", type: "head", humanRole: "head", rect: { x: 500, y: 145, w: 130, h: 150 }, pivot: { x: 65, y: 75 }, joint: { x: 65, y: 125 } },
+    { id: "arm_01", name: "arm_01", type: "arm", humanRole: "forearm", rect: { x: 360, y: 265, w: 92, h: 126 }, pivot: { x: 78, y: 18 }, joint: { x: 48, y: 54 }, handTip: { x: 70, y: 42 } },
+    { id: "arm_02", name: "arm_02", type: "arm", humanRole: "forearm", rect: { x: 610, y: 270, w: 92, h: 126 }, pivot: { x: 14, y: 18 }, joint: { x: 48, y: 54 }, handTip: { x: 82, y: 42 } },
+  ];
+}
+
 function ids(timeline) {
   return JSON.parse(JSON.stringify(timeline.beats.map((beat) => beat.id)));
 }
@@ -245,4 +280,8 @@ function bodyPoseAt(plan, partId, frame) {
 
 function distance(a, b) {
   return Math.hypot(Number(b[0]) - Number(a[0]), Number(b[1]) - Number(a[1]));
+}
+
+function pointInsideRect(point, rect) {
+  return point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h;
 }

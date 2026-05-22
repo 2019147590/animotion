@@ -22,9 +22,11 @@
     blockedStatus = null;
     const previous = Animotion.cutsceneModel.normalizeBridge(Animotion.state.cutsceneBridge);
     const generationPlan = planForGeneration(plan, template, selected, primary, previous);
-    const bridge = Animotion.cutsceneControls.preservePanelTransform(
+    const bridge = bridgeForGeneration(
       Animotion.cutsceneModel.createBridge(Animotion.state.parts, primary.id),
-      previous
+      previous,
+      template,
+      primary
     );
     const result = Animotion.motionPlanner.createPlan(Animotion.state.parts, primary.id, bridge, generationPlan);
     Animotion.motionCommands.applyMotionPlanResult(bridge, generationPlan, result);
@@ -59,11 +61,28 @@
   }
 
   function planForGeneration(plan, template, selected, primary, previousBridge) {
+    const scoped = planForGenerationBase(plan, template, selected, primary, previousBridge);
+    return isCanonicalAction(template) ? { ...scoped, selectedPartId: selected?.id || primary?.id || null } : scoped;
+  }
+
+  function planForGenerationBase(plan, template, selected, primary, previousBridge) {
     if (!isCanonicalAction(template)) return plan;
     const previousAction = previousBridge?.jointAction;
     if (!previousAction) return plan;
     if (sameActionContext(previousBridge, previousAction, template, selected?.id, primary?.id)) return plan;
     return invalidatedDraftPlan(plan);
+  }
+
+  function bridgeForGeneration(nextBridge, previousBridge, template, primary) {
+    const preserved = Animotion.cutsceneControls.preservePanelTransform(nextBridge, previousBridge);
+    if (!shouldPreserveFacingDirection(previousBridge, template, primary)) return preserved;
+    return { ...preserved, effectDirection: previousBridge.effectDirection };
+  }
+
+  function shouldPreserveFacingDirection(previousBridge, template, primary) {
+    if (template !== "punch" || actionTemplate(previousBridge?.jointAction) !== "punch") return false;
+    const previousId = previousBridge?.primaryPartId || previousBridge?.jointAction?.targetDebug?.primaryPartId;
+    return !samePartReference(previousId, primary?.id, primary?.id);
   }
 
   function sameActionContext(previousBridge, previousAction, template, selectedPartId, primaryPartId) {
@@ -72,6 +91,9 @@
   }
 
   function samePartReference(previousPartId, selectedPartId, primaryPartId) {
+    if (Animotion.motionPrimarySelection?.samePartReference) {
+      return Animotion.motionPrimarySelection.samePartReference(previousPartId, selectedPartId, primaryPartId, Animotion.state?.parts || []);
+    }
     if (!previousPartId) return false;
     if (previousPartId === primaryPartId || previousPartId === selectedPartId) return true;
     const parts = Animotion.state?.parts || [];

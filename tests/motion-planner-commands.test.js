@@ -33,7 +33,9 @@ function loadAnimotion() {
     "scripts/cutscene-model.js",
     "scripts/motion-anchors.js",
     "scripts/timeline.js",
+    "scripts/arm-extension.js",
     "scripts/motion-planner.js",
+    "scripts/motion-primary-selection.js",
     "scripts/motion-planner-commands.js",
   ]) runScript(context, path);
   const Animotion = context.window.Animotion;
@@ -134,6 +136,50 @@ function legacyRearHandParts(oldKeyframes) {
   ];
 }
 
+function armOnlyPunchParts() {
+  return [
+    part("body", "body", { x: 44, y: 20, w: 20, h: 54 }),
+    part("head", "head", { x: 42, y: 4, w: 24, h: 20 }),
+    { ...part("arm_01", "arm", { x: 18, y: 28, w: 20, h: 36 }), humanRole: "forearm", pivot: { x: 18, y: 7 }, joint: { x: 11, y: 23 }, handTip: { x: 4, y: 34 } },
+    { ...part("arm_02", "arm", { x: 66, y: 28, w: 20, h: 36 }), humanRole: "forearm", pivot: { x: 2, y: 7 }, joint: { x: 13, y: 23 }, handTip: { x: 18, y: 34 } },
+  ];
+}
+
+function faceLeftArm02RearParts() {
+  return [
+    part("body", "body", { x: 90, y: 28, w: 20, h: 64 }),
+    part("head", "head", { x: 52, y: 8, w: 28, h: 30 }),
+    { ...part("arm_01", "arm", { x: 42, y: 38, w: 28, h: 44 }), humanRole: "forearm", pivot: { x: 24, y: 8 }, joint: { x: 12, y: 24 }, handTip: { x: 4, y: 34 } },
+    { ...part("arm_02", "arm", { x: 118, y: 38, w: 28, h: 44 }), humanRole: "forearm", pivot: { x: 4, y: 8 }, joint: { x: 16, y: 24 }, handTip: { x: 24, y: 34 } },
+  ];
+}
+
+function foldedGuardArm02RearParts() {
+  return [
+    part("body", "body", { x: 90, y: 30, w: 22, h: 70 }),
+    part("head", "head", { x: 52, y: 10, w: 32, h: 34 }),
+    part("face_layer", "prop", { x: 56, y: 18, w: 24, h: 22 }),
+    { ...part("arm_01", "arm", { x: 34, y: 42, w: 42, h: 50 }), humanRole: "forearm", pivot: { x: 34, y: 8 }, joint: { x: 20, y: 28 }, handTip: { x: 5, y: 36 } },
+    { ...part("arm_02", "arm", { x: 86, y: 40, w: 60, h: 54 }), humanRole: "forearm", pivot: { x: 45, y: 10 }, joint: { x: 18, y: 28 }, handTip: { x: -8, y: 33 } },
+  ];
+}
+
+function loadedFrontJabBridge(Animotion) {
+  return Animotion.cutsceneModel.normalizeBridge({
+    primaryPartId: "arm_02",
+    durationFrames: 36,
+    impactFrame: 24,
+    effectDirection: { x: 1, y: -0.25 },
+    jointAction: {
+      source: "motion-planner-punch-anchors-v1",
+      focusKey: "rHand",
+      actionTimeline: { template: "punch" },
+      targetDebug: { primaryPartId: "arm_02", punchStyle: "jab" },
+      beats: [{ id: "impact", at: 24, pose: { rHand: [160, 40] } }],
+    },
+  });
+}
+
 function beatMap(action) {
   return Object.fromEntries(action.beats.map((beat) => [beat.id, beat]));
 }
@@ -205,6 +251,78 @@ test("auto cutscene button invalidates stale target when selected primary part c
   assert.equal(Animotion.state.cutsceneBridge.primaryPartId, "leg-left");
   assert.equal(Animotion.state.cutsceneBridge.jointAction.actionTimeline.template, "kick");
   assert.notDeepEqual(Animotion.state.motionPlan.target, { x: 160, y: 70 });
+});
+
+test("front jab load then rear punch generation keeps facing direction and clears stale jab target", () => {
+  const Animotion = loadAnimotion();
+  Animotion.state.parts = armOnlyPunchParts();
+  Animotion.state.project.parts = Animotion.state.parts;
+  Animotion.state.selectedPartId = "arm_01";
+  Animotion.state.motionPlan = { template: "punch", target: { x: 5, y: 40 }, anchors: [{ key: "rHand", role: "primary", point: { x: 160, y: 40 } }] };
+  Animotion.state.cutsceneBridge = loadedFrontJabBridge(Animotion);
+  const base = Animotion.jointCoordinates.inferJointPose(Animotion.state.parts);
+
+  clickAuto(Animotion);
+
+  const bridge = Animotion.state.cutsceneBridge;
+  const impact = beatMap(bridge.jointAction).impact;
+  assert.equal(bridge.primaryPartId, "arm_01");
+  assert.equal(bridge.effectDirection.x > 0, true);
+  assert.equal(bridge.jointAction.targetDebug.punchStyle, "rear-cross");
+  assert.equal(Animotion.state.motionPlan.target.x > base.lHand[0], true);
+  assert.equal(Animotion.state.motionPlan.target.x, impact.pose.lHand[0]);
+  assert.equal(impact.pose.lHand[0] > base.lHand[0], true);
+  assert.equal(bridge.jointAction.anchors.some((anchor) => anchor.key === "rHand"), false);
+});
+
+test("arm_02 handTip can classify as rear-cross when face geometry indicates it is the rear hand", () => {
+  const Animotion = loadAnimotion();
+  Animotion.state.parts = faceLeftArm02RearParts();
+  Animotion.state.project.parts = Animotion.state.parts;
+  Animotion.state.selectedPartId = "arm_02";
+  Animotion.state.motionPlan = { template: "punch", targetMode: false };
+  Animotion.state.cutsceneBridge = null;
+
+  clickAuto(Animotion);
+
+  const bridge = Animotion.state.cutsceneBridge;
+  const role = bridge.jointAction.targetDebug.roleDecision;
+  assert.equal(bridge.primaryPartId, "arm_02");
+  assert.equal(bridge.effectDirection.x < 0, true);
+  assert.equal(bridge.jointAction.targetDebug.punchStyle, "rear-cross");
+  assert.equal(role.selectedPartId, "arm_02");
+  assert.equal(role.resolvedPrimaryPartId, "arm_02");
+  assert.equal(role.endpointSource, "handTip");
+  assert.equal(role.facingDirection.x < 0, true);
+  assert.equal(role.handTipPositions.right.x > role.torsoCenter.x, true);
+  assert.equal(role.result, "rear-cross");
+  assert.equal(role.explicitActionOverride, false);
+});
+
+test("folded rear guard handTip near face still classifies arm_02 as rear-cross and targets forward", () => {
+  const Animotion = loadAnimotion();
+  Animotion.state.parts = foldedGuardArm02RearParts();
+  Animotion.state.project.parts = Animotion.state.parts;
+  Animotion.state.selectedPartId = "arm_02";
+  Animotion.state.motionPlan = { template: "punch", targetMode: false };
+  Animotion.state.cutsceneBridge = null;
+  const base = Animotion.jointCoordinates.inferJointPose(Animotion.state.parts);
+
+  clickAuto(Animotion);
+
+  const bridge = Animotion.state.cutsceneBridge;
+  const role = bridge.jointAction.targetDebug.roleDecision;
+  const target = bridge.jointAction.targetDebug.convertedTarget;
+  const head = Animotion.state.parts.find((part) => part.id === "head").rect;
+  assert.equal(bridge.primaryPartId, "arm_02");
+  assert.equal(bridge.jointAction.targetDebug.punchStyle, "rear-cross");
+  assert.equal(role.endpointSource, "handTip");
+  assert.equal(role.selectedHandTipPosition.x < role.torsoCenter.x, true);
+  assert.equal(role.shoulderPosition.x > role.torsoCenter.x, true);
+  assert.equal(role.classificationBasis, "shoulder-side");
+  assert.equal(target.x < head.x - 20, true);
+  assert.equal(target.y <= base.rHand[1], true);
+  assert.equal(bridge.jointAction.beats.find((beat) => beat.id === "impact").pose.rHand[0], target.x);
 });
 
 test("auto cutscene button preserves adjusted trajectory for the same action and part", () => {

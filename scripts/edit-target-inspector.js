@@ -79,9 +79,10 @@
   }
 
   function pointTarget(point) {
-    if (point.kind === "trajectory") return motionPathTarget(point.role, point.label);
+    if (point.kind === "trajectory") return motionPathTarget(point.role, point.detail || point.label);
     if (point.kind === "hiddenGuide") return hiddenGuideTarget(point.role, point.label);
-    return target("pose", point.role, point.label || "리깅 포인트");
+    if (point.participatesInTrajectory) return target("motion-path", point.role, point.detail || point.label || "궤적 참여 리깅 포인트");
+    return target("pose", point.role, point.detail || point.label || "리깅 포인트");
   }
 
   function motionPathDragTarget(drag) {

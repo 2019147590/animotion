@@ -31,6 +31,11 @@ function loadAnimotion() {
     "scripts/motion-anchors.js",
     "scripts/action-timeline-model.js",
     "scripts/impact-exaggeration-layer.js",
+    "scripts/render-layer-utils.js",
+    "scripts/render-order-debug.js",
+    "scripts/cutscene-depth.js",
+    "scripts/timeline.js",
+    "scripts/arm-extension.js",
     "scripts/motion-planner.js",
     "scripts/cutscene-motion-status.js",
   ]) runScript(context, path);
@@ -61,9 +66,10 @@ test("punch cutscene status reports type beat impact body root and target reach"
   assert.equal(status.recoverFrame, 36);
   const text = Animotion.cutsceneMotionStatus.statusText(status);
   assert.equal(text.includes("punch"), true);
-  assert.equal(text.includes("windup 6"), true);
+  assert.equal(text.includes("impact 24"), true);
+  assert.equal(text.includes("windup 6"), false);
   assert.equal(text.includes("recoil 6"), false);
-  assert.equal(text.includes("recover 36"), true);
+  assert.equal(text.includes("recover 36"), false);
 });
 
 test("kick cutscene status reports chamber and extension timing", () => {
@@ -83,6 +89,141 @@ test("kick cutscene status reports chamber and extension timing", () => {
   assert.equal(status.recoverFrame, 36);
 });
 
+test("rear arm-only punch status reports extension and depth runtime debug", () => {
+  const Animotion = loadAnimotion();
+  const punchParts = rearArmOnlyParts();
+  const bridge = Animotion.cutsceneModel.normalizeBridge({ durationFrames: 36, impactFrame: 24, primaryPartId: "arm_01" });
+  const plan = Animotion.motionPlanner.createPlan(punchParts, "arm_01", bridge, { template: "punch", target: { x: 160, y: 30 } });
+  for (const track of plan.partTracks) punchParts.find((part) => part.id === track.partId).keyframes = track.keyframes;
+  const regenerated = { ...bridge, jointAction: plan.jointAction };
+  const status = Animotion.cutsceneMotionStatus.statusForBridge(regenerated, { parts: punchParts, currentFrame: 24, selectedPartId: "arm_01", motionTemplate: "cutscene" });
+  assert.equal(status.runtime.rearCrossArmOnlyPunch, true);
+  assert.equal(status.runtime.armExtensionActive, true);
+  assert.equal(status.runtime.handTipSource, "inferred");
+  assert.equal(status.runtime.oldWholeArmTranslationReplaced, true);
+  assert.equal(status.runtime.impactPoseMode, "arm-extension");
+  assert.equal(status.runtime.cutsceneDepthActive, true);
+  assert.equal(status.runtime.selectedAboveCoveringParts, true);
+  assert.equal(status.runtime.punchStyle, "rear-cross");
+  assert.equal(status.runtime.punchStyleSource, "explicit");
+  assert.equal(Animotion.cutsceneMotionStatus.statusText(status).includes("뒷손 arm-only"), true);
+  assert.equal(Animotion.cutsceneMotionStatus.debugText(status).includes("runtime rearCrossArmOnly=yes"), true);
+});
+
+test("legacy rear arm-only punch status reports inferred style and depth compatibility", () => {
+  const Animotion = loadAnimotion();
+  const punchParts = rearArmOnlyParts();
+  const bridge = {
+    primaryPartId: "arm_01",
+    impactFrame: 24,
+    durationFrames: 36,
+    jointAction: {
+      source: "motion-planner-punch-anchors-v1",
+      focusKey: "lHand",
+      actionTimeline: { template: "punch" },
+      beats: [{ id: "impact", at: 24, pose: { lHand: [160, 30] } }],
+    },
+  };
+  const status = Animotion.cutsceneMotionStatus.statusForBridge(bridge, { parts: punchParts, currentFrame: 24, selectedPartId: "arm_01", motionTemplate: "cutscene" });
+  assert.equal(status.runtime.rearCrossArmOnlyPunch, true);
+  assert.equal(status.runtime.punchStyleSource, "inferredLegacy");
+  assert.equal(status.runtime.legacyDepthCompat, true);
+  assert.equal(status.runtime.cutsceneDepthActive, true);
+  assert.equal(Animotion.cutsceneMotionStatus.statusText(status).includes("깊이 보정"), true);
+  assert.equal(Animotion.cutsceneMotionStatus.debugText(status).includes("styleSource=inferredLegacy"), true);
+});
+
+test("cutscene status reports target-generation failure separately from source-panel and draw-order failures", () => {
+  const Animotion = loadAnimotion();
+  const punchParts = videoLikeRearCrossParts();
+  const bridge = Animotion.cutsceneModel.normalizeBridge({
+    primaryPartId: "arm_01",
+    impactFrame: 24,
+    durationFrames: 36,
+    jointAction: {
+      source: "motion-planner-punch-anchors-v1",
+      focusKey: "lHand",
+      actionTimeline: { template: "punch" },
+      targetDebug: { punchStyle: "rear-cross", convertedTarget: { x: 550, y: 278 }, selectedPartCurrentPosition: { x: 430, y: 307 } },
+      beats: [{ id: "impact", at: 24, pose: { lHand: [550, 278] } }],
+    },
+  });
+
+  const status = Animotion.cutsceneMotionStatus.statusForBridge(bridge, { parts: punchParts, currentFrame: 24, selectedPartId: "arm_01", motionTemplate: "cutscene" });
+
+  assert.equal(status.runtime.target.rearHandTipStartPosition.x, 430);
+  assert.equal(status.runtime.target.generatedTarget.x, 550);
+  assert.deepEqual(JSON.parse(JSON.stringify(status.runtime.target.headFaceBounds)), { x: 500, y: 145, w: 130, h: 150 });
+  assert.equal(status.runtime.target.targetInsideHeadFaceBounds, true);
+  assert.equal(status.runtime.targetGenerationFailure, true);
+  assert.equal(status.runtime.sourcePanelOverlapFailure, false);
+  assert.equal(status.runtime.actualDrawOrderFailure, false);
+  assert.equal(Animotion.cutsceneMotionStatus.debugText(status).includes("targetFailure=yes"), true);
+});
+
+test("cutscene status separates segmented render and source erase replacement failures", () => {
+  const Animotion = loadAnimotion();
+  const punchParts = rearArmOnlyParts();
+  const bridge = {
+    primaryPartId: "arm_01",
+    impactFrame: 24,
+    durationFrames: 36,
+    jointAction: {
+      source: "motion-planner-punch-anchors-v1",
+      focusKey: "lHand",
+      actionTimeline: { template: "punch" },
+      targetDebug: { punchStyle: "rear-cross" },
+      beats: [{ id: "impact", at: 24, pose: { lHand: [160, 30] } }],
+    },
+  };
+  const previewDrawSequence = {
+    sequence: [
+      { index: 0, kind: "panel", pass: "source-panel", sourcePanelMode: "runtime-part-erased", erasedPartIds: ["arm_01"] },
+      { index: 1, kind: "part", partId: "arm_01", drawPath: "segmented-arm-failed", pass: "main-part", segmentedRenderFailure: true, segmentedRenderReason: "degenerate-segment" },
+    ],
+  };
+
+  const status = Animotion.cutsceneMotionStatus.statusForBridge(bridge, { parts: punchParts, currentFrame: 24, selectedPartId: "arm_01", motionTemplate: "cutscene", previewDrawSequence });
+
+  assert.equal(status.runtime.segmentedRenderFailure, true);
+  assert.equal(status.runtime.sourceEraseWithoutReplacement, true);
+  assert.equal(status.runtime.sourcePanelOverlapFailure, false);
+  assert.equal(Animotion.cutsceneMotionStatus.statusText(status).includes("분절 렌더 실패"), true);
+  assert.equal(Animotion.cutsceneMotionStatus.debugText(status).includes("sourceEraseWithoutReplacement=yes"), true);
+});
+
+test("generated rear-cross target evidence shows the fixed target outside head face bounds", () => {
+  const Animotion = loadAnimotion();
+  const punchParts = videoLikeRearCrossParts();
+  const bridge = Animotion.cutsceneModel.normalizeBridge({ primaryPartId: "arm_01", impactFrame: 24, durationFrames: 36, effectDirection: { x: 1, y: 0 } });
+  const plan = Animotion.motionPlanner.createPlan(punchParts, "arm_01", bridge, { template: "punch" });
+  const status = Animotion.cutsceneMotionStatus.statusForBridge({ ...bridge, jointAction: plan.jointAction }, { parts: punchParts, currentFrame: 24, selectedPartId: "arm_01", motionTemplate: "cutscene" });
+
+  assert.equal(status.runtime.punchStyle, "rear-cross");
+  assert.equal(status.runtime.target.generatedTarget.x > status.runtime.target.headFaceBounds.x + status.runtime.target.headFaceBounds.w, true);
+  assert.equal(status.runtime.target.targetInsideHeadFaceBounds, false);
+  assert.equal(status.runtime.target.targetNearHeadFaceBounds, false);
+  assert.equal(status.runtime.targetGenerationFailure, false);
+});
+
+function rearArmOnlyParts() {
+  return [
+    { id: "body", type: "body", humanRole: "torso", order: 1, rect: { x: 40, y: 20, w: 20, h: 50 }, pivot: { x: 10, y: 25 }, joint: { x: 10, y: 40 } },
+    { id: "arm_01", type: "arm", humanRole: "forearm", order: 2, rect: { x: 16, y: 28, w: 36, h: 36 }, pivot: { x: 18, y: 7 }, joint: { x: 24, y: 13 }, keyframes: [] },
+    { id: "arm_02", type: "arm", humanRole: "forearm", order: 3, rect: { x: 64, y: 28, w: 36, h: 36 }, pivot: { x: 18, y: 7 }, joint: { x: 12, y: 13 }, keyframes: [] },
+    { id: "head", type: "head", humanRole: "head", order: 5, rect: { x: 38, y: 4, w: 24, h: 20 }, pivot: { x: 12, y: 10 }, joint: { x: 12, y: 16 } },
+  ];
+}
+
+function videoLikeRearCrossParts() {
+  return [
+    { id: "body", type: "body", humanRole: "torso", order: 1, rect: { x: 455, y: 255, w: 80, h: 260 }, pivot: { x: 40, y: 60 }, joint: { x: 40, y: 205 } },
+    { id: "head_01", name: "head_01", type: "head", humanRole: "head", order: 6, rect: { x: 500, y: 145, w: 130, h: 150 }, pivot: { x: 65, y: 75 }, joint: { x: 65, y: 125 } },
+    { id: "arm_01", name: "arm_01", type: "arm", humanRole: "forearm", order: 5, rect: { x: 360, y: 265, w: 92, h: 126 }, pivot: { x: 78, y: 18 }, joint: { x: 48, y: 54 }, handTip: { x: 70, y: 42 }, keyframes: [] },
+    { id: "arm_02", name: "arm_02", type: "arm", humanRole: "forearm", order: 7, rect: { x: 610, y: 270, w: 92, h: 126 }, pivot: { x: 14, y: 18 }, joint: { x: 48, y: 54 }, handTip: { x: 82, y: 42 }, keyframes: [] },
+  ];
+}
+
 test("cutscene status is inactive for non punch kick actions", () => {
   const Animotion = loadAnimotion();
   const status = Animotion.cutsceneMotionStatus.statusForBridge({ jointAction: { beats: [{ id: "arrive", at: 12, pose: { chest: [1, 2] } }] } });
@@ -94,7 +235,7 @@ test("cutscene status is inactive for a new image session without a bridge", () 
   assert.equal(Animotion.cutsceneMotionStatus.statusForBridge(null).active, false);
   assert.equal(
     Animotion.cutsceneMotionStatus.statusText(Animotion.cutsceneMotionStatus.statusForBridge(null)),
-    "Punch/kick motion status: no active punch/kick draft"
+    "활성 punch/kick 없음"
   );
 });
 

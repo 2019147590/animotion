@@ -14,6 +14,7 @@ require("../scripts/motion-anchors.js");
 const motionPanelMapper = require("../scripts/motion-panel-mapper.js");
 const cutsceneModel = require("../scripts/cutscene-model.js");
 const motionPlanner = require("../scripts/motion-planner.js");
+require("../scripts/motion-primary-selection.js");
 const trajectoryTracks = require("../scripts/motion-trajectory-tracks.js");
 const trajectoryEditor = require("../scripts/motion-trajectory-editor.js");
 const anchorPicker = require("../scripts/motion-anchor-picker.js");
@@ -34,6 +35,50 @@ function sampleParts() {
     { id: "head", type: "head", rect: { x: 38, y: 4, w: 24, h: 20 }, pivot: { x: 12, y: 10 }, joint: { x: 12, y: 16 } },
     { id: "leg", type: "leg", rect: { x: 67, y: 60, w: 18, h: 45 }, pivot: { x: 2, y: 6 }, joint: { x: 16, y: 40 } },
   ];
+}
+
+function installRuntimePrimaryFixture() {
+  const parts = [
+    { id: "body", type: "body", rect: { x: 44, y: 20, w: 20, h: 54 }, pivot: { x: 10, y: 25 }, joint: { x: 10, y: 42 } },
+    { id: "arm_01", type: "arm", humanRole: "forearm", rect: { x: 18, y: 28, w: 20, h: 36 }, pivot: { x: 18, y: 7 }, joint: { x: 11, y: 23 }, handTip: { x: 4, y: 34 } },
+    { id: "arm_02", type: "arm", humanRole: "forearm", rect: { x: 66, y: 28, w: 20, h: 36 }, pivot: { x: 2, y: 7 }, joint: { x: 13, y: 23 }, handTip: { x: 18, y: 34 } },
+  ];
+  const state = {
+    image: { naturalWidth: 200, naturalHeight: 160 },
+    parts,
+    selectedPartId: "arm_01",
+    motionPlan: { template: "punch" },
+    cutsceneBridge: cutsceneModel.normalizeBridge({
+      primaryPartId: "arm_02",
+      impactFrame: 24,
+      durationFrames: 36,
+      jointAction: {
+        source: "motion-planner-punch-anchors-v1",
+        focusKey: "rHand",
+        actionTimeline: { template: "punch" },
+        targetDebug: { primaryPartId: "arm_02", punchStyle: "jab" },
+        anchors: [{ key: "rHand", role: "primary", point: { x: 160, y: 40 } }],
+        beats: [{ id: "impact", at: 24, pose: { rHand: [160, 40] } }],
+      },
+    }),
+    previewView: {},
+    previewSourceFrame: {},
+    previewSourceTransform: {},
+    trajectoryDrag: { beatIndex: 0, focusKey: "rHand" },
+  };
+  Object.assign(globalThis.Animotion, {
+    state,
+    dom: { previewCanvas: { getBoundingClientRect: () => ({ left: 0, top: 0 }) } },
+    previewTransform: { screenPointToImage: (point) => point },
+    motionCommands: {
+      currentMotionPlan: () => state.motionPlan,
+      applyGeneratedTracks: () => {},
+      syncPartPoseToFrame: () => {},
+      applyMotionPlanResult: () => {},
+    },
+    ui: { refreshUi() {} },
+  });
+  return state;
 }
 
 test("cutscene bridge defaults to part-only source motion with body assist enabled", () => {
@@ -144,6 +189,40 @@ test("anchor picker updates a selected anchor as a locked user point", () => {
   assert.deepEqual(updated.find((anchor) => anchor.key === "chest").point, { x: 84, y: 24 });
   assert.equal(updated.find((anchor) => anchor.key === "chest").locked, true);
   assert.deepEqual(updated.find((anchor) => anchor.key === "rFoot").point, { x: 90, y: 70 });
+});
+
+test("trajectory drag regeneration uses selected primary instead of loaded front jab primary", () => {
+  const state = installRuntimePrimaryFixture();
+  let capturedPrimary = null;
+  const previousTracks = globalThis.Animotion.motionPlanner.tracksForJointAction;
+  globalThis.Animotion.motionPlanner.tracksForJointAction = (parts, primaryId) => {
+    capturedPrimary = primaryId;
+    return [{ partId: primaryId, keyframes: [] }];
+  };
+  try {
+    assert.equal(trajectoryEditor.updateDrag({ clientX: 120, clientY: 42, preventDefault() {} }), true);
+  } finally {
+    globalThis.Animotion.motionPlanner.tracksForJointAction = previousTracks;
+  }
+  assert.equal(capturedPrimary, "arm_01");
+  assert.equal(state.cutsceneBridge.primaryPartId, "arm_02");
+});
+
+test("anchor picker regeneration uses selected primary instead of loaded front jab primary", () => {
+  const state = installRuntimePrimaryFixture();
+  let capturedPrimary = null;
+  const previousCreate = globalThis.Animotion.motionPlanner.createPlan;
+  globalThis.Animotion.motionPlanner.createPlan = (parts, primaryId) => {
+    capturedPrimary = primaryId;
+    return { jointAction: state.cutsceneBridge.jointAction, anchors: [], partTracks: [], target: { x: 1, y: 1 } };
+  };
+  try {
+    anchorPicker.setAnchorAndRegenerate("rHand", { x: 118, y: 42 });
+  } finally {
+    globalThis.Animotion.motionPlanner.createPlan = previousCreate;
+  }
+  assert.equal(capturedPrimary, "arm_01");
+  assert.equal(state.cutsceneBridge.primaryPartId, "arm_02");
 });
 
 test("motion target and anchors restore from source-image normalized points", () => {

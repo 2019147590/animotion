@@ -28,6 +28,7 @@
     Animotion.panelEditor?.refreshControls?.();
     Animotion.motionPlanner?.refreshControls?.();
     Animotion.motionAnchorPicker?.refreshControls?.();
+    Animotion.motionPathExplainer?.refreshControls?.();
     Animotion.motionDraftEditor?.refreshControls?.();
     Animotion.hiddenCompletionGuideEditor?.refreshControls?.();
     Animotion.hiddenCompletionPartPanel?.refreshControls?.();
@@ -62,25 +63,20 @@
         els.impactExaggerationEnabled.checked = false;
         els.impactExaggerationEnabled.disabled = true;
       }
-      els.impactExaggerationStatus.textContent = "타격 과장 정보 없음";
+      els.impactExaggerationStatus.textContent = "타격 과장 없음";
       return;
     }
     if (els.impactExaggerationEnabled) {
       els.impactExaggerationEnabled.checked = layer.enabled !== false;
       els.impactExaggerationEnabled.disabled = false;
     }
-    const stateText = layer.enabled === false ? "꺼짐" : "켜짐";
-    els.impactExaggerationStatus.textContent = `타격 과장 ${stateText}: frame ${layer.frame}, hold ${layer.holdFrames}, strength ${layer.strength}, targets ${targetNames(layer.targetPartIds)}`;
-  }
-
-  function targetNames(ids = []) {
-    if (!ids.length) return "none";
-    return ids.map((id) => state.parts.find((part) => part.id === id)?.name || id).join(", ");
+    els.impactExaggerationStatus.textContent = Animotion.impactExaggerationLayer?.summaryText?.(layer, state.parts)
+      || (layer.enabled === false ? "타격 과장 꺼짐" : "타격 과장 켜짐");
   }
 
   function renderCutsceneMotionStatus() {
     if (!els.cutsceneMotionStatus) return;
-    const status = Animotion.cutsceneMotionStatus?.statusForBridge?.(state.cutsceneBridge, { parts: state.parts, currentFrame: state.currentFrame });
+    const status = Animotion.cutsceneMotionStatus?.statusForBridge?.(state.cutsceneBridge, { parts: state.parts, currentFrame: state.currentFrame, selectedPartId: state.selectedPartId, motionTemplate: els.motionTemplate.value, previewDrawSequence: state.previewDrawSequenceDebug });
     els.cutsceneMotionStatus.textContent = Animotion.cutsceneMotionStatus?.statusText?.(status) || "Punch/kick motion status: unavailable";
   }
 

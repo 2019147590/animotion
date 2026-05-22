@@ -32,7 +32,7 @@
   function beginDragFromTarget(event, target) {
     const part = state.parts.find((candidate) => candidate.id === target.partId);
     if (!part) return false;
-    state.selectedEditPoint = editPointSelection(target.role, target.label);
+    state.selectedEditPoint = editPointSelection(part, target.role, target.label);
     const mode = dragMode(target.role);
     freezePlayback();
     if (mode === "pose") syncTimelinePosesToFrame();
@@ -178,7 +178,7 @@
     const point = part ? previewImagePoint(event) : null;
     const hit = point ? hitRigPoint(part, point) : null;
     const hadHover = Boolean(state.hoveredEditPoint);
-    state.hoveredEditPoint = hit ? editPointSelection(hit.role, hit.label) : null;
+    state.hoveredEditPoint = hit ? editPointSelection(part, hit.role, hit.label) : null;
     if (hit || hadHover) Animotion.ui.refreshUi();
   }
 
@@ -213,8 +213,16 @@
     return role === "joint" || role === "rotationPivot" || role === "anchor" || role === "handTip";
   }
 
-  function editPointSelection(role, label) {
-    return { kind: role, role: Animotion.rigConnection?.labelForRole?.(role) || label || "편집점", label: label || "" };
+  function editPointSelection(part, role, label) {
+    const info = Animotion.previewPointInfo?.rigPointInfo?.(part, role, { parts: state.parts, bridge: state.cutsceneBridge, selectedPartId: state.selectedPartId }) || {};
+    return {
+      kind: role,
+      role: info.role || Animotion.rigConnection?.labelForRole?.(role) || label || "편집점",
+      label: info.label || label || "",
+      detail: info.detail || "",
+      participatesInTrajectory: Boolean(info.participatesInTrajectory),
+      trajectoryRole: info.trajectoryRole || null,
+    };
   }
 
   function dragMode(role) {

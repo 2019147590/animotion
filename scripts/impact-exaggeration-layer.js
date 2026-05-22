@@ -45,6 +45,13 @@
     return { scaleX: scale.scaleX + stretchScale(stretch, "x") * normalized.strength, scaleY: scale.scaleY + stretchScale(stretch, "y") * normalized.strength };
   }
 
+  function summaryText(layer, parts = []) {
+    const normalized = normalizeImpactExaggerationLayer(layer);
+    if (!normalized) return "타격 과장 없음";
+    if (!normalized.enabled) return "타격 과장 꺼짐";
+    return `타격 과장 켜짐 · ${targetSummary(normalized.targetPartIds, parts)}`;
+  }
+
   function impactBeat(timeline = {}) {
     return (timeline.beats || []).find((beat) => beat.id === "impact") || null;
   }
@@ -110,6 +117,13 @@
     return (Array.isArray(ids) ? ids : []).map(stringOrNull).filter(Boolean);
   }
 
+  function targetSummary(ids = [], parts = []) {
+    if (!ids.length) return "대상 없음";
+    const names = ids.map((id) => parts.find((part) => part.id === id)?.name || id);
+    if (names.length <= 2) return names.join(", ");
+    return `${names.slice(0, 2).join(", ")} 외 ${names.length - 2}`;
+  }
+
   function clampInt(value, min, max, fallback) {
     return Math.round(clampNumber(value, min, max, fallback));
   }
@@ -123,6 +137,6 @@
     return value === undefined || value === null || value === "" ? null : String(value);
   }
 
-  Animotion.impactExaggerationLayer = { normalizeImpactExaggerationLayer, createDefaultImpactExaggerationForActionTimeline, transformHintForPart };
+  Animotion.impactExaggerationLayer = { normalizeImpactExaggerationLayer, createDefaultImpactExaggerationForActionTimeline, transformHintForPart, summaryText };
   if (typeof module !== "undefined") module.exports = Animotion.impactExaggerationLayer;
 }

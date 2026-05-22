@@ -12,6 +12,7 @@
     const impactBeat = beatById(beats, "impact");
     const currentBeat = currentBeatFor(beats, options.currentFrame || 1);
     const timelineBeats = Array.isArray(action.actionTimeline?.beats) ? action.actionTimeline.beats : [];
+    const runtime = runtimeDebug(safe, action, options);
     return {
       active: true,
       actionType,
@@ -28,29 +29,102 @@
       chamberFrame: frameFor(timelineBeats, "chamber"),
       extendFrame: frameFor(timelineBeats, "extend"),
       recoverFrame: frameFor(timelineBeats, "recover") || frameFor(beats, "recover"),
+      runtime,
     };
   }
 
   function statusText(status = {}) {
-    if (!status.active) return "Punch/kick motion status: no active punch/kick draft";
+    if (!status.active) return "활성 punch/kick 없음";
     const target = status.primaryImpactTarget ? `${status.primaryImpactTarget.key} ${status.primaryImpactTarget.x},${status.primaryImpactTarget.y}` : "none";
-    const timing = compact([
-      status.recoilFrame ? `${recoilLabel(status.actionType)} ${status.recoilFrame}` : null,
-      status.driveFrame ? `drive ${status.driveFrame}` : null,
-      status.chamberFrame ? `chamber ${status.chamberFrame}` : null,
-      status.extendFrame ? `extend ${status.extendFrame}` : null,
-      status.recoverFrame ? `recover ${status.recoverFrame}` : null,
-    ]).join(" / ");
     return compact([
       `motion ${status.actionType}`,
-      status.currentBeatId ? `beat ${status.currentBeatId}@${status.currentBeatFrame}` : null,
+      status.currentBeatId ? `${status.currentBeatId}@${status.currentBeatFrame}` : null,
       `impact ${status.impactFrame}`,
-      `primary ${status.primaryPartRole || "unknown"}:${status.primaryPartId || "none"}`,
-      `body/root ${status.bodyRootAssistActive ? "active" : "inactive"}`,
-      `hip anchor ${status.hipRootAnchorPresent ? "yes" : "no"}`,
       `target ${target}`,
-      timing || null,
+      conciseRuntimeText(status.runtime),
     ]).join(" · ");
+  }
+
+  function runtimeDebug(bridge, action, options = {}) {
+    const parts = options.parts || [], frame = options.currentFrame || bridge.impactFrame || 1;
+    const extension = Animotion.armExtension?.debugForFrame?.({ parts, bridge, frame, selectedPartId: options.selectedPartId }) || {};
+    const ordered = Animotion.cutsceneDepth?.orderedParts?.(parts, { parts, bridge, frame, selectedPartId: options.selectedPartId }) || parts;
+    const selectedId = options.selectedPartId || bridge.primaryPartId || action.targetDebug?.primaryPartId || null;
+    const covering = coveringParts(parts, selectedId);
+    const selectedIndex = ordered.findIndex((part) => part.id === selectedId);
+    const depthBias = selectedId ? Animotion.cutsceneDepth?.depthBiasForPart?.(parts.find((part) => part.id === selectedId), { parts, bridge, frame, selectedPartId: options.selectedPartId }) || 0 : 0;
+    const draw = Animotion.renderOrderDebug?.analyze?.(options.previewDrawSequence, { parts, selectedPartId: selectedId, bridge, frame }) || {};
+    const target = targetGenerationDebug(action, parts, selectedId);
+    return { ...extension, ...draw, roleDecision: action.targetDebug?.roleDecision || null, target, targetGenerationFailure: Boolean(target.targetInsideHeadFaceBounds || target.targetNearHeadFaceBounds), sourcePanelOverlapFailure: draw.sourcePanelConflictRisk === true, actualDrawOrderFailure: draw.selectedAfterCoveringParts === false, segmentedRenderFailure: draw.segmentedRenderFailure === true, sourceEraseWithoutReplacement: draw.sourceEraseWithoutReplacement === true, punchStyleSource: draw.punchStyleSource || extension.punchStyleSource, legacyDepthCompat: Boolean(draw.legacyDepthCompat || extension.legacyDepthCompat), cutsceneDepthActive: depthBias > 0, evaluatedDepthBias: depthBias, renderOrder: ordered.map((part) => part.id), coveringOrderChecks: covering.map((part) => ({ partId: part.id, selectedAfter: selectedIndex > ordered.findIndex((item) => item.id === part.id) })), selectedAboveCoveringParts: covering.length ? covering.every((part) => selectedIndex > ordered.findIndex((item) => item.id === part.id)) : null, motionMode: options.motionTemplate || "unknown", punchStyle: action.targetDebug?.punchStyle || "none" };
+  }
+
+  function debugText(status = {}) {
+    const debug = status.runtime || {};
+    if (!debug || !Object.keys(debug).length) return null;
+    const order = Array.isArray(debug.renderOrder) ? debug.renderOrder.join(">") : "n/a";
+    return `runtime rearCrossArmOnly=${yesNo(debug.rearCrossArmOnlyPunch)} ext=${yesNo(debug.armExtensionActive)} handTip=${debug.handTipSource || "missing"} targetFailure=${yesNo(debug.targetGenerationFailure)} sourcePanelFailure=${yesNo(debug.sourcePanelOverlapFailure)} drawOrderFailure=${yesNo(debug.actualDrawOrderFailure)} segmentedFailure=${yesNo(debug.segmentedRenderFailure)} sourceEraseWithoutReplacement=${yesNo(debug.sourceEraseWithoutReplacement)} role=${roleDecisionText(debug.roleDecision)} target=${targetText(debug.target)} replaced=${yesNo(debug.oldWholeArmTranslationReplaced)} pose=${debug.impactPoseMode || "n/a"} depth=${yesNo(debug.cutsceneDepthActive)} bias=${debug.evaluatedDepthBias || 0} style=${debug.punchStyle || "none"} styleSource=${debug.punchStyleSource || "missing"} legacyDepthCompat=${yesNo(debug.legacyDepthCompat)} mode=${debug.motionMode || "unknown"} sourcePanel=${debug.sourcePanelMode || "n/a"} order ${order} selectedAboveCover=${nullableYesNo(debug.selectedAboveCoveringParts)} actualAboveCover=${nullableYesNo(debug.selectedAfterCoveringParts)} segmentedReplaces=${yesNo(debug.segmentedReplacesNormal)} drawSeq ${drawSequenceText(debug.finalDrawSequence)}`;
+  }
+
+  function conciseRuntimeText(debug = {}) {
+    if (!debug || !Object.keys(debug).length) return null;
+    return compact([
+      debug.rearCrossArmOnlyPunch ? "뒷손 arm-only" : null,
+      debug.armExtensionActive ? "손끝 확장" : null,
+      debug.cutsceneDepthActive ? "깊이 보정" : null,
+      debug.segmentedRenderFailure ? "분절 렌더 실패" : null,
+      debug.sourceEraseWithoutReplacement ? "원본 보강 누락" : null,
+      debug.selectedAfterCoveringParts === false || debug.selectedAboveCoveringParts === false ? "가림 위험" : null,
+    ]).join(" / ") || null;
+  }
+
+  function yesNo(value) { return value ? "yes" : "no"; }
+  function nullableYesNo(value) { return value === null || value === undefined ? "n/a" : yesNo(value); }
+  function coveringParts(parts = [], selectedId) { return Animotion.renderLayerUtils?.coveringParts?.(parts, selectedId) || parts.filter((part) => part.id !== selectedId && (Animotion.renderOrderDebug?.isLikelyCoveringPart?.(part) || Animotion.cutsceneDepth?.likelyCoveringPart?.(part))); }
+  function targetGenerationDebug(action = {}, parts = [], selectedId = null) {
+    const focusKey = action.focusKey;
+    const base = Animotion.jointCoordinates?.inferJointPose?.(parts) || {};
+    const start = pointObject(action.targetDebug?.selectedPartCurrentPosition) || pointFromArray(base[focusKey]);
+    const target = pointObject(action.targetDebug?.convertedTarget) || primaryImpactTarget(action, beatById(action.beats, "impact"));
+    const bounds = unionBounds(coveringParts(parts, selectedId).map((part) => part.rect).filter(Boolean));
+    return {
+      rearHandTipStartPosition: start,
+      generatedTarget: target,
+      headFaceBounds: bounds,
+      targetInsideHeadFaceBounds: Boolean(target && bounds && pointInBounds(target, bounds)),
+      targetNearHeadFaceBounds: Boolean(target && bounds && pointInBounds(target, expandBounds(bounds, 24))),
+    };
+  }
+  function targetText(target = {}) {
+    const start = target.rearHandTipStartPosition, generated = target.generatedTarget, bounds = target.headFaceBounds;
+    return `start=${pointText(start)} generated=${pointText(generated)} headFace=${boundsText(bounds)} inside=${yesNo(target.targetInsideHeadFaceBounds)} near=${yesNo(target.targetNearHeadFaceBounds)}`;
+  }
+  function roleDecisionText(role = {}) {
+    if (!role) return "n/a";
+    return `selected=${role.selectedPartId || "n/a"} primary=${role.resolvedPrimaryPartId || "n/a"} endpoint=${role.endpointSource || "n/a"} torso=${pointText(role.torsoCenter)} leftHand=${pointText(role.handTipPositions?.left)} rightHand=${pointText(role.handTipPositions?.right)} facing=${pointText(role.facingDirection)} result=${role.result || "n/a"} explicitOverride=${yesNo(role.explicitActionOverride)}`;
+  }
+  function pointObject(point) {
+    if (!point) return null;
+    return { x: Math.round(Number(point.x ?? point[0]) || 0), y: Math.round(Number(point.y ?? point[1]) || 0) };
+  }
+  function pointFromArray(point) { return point ? { x: Math.round(Number(point[0]) || 0), y: Math.round(Number(point[1]) || 0) } : null; }
+  function unionBounds(rects = []) {
+    if (!rects.length) return null;
+    const normalized = rects.map((rect) => ({ x: Number(rect.x) || 0, y: Number(rect.y) || 0, w: Number(rect.w) || 0, h: Number(rect.h) || 0 }));
+    const minX = Math.min(...normalized.map((rect) => rect.x)), minY = Math.min(...normalized.map((rect) => rect.y));
+    const maxX = Math.max(...normalized.map((rect) => rect.x + rect.w)), maxY = Math.max(...normalized.map((rect) => rect.y + rect.h));
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+  }
+  function expandBounds(bounds, amount) {
+    return { x: bounds.x - amount, y: bounds.y - amount, w: bounds.w + amount * 2, h: bounds.h + amount * 2 };
+  }
+  function pointInBounds(point, bounds) {
+    return point.x >= bounds.x && point.x <= bounds.x + bounds.w && point.y >= bounds.y && point.y <= bounds.y + bounds.h;
+  }
+  function pointText(point) { return point ? `${point.x},${point.y}` : "n/a"; }
+  function boundsText(bounds) { return bounds ? `${bounds.x},${bounds.y},${bounds.w},${bounds.h}` : "n/a"; }
+  function drawSequenceText(sequence = []) {
+    if (!Array.isArray(sequence) || !sequence.length) return "n/a";
+    return sequence.map((entry) => `${entry.index}:${entry.pass}:${entry.partId || entry.kind}:${entry.drawPath || ""}`).join(">");
   }
 
   function actionTypeFor(action = {}) {
@@ -109,6 +183,6 @@
     return values.filter((value) => value !== null && value !== undefined && value !== "");
   }
 
-  Animotion.cutsceneMotionStatus = { statusForBridge, statusText };
+  Animotion.cutsceneMotionStatus = { statusForBridge, statusText, debugText };
   if (typeof module !== "undefined") module.exports = Animotion.cutsceneMotionStatus;
 }
