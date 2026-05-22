@@ -73,7 +73,7 @@
   }
 
   function isArmHandTipPart(part, active) {
-    return part?.handTip && part?.pivot && isArmPart(part) && String(active?.end || "").endsWith("Hand");
+    return Boolean(handTipWithSource(part).point) && part?.pivot && isArmPart(part) && String(active?.end || "").endsWith("Hand");
   }
 
   function punchStyleInfo(context = {}, part = null) {
@@ -107,6 +107,8 @@
 
   function inferredHandTip(part = {}) {
     if (part.handTip) return part.handTip;
+    const shared = Animotion.rigging?.inferredHandTipForPart?.(part);
+    if (shared) return shared;
     const rect = part.rect || {};
     const pivot = part.pivot || { x: Number(rect.w || 0) * 0.5, y: Number(rect.h || 0) * 0.16 };
     const joint = part.joint || { x: Number(rect.w || 0) * 0.5, y: Number(rect.h || 0) * 0.88 };

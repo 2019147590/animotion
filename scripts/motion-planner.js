@@ -217,10 +217,11 @@
     return parts.map((part) => ({ partId: part.id, keyframes: beats.map((beat) => trackKeyframe(part, primary, beat, base, active, bridge)) }));
   }
   function tracksForJointAction(parts, primaryId, action) {
+    const bridge = action?.jointAction ? action : { jointAction: action, bodyAssistEnabled: true };
+    parts = Animotion.armExtension?.partsWithInferredHandTips?.(parts, primaryId, actionTemplateName(bridge.jointAction)) || parts;
     const base = Animotion.jointCoordinates.inferJointPose(parts);
     const primary = parts.find((part) => part.id === primaryId) || parts[0];
     const active = activeKeys(primary, parts);
-    const bridge = action?.jointAction ? action : { jointAction: action, bodyAssistEnabled: true };
     return tracksForParts(parts, primary, bridge.jointAction?.beats || [], base, active, bridge);
   }
   function trackKeyframe(part, primary, beat, base, active, bridge) {
@@ -249,7 +250,7 @@
     }
     return { frame: beat.at, pose };
   }
-  function drivesHandTipEndpoint(part, active) { return partKind(part) === "arm" && Boolean(part.handTip) && String(active.end || "").endsWith("Hand"); }
+  function drivesHandTipEndpoint(part, active) { return partKind(part) === "arm" && Boolean(Animotion.rigging?.handTipForPart?.(part) || part.handTip) && String(active.end || "").endsWith("Hand"); }
   function statusText(plan, part) {
     if (!part) return "파츠를 선택하면 움직임 목표 기반 궤적을 만들 수 있습니다.";
     const target = plan.target ? `움직임 목표 ${plan.target.x}, ${plan.target.y}` : "움직임 목표 없음";
@@ -333,6 +334,7 @@
   function sourceLabel(source) { return ({ manual: "수동", correspondence: "B컷 참조", generated: "자동 생성" })[source] || source; } function partKind(part = {}) { if (["thigh", "shin", "foot"].includes(part.humanRole) || part.type === "leg") return "leg"; if (["upperArm", "forearm", "hand"].includes(part.humanRole) || part.type === "arm") return "arm"; if (["torso", "pelvis"].includes(part.humanRole) || part.type === "body" || part.type === "spine") return "body"; if (part.humanRole === "head" || part.type === "head") return "head"; return part.type || null; } function isBodyPrimary(part) { return partKind(part) === "body"; }
   function templateFor(template) { return TEMPLATES[template] || (Animotion.actionTimelineModel?.hasTemplate?.(template) ? Animotion.actionTimelineModel.timelineForTemplate(template) : null); } function actionTimelineFor(template, bridge) { return Animotion.actionTimelineModel?.hasTemplate?.(template) ? Animotion.actionTimelineModel.timelineForTemplate(template, bridge) : null; }
   function impactExaggerationFor(actionTimeline, parts, primary) { return Animotion.impactExaggerationLayer?.createDefaultImpactExaggerationForActionTimeline?.(actionTimeline, { parts, primaryPartId: primary?.id }) || null; }
+  function actionTemplateName(action = {}) { return action?.actionTimeline?.template || String(action?.source || "").match(/^motion-planner-(punch|kick)-anchors-v1$/)?.[1] || null; }
   function parentIdFor(part) { return Animotion.rigConnection?.parentIdFor?.(part) || null; }
   function directionFrom(startPoint, endPoint, fallback) { const start = pointFromArray(startPoint), end = pointFromArray(endPoint), dx = end.x - start.x, dy = end.y - start.y, length = Math.hypot(dx, dy); return length > 0.001 ? { x: dx / length, y: dy / length } : fallback; }
   function bendNormal(baseRoot, baseMid, baseEnd, root, end) {
