@@ -5,7 +5,7 @@
   function inferJointPose(parts = []) {
     const body = mainPart(parts, ["spine", "body"], ["torso", "pelvis"]) || parts[0];
     const head = mainPart(parts, ["head"], ["head"]);
-    const arms = sideLimbParts(parts, "arm", body, ["upperArm", "forearm", "hand"]);
+    const arms = sideLimbParts(parts, "arm", body, ["upperArm", "forearm", "hand", "glove"]);
     const legs = sideParts(parts, "leg", body, ["thigh", "shin", "foot"]);
     return {
       hip: rounded(bottomPoint(body)),
@@ -62,7 +62,7 @@
     const byRole = (role) => candidates.find((part) => part.humanRole === role || part.type === role);
     const upper = byRole("upperArm");
     const forearm = byRole("forearm");
-    const hand = byRole("hand");
+    const hand = byRole("hand") || byRole("glove");
     return { root: upper || forearm || hand || fallback, mid: forearm || upper || hand || fallback, end: hand || forearm || upper || fallback };
   }
 
@@ -109,6 +109,7 @@
   }
 
   function localEnd(part, type) {
+    if (type === "arm" && part.humanRole === "hand") return Animotion.armRoleSemantics?.contactPointForPart?.(part) || Animotion.rigging?.handTipForPart?.(part) || part.handTip || part.joint;
     if (type === "arm" && Animotion.rigging?.handTipForPart) return Animotion.rigging.handTipForPart(part);
     if (type === "arm" && part.handTip) return part.handTip;
     if (part.joint) return part.joint;

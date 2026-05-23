@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 
 globalThis.Animotion = {};
+require("../scripts/arm-role-semantics.js");
 const rigging = require("../scripts/rigging.js");
 const rigConnection = require("../scripts/rig-connection.js");
 const previewRigPoints = require("../scripts/preview-rig-points.js");
@@ -21,7 +22,7 @@ function test(name, fn) {
 }
 
 function armWithoutHandTip() {
-  return { id: "arm_01", type: "arm", humanRole: "forearm", rect: { x: 20, y: 30, w: 50, h: 60 }, pivot: { x: 8, y: 12 }, joint: { x: 30, y: 34 } };
+  return { id: "arm_01", type: "arm", rect: { x: 20, y: 30, w: 50, h: 60 }, pivot: { x: 8, y: 12 }, joint: { x: 30, y: 34 } };
 }
 
 test("missing arm handTip infers a distinct fist point beyond the elbow", () => {

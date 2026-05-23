@@ -254,7 +254,9 @@
     const update = updateSelectedPart;
     els.editName.addEventListener("input", () => update({ name: els.editName.value }));
     els.editType.addEventListener("change", () => update({ type: els.editType.value }));
+    els.editHumanRole?.addEventListener("change", () => update({ humanRole: els.editHumanRole.value || null }));
     els.editParent.addEventListener("change", () => update({ parentId: els.editParent.value || null }));
+    els.autoPlaceArmHandles?.addEventListener("click", autoPlaceArmHandles);
     els.pivotX.addEventListener("input", () => updatePoint("pivot", "x", Number(els.pivotX.value)));
     els.pivotY.addEventListener("input", () => updatePoint("pivot", "y", Number(els.pivotY.value)));
     els.jointX.addEventListener("input", () => updatePoint("joint", "x", Number(els.jointX.value)));
@@ -282,8 +284,16 @@
   function updatePoint(pointKey, axis, ratio) {
     const part = Animotion.parts.selectedPart();
     if (!part) return;
+    const role = pointKey === "pivot" ? "rotationPivot" : pointKey;
+    if (Animotion.armRoleSemantics?.isRoleEditable?.(part, role) === false) return;
     const sizeKey = axis === "x" ? "w" : "h";
-    updateSelectedPart({ [pointKey]: { ...((pointKey === "handTip" ? Animotion.rigging?.handTipForPart?.(part) : part[pointKey]) || part.joint || part.pivot), [axis]: ratio * part.rect[sizeKey] } });
+    const parent = parentPart(part);
+    updateSelectedPart({ [pointKey]: { ...((pointKey === "handTip" ? Animotion.armRoleSemantics?.contactPointForPart?.(part, parent) || Animotion.rigging?.handTipForPart?.(part) : part[pointKey]) || part.joint || part.pivot), [axis]: ratio * part.rect[sizeKey] } });
+  }
+
+  function parentPart(part) {
+    const parentId = Animotion.rigConnection?.parentIdFor?.(part) || part?.parentId || part?.parentPartId || null;
+    return state.parts.find((candidate) => candidate.id === parentId) || null;
   }
 
   function updateMotion(key, value) {
@@ -296,6 +306,11 @@
 
   function resetPartMotion() {
     Animotion.partCommands.resetSelectedPartMotion();
+    Animotion.ui.refreshUi();
+  }
+
+  function autoPlaceArmHandles() {
+    Animotion.partCommands.autoPlaceSelectedArmHandles();
     Animotion.ui.refreshUi();
   }
 

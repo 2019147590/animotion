@@ -119,21 +119,51 @@
     if (!part) return;
     els.editName.value = part.name;
     els.editType.value = part.type;
+    if (els.editHumanRole) els.editHumanRole.value = part.humanRole || "";
     els.pivotEditTarget.value = els.pivotEditTarget.value || "anchor";
+    renderRigSemanticControls(part);
+    renderArmHandleAutoPlace(part);
     els.pivotX.value = part.rect.w ? part.pivot.x / part.rect.w : 0.5;
     els.pivotY.value = part.rect.h ? part.pivot.y / part.rect.h : 0.5;
     els.jointX.value = part.rect.w ? part.joint.x / part.rect.w : 0.5;
     els.jointY.value = part.rect.h ? part.joint.y / part.rect.h : 0.5;
-    const handTip = Animotion.rigging?.handTipForPart?.(part) || part.joint;
+    const handTip = Animotion.armRoleSemantics?.contactPointForPart?.(part, parentPart(part)) || Animotion.rigging?.handTipForPart?.(part) || part.joint;
     els.handTipX.value = part.rect.w ? handTip.x / part.rect.w : 0.5;
     els.handTipY.value = part.rect.h ? handTip.y / part.rect.h : 0.5;
-    els.handTipX.disabled = part.type !== "arm";
-    els.handTipY.disabled = part.type !== "arm";
     els.editOrder.value = part.order;
     els.editAlpha.value = part.alpha;
     els.editHidden.checked = part.hidden;
     renderMotionControls(part);
     renderParentOptions(part);
+  }
+
+  function renderRigSemanticControls(part) {
+    const pivot = Animotion.armRoleSemantics?.labelFor?.(part, "rotationPivot") || "회전 중심";
+    const joint = Animotion.armRoleSemantics?.labelFor?.(part, "joint") || "관절점";
+    const handTip = Animotion.armRoleSemantics?.labelFor?.(part, "handTip") || "손끝점";
+    setText(els.pivotXLabel, `${pivot} X`);
+    setText(els.pivotYLabel, `${pivot} Y`);
+    setText(els.jointXLabel, `${joint} X`);
+    setText(els.jointYLabel, `${joint} Y`);
+    setText(els.handTipXLabel, `${handTip} X`);
+    setText(els.handTipYLabel, `${handTip} Y`);
+    const jointEditable = Animotion.armRoleSemantics?.isRoleEditable?.(part, "joint") ?? true;
+    const handTipEditable = Animotion.armRoleSemantics?.isRoleEditable?.(part, "handTip") ?? part.type === "arm";
+    els.jointX.disabled = !jointEditable;
+    els.jointY.disabled = !jointEditable;
+    els.handTipX.disabled = !handTipEditable;
+    els.handTipY.disabled = !handTipEditable;
+    if (!handTipEditable && els.pivotEditTarget.value === "handTip") els.pivotEditTarget.value = "anchor";
+  }
+
+  function renderArmHandleAutoPlace(part) {
+    if (!els.autoPlaceArmHandles) return;
+    const preview = Animotion.armHandleAutoPlace?.preview?.(state.parts, part.id);
+    els.autoPlaceArmHandles.disabled = !preview?.ok;
+    if (els.autoPlaceArmHandlesStatus) {
+      const currentStatus = state.armHandleAutoPlaceStatus?.partId === part.id ? state.armHandleAutoPlaceStatus.text : null;
+      els.autoPlaceArmHandlesStatus.textContent = currentStatus || Animotion.armHandleAutoPlace?.statusText?.(preview) || "Auto place arm handles: unavailable";
+    }
   }
 
   function renderMotionControls(part) {
@@ -168,6 +198,15 @@
 
   function parentIdFor(part) {
     return Animotion.rigConnection?.parentIdFor?.(part) || part?.parentId || part?.parentPartId || null;
+  }
+
+  function parentPart(part) {
+    const parentId = parentIdFor(part);
+    return state.parts.find((candidate) => candidate.id === parentId) || null;
+  }
+
+  function setText(element, value) {
+    if (element) element.textContent = value;
   }
 
   function escapeHtml(value) {

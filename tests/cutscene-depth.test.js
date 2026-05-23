@@ -15,7 +15,7 @@ function test(name, fn) {
 function loadDepth() {
   const context = { window: { Animotion: {} } };
   vm.createContext(context);
-  for (const path of ["scripts/rig-connection.js", "scripts/render-layer-utils.js", "scripts/cutscene-depth.js"]) {
+  for (const path of ["scripts/rig-connection.js", "scripts/arm-chain-resolver.js", "scripts/render-layer-utils.js", "scripts/cutscene-depth.js"]) {
     vm.runInContext(fs.readFileSync(path, "utf8"), context, { filename: path });
   }
   return context.window.Animotion.cutsceneDepth;
@@ -63,6 +63,24 @@ test("separate hand rig gives terminal hand stronger depth bias than forearm", (
   const handBias = depth.depthBiasForPart(parts[2], { parts, bridge, frame: 20 });
   assert.equal(handBias > forearmBias, true);
   assert.deepEqual(ids(depth.orderedParts(parts, { parts, bridge, frame: 20 })), ["body", "head", "forearm", "hand"]);
+});
+
+test("separate rear glove renders above face at impact and returns on recover without changing saved order", () => {
+  const depth = loadDepth();
+  const parts = [
+    part("body", "body", 1),
+    { ...part("rear_forearm", "arm", 2), humanRole: "forearm" },
+    part("rear_glove", "glove", 3, "rear_forearm"),
+    part("head", "head", 6),
+  ];
+  const bridge = rearPunchBridge("rear_glove");
+
+  assert.equal(parts[2].parentPartId, "rear_forearm");
+  assert.deepEqual(ids(depth.orderedParts(parts, { parts, bridge, frame: 1 })), ["body", "rear_forearm", "rear_glove", "head"]);
+  assert.equal(depth.depthBiasForPart(parts[2], { parts, bridge, frame: 20 }) > depth.depthBiasForPart(parts[1], { parts, bridge, frame: 20 }), true);
+  assert.deepEqual(ids(depth.orderedParts(parts, { parts, bridge, frame: 20 })), ["body", "head", "rear_forearm", "rear_glove"]);
+  assert.deepEqual(ids(depth.orderedParts(parts, { parts, bridge, frame: 30 })), ["body", "rear_forearm", "rear_glove", "head"]);
+  assert.deepEqual(parts.map((item) => item.order), [1, 2, 3, 6]);
 });
 
 test("front jab and non punch actions keep base render order", () => {

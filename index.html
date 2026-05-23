@@ -215,6 +215,21 @@
               </select>
             </label>
             <label>
+              Human role
+              <select id="editHumanRole">
+                <option value="">none / auto</option>
+                <option value="torso">torso</option>
+                <option value="pelvis">pelvis</option>
+                <option value="head">head</option>
+                <option value="upperArm">upperArm</option>
+                <option value="forearm">forearm</option>
+                <option value="hand">hand</option>
+                <option value="thigh">thigh</option>
+                <option value="shin">shin</option>
+                <option value="foot">foot</option>
+              </select>
+            </label>
+            <label>
               부모 파츠
               <select id="editParent"></select>
             </label>
@@ -226,28 +241,30 @@
                 <option value="handTip">손끝점</option>
               </select>
             </label>
+            <button id="autoPlaceArmHandles" type="button">Auto place arm handles</button>
+            <p id="autoPlaceArmHandlesStatus" class="hint">upperArm/forearm/hand 체인의 연결점을 명시적으로 초기화합니다.</p>
             <label>
-              회전 중심 X
+              <span id="pivotXLabel">회전 중심 X</span>
               <input id="pivotX" type="range" min="0" max="1" step="0.01" />
             </label>
             <label>
-              회전 중심 Y
+              <span id="pivotYLabel">회전 중심 Y</span>
               <input id="pivotY" type="range" min="0" max="1" step="0.01" />
             </label>
             <label>
-              관절점 X
+              <span id="jointXLabel">관절점 X</span>
               <input id="jointX" type="range" min="0" max="1" step="0.01" />
             </label>
             <label>
-              관절점 Y
+              <span id="jointYLabel">관절점 Y</span>
               <input id="jointY" type="range" min="0" max="1" step="0.01" />
             </label>
             <label>
-              손끝점 X
+              <span id="handTipXLabel">손끝점 X</span>
               <input id="handTipX" type="range" min="0" max="1" step="0.01" />
             </label>
             <label>
-              손끝점 Y
+              <span id="handTipYLabel">손끝점 Y</span>
               <input id="handTipY" type="range" min="0" max="1" step="0.01" />
             </label>
             <label>

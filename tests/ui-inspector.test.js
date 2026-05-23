@@ -20,7 +20,11 @@ function loadAnimotion() {
     Option: function Option(label, value) { return { label, value }; },
   };
   vm.createContext(context);
+  runScript(context, "scripts/arm-role-semantics.js");
   runScript(context, "scripts/rig-connection.js");
+  runScript(context, "scripts/arm-chain-resolver.js");
+  runScript(context, "scripts/arm-handle-autoplace.js");
+  runScript(context, "scripts/human-rig-schema.js");
   const Animotion = context.window.Animotion;
   const state = sampleState();
   Object.assign(Animotion, {
@@ -54,6 +58,8 @@ function fakeElements() {
     "zoomReset", "separateCharacter", "partsList", "emptyInspector", "partInspector", "insertKeyframe",
     "deleteKeyframe", "autoAnticipation", "keyframeStatus", "impactExaggerationStatus", "impactExaggerationEnabled",
     "cutsceneMotionStatus", "editName", "editType", "pivotEditTarget", "pivotX", "pivotY", "jointX", "jointY",
+    "editHumanRole", "pivotXLabel", "pivotYLabel", "jointXLabel", "jointYLabel", "handTipXLabel", "handTipYLabel",
+    "autoPlaceArmHandles", "autoPlaceArmHandlesStatus",
     "handTipX", "handTipY", "editOrder", "editAlpha", "editHidden", "motionX", "motionY", "motionRotate", "motionScaleY", "motionJointX",
     "motionJointY", "motionPhase", "editParent", "motionTemplate", "selectionTool", "sourcePanelX", "sourcePanelY",
     "sourcePanelScale", "impactPanelX", "impactPanelY", "impactPanelScale", "impactReferenceOpacity",
@@ -100,6 +106,7 @@ function part(id, type, parentPartId) {
   return {
     id,
     type,
+    humanRole: id === "head" ? "head" : null,
     name: id,
     parentId: null,
     parentPartId,
@@ -118,7 +125,61 @@ test("inspector parent select follows selected part parentPartId fallback", () =
   const Animotion = loadAnimotion();
   Animotion.ui.refreshUi();
   assert.equal(Animotion.dom.els.editName.value, "head");
+  assert.equal(Animotion.dom.els.editHumanRole.value, "head");
   assert.equal(Animotion.dom.els.editParent.value, "torso");
+});
+
+test("inspector exposes optional humanRole without replacing part type", () => {
+  const Animotion = loadAnimotion();
+  const part = Animotion.state.parts.find((item) => item.id === "head");
+  Animotion.partCommands = { updatePart: (target, patch) => Object.assign(target, patch) };
+  Animotion.ui.refreshUi();
+
+  Animotion.dom.els.editHumanRole.value = "hand";
+  Animotion.ui.updateSelectedPart({ humanRole: "hand" });
+
+  assert.equal(part.type, "head");
+  assert.equal(part.humanRole, "hand");
+});
+
+test("inspector labels and disables arm handles by explicit humanRole", () => {
+  const Animotion = loadAnimotion();
+  const head = Animotion.state.parts.find((item) => item.id === "head");
+
+  Object.assign(head, { type: "arm", humanRole: "upperArm", handTip: { x: 19, y: 19 } });
+  Animotion.ui.refreshUi();
+  assert.equal(Animotion.dom.els.pivotXLabel.textContent, "어깨 회전점 / shoulder pivot X");
+  assert.equal(Animotion.dom.els.jointXLabel.textContent, "팔꿈치 연결점 / elbow joint X");
+  assert.equal(Animotion.dom.els.handTipX.disabled, true);
+
+  Object.assign(head, { humanRole: "forearm" });
+  Animotion.ui.refreshUi();
+  assert.equal(Animotion.dom.els.pivotXLabel.textContent, "팔꿈치 회전점 / elbow pivot X");
+  assert.equal(Animotion.dom.els.jointXLabel.textContent, "손목 연결점 / wrist joint X");
+  assert.equal(Animotion.dom.els.handTipX.disabled, true);
+
+  Object.assign(head, { type: "prop", humanRole: "hand", handTip: { x: 18, y: 10 } });
+  Animotion.ui.refreshUi();
+  assert.equal(Animotion.dom.els.pivotXLabel.textContent, "손목 회전점 / wrist pivot X");
+  assert.equal(Animotion.dom.els.handTipXLabel.textContent, "주먹 타격점 / punch contact point X");
+  assert.equal(Animotion.dom.els.handTipX.disabled, false);
+  assert.equal(Animotion.dom.els.jointX.disabled, true);
+});
+
+test("inspector exposes auto-place arm handles for selected separate chain", () => {
+  const Animotion = loadAnimotion();
+  Animotion.state.parts = [
+    part("body", "body", null),
+    { ...part("front_upperArm", "arm", "body"), humanRole: "upperArm", rect: { x: 30, y: 10, w: 20, h: 20 } },
+    { ...part("front_forearm", "arm", "front_upperArm"), humanRole: "forearm", rect: { x: 58, y: 14, w: 18, h: 18 } },
+    { ...part("front_glove", "prop", "front_forearm"), humanRole: "hand", rect: { x: 86, y: 16, w: 14, h: 14 } },
+  ];
+  Animotion.state.selectedPartId = "front_forearm";
+
+  Animotion.ui.refreshUi();
+
+  assert.equal(Animotion.dom.els.autoPlaceArmHandles.disabled, false);
+  assert.match(Animotion.dom.els.autoPlaceArmHandlesStatus.textContent, /Auto place arm handles/);
 });
 
 test("inspector parent options exclude descendants through parentPartId fallback", () => {

@@ -28,6 +28,7 @@ function loadAnimotion() {
     "scripts/action-timeline-model.js",
     "scripts/impact-exaggeration-layer.js",
     "scripts/rig-connection.js",
+    "scripts/arm-chain-resolver.js",
     "scripts/pose-assist.js",
     "scripts/joint-coordinates.js",
     "scripts/cutscene-model.js",
@@ -146,6 +147,19 @@ function armOnlyPunchParts() {
   ];
 }
 
+function separateBoxerParts() {
+  return [
+    part("body", "body", { x: 70, y: 28, w: 24, h: 70 }),
+    part("head", "head", { x: 68, y: 6, w: 28, h: 24 }),
+    { ...part("front_upperArm", "arm", { x: 96, y: 34, w: 28, h: 28 }), humanRole: "upperArm", parentId: "body", pivot: { x: 0, y: 14 }, joint: { x: 22, y: 14 } },
+    { ...part("front_forearm", "arm", { x: 118, y: 40, w: 26, h: 28 }), humanRole: "forearm", parentId: "front_upperArm", pivot: { x: 0, y: 8 }, joint: { x: 22, y: 16 } },
+    { ...part("front_glove", "glove", { x: 140, y: 48, w: 16, h: 16 }), parentId: "front_forearm", pivot: { x: 0, y: 8 }, handTip: { x: 16, y: 8 } },
+    { ...part("rear_upperArm", "arm", { x: 42, y: 34, w: 28, h: 28 }), humanRole: "upperArm", parentId: "body", pivot: { x: 28, y: 14 }, joint: { x: 8, y: 14 } },
+    { ...part("rear_forearm", "arm", { x: 24, y: 40, w: 26, h: 28 }), humanRole: "forearm", parentId: "rear_upperArm", pivot: { x: 26, y: 8 }, joint: { x: 0, y: 16 } },
+    { ...part("rear_glove", "glove", { x: 10, y: 48, w: 16, h: 16 }), parentId: "rear_forearm", pivot: { x: 14, y: 8 }, handTip: { x: 0, y: 8 } },
+  ];
+}
+
 function faceLeftArm02RearParts() {
   return [
     part("body", "body", { x: 90, y: 28, w: 20, h: 64 }),
@@ -187,6 +201,14 @@ function beatMap(action) {
 
 function distance(a, b) {
   return Math.hypot(Number(b[0]) - Number(a[0]), Number(b[1]) - Number(a[1]));
+}
+
+function keyPose(parts, id, frame) {
+  return parts.find((part) => part.id === id)?.keyframes.find((keyframe) => keyframe.frame === frame)?.pose || {};
+}
+
+function poseMagnitude(pose = {}) {
+  return Math.hypot(Number(pose.x) || 0, Number(pose.y) || 0);
 }
 
 test("auto cutscene button generates canonical punch action for an arm part", () => {
@@ -324,6 +346,74 @@ test("folded rear guard handTip near face still classifies arm_02 as rear-cross 
   assert.equal(target.x < head.x - 20, true);
   assert.equal(target.y <= base.rHand[1], true);
   assert.equal(bridge.jointAction.beats.find((beat) => beat.id === "impact").pose.rHand[0], target.x);
+});
+
+test("separate front chain uses terminal glove endpoint and jab path", () => {
+  const Animotion = loadAnimotion();
+  Animotion.state.parts = separateBoxerParts();
+  Animotion.state.project.parts = Animotion.state.parts;
+  Animotion.state.selectedPartId = "front_forearm";
+  Animotion.state.motionPlan = { template: "punch", targetMode: false };
+
+  clickAuto(Animotion);
+
+  const bridge = Animotion.state.cutsceneBridge;
+  const impact = beatMap(bridge.jointAction).impact;
+  assert.equal(bridge.primaryPartId, "front_glove");
+  assert.equal(bridge.jointAction.actionTimeline.template, "punch");
+  assert.equal(bridge.jointAction.targetDebug.punchStyle, "jab");
+  assert.equal(bridge.jointAction.targetDebug.terminalPunchPartId, "front_glove");
+  assert.equal(bridge.jointAction.targetDebug.separateRigPath, true);
+  assert.equal(bridge.jointAction.targetDebug.handParentIsForearm, true);
+  assert.equal(bridge.jointAction.targetDebug.forearmParentIsUpperArm, true);
+  assert.equal(bridge.jointAction.targetDebug.elbowConnectionValid, true);
+  assert.equal(bridge.jointAction.targetDebug.wristConnectionValid, true);
+  assert.equal(bridge.jointAction.targetDebug.chainParentingValid, true);
+  assert.equal(bridge.jointAction.targetDebug.terminalPunchPointSource, "handTip");
+  assert.equal(bridge.jointAction.targetDebug.replacementLayerUsed, false);
+  assert.equal(bridge.jointAction.targetDebug.selectedToEndpointText, "selected front_forearm -> punching endpoint front_glove");
+  assert.equal(poseMagnitude(keyPose(Animotion.state.parts, "front_glove", impact.at)) > poseMagnitude(keyPose(Animotion.state.parts, "front_forearm", impact.at)), true);
+  assert.equal(poseMagnitude(keyPose(Animotion.state.parts, "front_forearm", impact.at)) > poseMagnitude(keyPose(Animotion.state.parts, "front_upperArm", impact.at)), true);
+});
+
+test("separate rear chain uses terminal glove endpoint and rear-cross path", () => {
+  const Animotion = loadAnimotion();
+  Animotion.state.parts = separateBoxerParts();
+  Animotion.state.project.parts = Animotion.state.parts;
+  Animotion.state.selectedPartId = "rear_upperArm";
+  Animotion.state.motionPlan = { template: "punch", targetMode: false };
+
+  clickAuto(Animotion);
+
+  const bridge = Animotion.state.cutsceneBridge;
+  assert.equal(bridge.primaryPartId, "rear_glove");
+  assert.equal(bridge.jointAction.actionTimeline.template, "punch");
+  assert.equal(bridge.jointAction.targetDebug.punchStyle, "rear-cross");
+  assert.equal(bridge.jointAction.targetDebug.punchSide, "rear/rear-cross");
+  assert.equal(bridge.jointAction.targetDebug.resolvedArmChain.upperArmId, "rear_upperArm");
+  assert.equal(bridge.jointAction.targetDebug.resolvedArmChain.forearmId, "rear_forearm");
+  assert.equal(bridge.jointAction.targetDebug.resolvedArmChain.handOrGloveId, "rear_glove");
+  assert.equal(bridge.jointAction.targetDebug.handParentIsForearm, true);
+  assert.equal(bridge.jointAction.targetDebug.forearmParentIsUpperArm, true);
+  assert.equal(bridge.jointAction.targetDebug.elbowConnectionValid, true);
+  assert.equal(bridge.jointAction.targetDebug.wristConnectionValid, true);
+  assert.equal(bridge.jointAction.targetDebug.chainParentingValid, true);
+});
+
+test("same separate chain selection preserves adjusted punch target", () => {
+  const Animotion = loadAnimotion();
+  Animotion.state.parts = separateBoxerParts();
+  Animotion.state.project.parts = Animotion.state.parts;
+  Animotion.state.selectedPartId = "front_forearm";
+  Animotion.state.motionPlan = { template: "punch", target: { x: 176, y: 52 } };
+  clickAuto(Animotion);
+
+  Animotion.motionCommands.setMotionPlan({ target: { x: 172, y: 50 } });
+  Animotion.state.selectedPartId = "front_upperArm";
+  clickAuto(Animotion);
+
+  assert.equal(Animotion.state.cutsceneBridge.primaryPartId, "front_glove");
+  assert.deepEqual(JSON.parse(JSON.stringify(Animotion.state.motionPlan.target)), { x: 172, y: 50 });
 });
 
 test("auto cutscene button preserves adjusted trajectory for the same action and part", () => {

@@ -111,6 +111,26 @@ Current upload adds a frame-specific motion replacement layer for arm-only punch
 - New regression coverage includes `tests/motion-replacement-layer.test.js`, updated preview render-order tests, updated action-frame pose-drag tests, and updated motion-status tests.
 - Local verification: all JavaScript tests under `tests/*.test.js` passed. Python `ai-rig-server` tests were not run because the local Python environment does not have `pytest` installed.
 
+Current upload makes separate hand/forearm arm rigs the preferred boxer punch path:
+
+- `part.humanRole` is now editable in the selected part inspector without replacing legacy `part.type`. Old projects without `humanRole` continue through existing name/id and geometry fallbacks.
+- The boxer punch resolver prefers explicit `humanRole` over name/id hints and geometry. It resolves selected `upperArm`, `forearm`, or `hand/glove` parts to one arm chain before classifying front jab versus rear-cross.
+- A clean separate arm chain is explicitly `torso -> upperArm -> forearm -> hand/glove`. Parent relationships are validated separately from render depth, so a glove can be parented to the forearm while rendering above it to cover the wrist connection.
+- Role-specific handle semantics are enforced across inspector labels, handle visibility/editability, rig point display, hit testing, endpoint resolution, and tests:
+  - `upperArm`: pivot is shoulder/proximal rotation center; joint is elbow/distal connection; `handTip` is preserved from legacy JSON but hidden/ignored for separate-rig punch endpoint resolution.
+  - `forearm`: pivot is elbow/proximal rotation center; joint is wrist/distal connection; `handTip` is preserved from legacy JSON but hidden/ignored when a terminal hand/glove exists.
+  - `hand`: pivot is wrist/cuff rotation center; `handTip` is fist/knuckle/contact point; `joint` is optional and is not treated as the punch endpoint.
+- Separate-rig punch endpoint resolution always uses the terminal hand/glove `handTip`; if it is missing, the resolver infers a safe contact point from hand/glove geometry. It never uses upperArm/forearm legacy `handTip` when a terminal hand/glove exists.
+- Arm-only rigs remain unchanged as the compatibility path: if no terminal hand/glove exists and the selected arm has `handTip`, punch generation uses the existing arm-only handTip endpoint and existing runtime motion-replacement fallback.
+- Clean separate arm rigs do not activate `motion-replacement-layer` by default. They use normal rig/keyframe motion distribution where the terminal hand/glove moves most, the forearm follows with supporting motion, and the upperArm follows more subtly.
+- Chain validation reports debug/status fields for `resolvedArmChain`, `terminalPunchPartId`, `terminalPunchPointSource`, `punchSide`, `classificationBasis`, `separateRigPath`, `armOnlyFallback`, `chainParentingValid`, `handParentIsForearm`, `forearmParentIsUpperArm`, `elbowConnectionValid`, `wristConnectionValid`, and `chainWarnings`.
+- Elbow and wrist connection validation compares world/image-space points, not local coordinates. `upperArm.joint` should align with `forearm.pivot`, and `forearm.joint` should align with `hand/glove.pivot`. Points are allowed inside, on, or outside part rects and are not clamped.
+- Hidden-completion integration remains warning/debug only for this path. If motion may expose an area previously covered by the glove/wrist overlap, the system can mark a hidden-completion candidate through existing `hiddenCompletionPatch`/`motionDraft` flows without changing provider payloads or adding inpainting.
+- The selected part inspector now exposes an explicit `Auto place arm handles` helper for a selected separate arm chain. It is user-triggered, does not run on load, does not silently repair parentId, and does not migrate old JSON.
+- `scripts/arm-handle-autoplace.js` initializes role-specific handles for a clean chain: shoulder/proximal upperArm pivot, shared elbow point for upperArm joint and forearm pivot, shared wrist point for forearm joint and hand/glove pivot, and a knuckle/contact-side handTip. It preserves out-of-rect coordinates and reports elbow/wrist/parenting/separate-rig validity after running.
+- New regressions cover resolver role priority and fallback behavior, endpoint resolution, clean and invalid chain validation, world-space elbow/wrist connection warnings, separate-rig replacement opt-out, arm-only handTip compatibility, old JSON load preservation, render/depth behavior, inspector role semantics, and auto-place handle alignment.
+- Local verification on this work unit: all JavaScript tests under `tests/*.test.js` passed.
+
 ### Panel Quality Setup
 
 Implemented in `scripts/panel-editor.js` and `scripts/panel-commands.js`.
@@ -447,6 +467,9 @@ Current architecture note:
 - `scripts/motion-trajectory-editor.js`: editable beat handles and trajectory overlay.
 - `scripts/cutscene-options.js`: A cut source-motion and body-assist option controls.
 - `scripts/human-rig-schema.js`: optional basic human rig role normalization plus missing-role and parent-chain validation.
+- `scripts/arm-role-semantics.js`: role-specific pivot/joint/handTip labels, editability, visibility, and endpoint semantics for upperArm, forearm, and hand/glove parts.
+- `scripts/arm-chain-resolver.js`: boxer punch arm-chain resolver, side classification, clean separate-chain validation, terminal endpoint resolution, and arm-only fallback metadata.
+- `scripts/arm-handle-autoplace.js`: explicit user-triggered helper for initializing separate arm chain shoulder, elbow, wrist, and contact handles without load-time migration.
 - `scripts/action-timeline-model.js`: punch/kick action timeline normalization used by motion planner.
 - `scripts/impact-exaggeration-layer.js`: punch/kick impact beat exaggeration metadata normalization and preview transform hints.
 - `scripts/scripted-genga-runner.js`: restricted declarative genga cut definition compiler/runner and project conversion boundary.
@@ -522,6 +545,8 @@ node tests\correspondence-commands.test.js
 node tests\motion-draft-editor.test.js
 node tests\motion-target-propagation.test.js
 node tests\motion-target-state.test.js
+node tests\arm-chain-resolver.test.js
+node tests\arm-handle-autoplace.test.js
 node tests\motion-planner-commands.test.js
 node tests\rig-connection.test.js
 node tests\ui-inspector.test.js
@@ -593,7 +618,7 @@ master
 Latest known implementation baseline:
 
 ```text
-current upload builds on the rear-hand punch baseline with arm-only handTip endpoints and cutscene-only rear-cross depth ordering
+current upload builds on the rear-hand punch baseline with separate upperArm/forearm/hand chains, role-specific handles, clean-chain validation, and explicit arm handle auto-placement
 ```
 
 Current upload status:
@@ -604,7 +629,7 @@ this upload includes implementation, tests, and this handoff update on origin/ma
 
 ## Current Project Notes
 
-As of this handoff update on 2026-05-22, implementation work includes the previous `ce43f68 Stabilize rigging and motion authoring state` baseline, the image upload/session restore and canonical punch/kick selected-part generation work, punch/kick draft context invalidation, boxer punch manual-edit workflow stabilization, arm-only `handTip` endpoint support, and cutscene-only rear-cross depth ordering.
+As of this handoff update on 2026-05-23, implementation work includes the previous `ce43f68 Stabilize rigging and motion authoring state` baseline, the image upload/session restore and canonical punch/kick selected-part generation work, punch/kick draft context invalidation, boxer punch manual-edit workflow stabilization, arm-only `handTip` endpoint support, cutscene-only rear-cross depth ordering, separate arm-chain punch resolution, role-specific rig handle semantics, clean separate-chain validation, and explicit arm handle auto-placement.
 
 Latest completed implementation commits:
 
@@ -626,6 +651,12 @@ Latest completed implementation commits:
 - Current upload shifts punch editing from trajectory-first to action-frame-first: generated punch beats are exposed as selectable frame buttons, selecting a beat moves preview to that frame, handTip/joint pose drags write to `part.keyframes`, and trajectory hit targets are read-only while action-frame editing is active.
 - Current upload adds `tests/action-frame-editor.test.js`, `tests/action-frame-pose-drag.test.js`, and preview pointer arbitration coverage for trajectory read-only mode.
 - Current upload maps pre-impact punch `recoil` status to user-facing `windup`, keeps `recover` as the post-impact beat, and adds rear-hand punch regeneration fallback for legacy neutral part names by using torso/hand geometry when name/id hints are unavailable.
+- Current upload makes `part.humanRole` editable in the inspector while preserving legacy `part.type` and old JSON fallback behavior.
+- Current upload adds strict role-based arm semantics: upperArm pivot/joint mean shoulder/elbow, forearm pivot/joint mean elbow/wrist, and hand/glove pivot/handTip mean wrist/contact. Legacy upperArm/forearm handTip data is preserved on load but ignored when a terminal hand/glove exists.
+- Current upload adds `scripts/arm-chain-resolver.js` so selected upperArm, forearm, or hand/glove resolves to the same chain and terminal hand/glove endpoint. Clean separate chains use normal rig/keyframe punch motion and do not activate the arm-only replacement layer by default.
+- Current upload validates separate arm relationship contracts: hand parent is forearm, forearm parent is upperArm when present, upperArm connects toward torso when available, upperArm.joint aligns with forearm.pivot in world/image space, and forearm.joint aligns with hand/glove.pivot in world/image space.
+- Current upload adds explicit `Auto place arm handles` UI and `scripts/arm-handle-autoplace.js` for user-triggered shoulder/elbow/wrist/contact handle initialization. It does not auto-migrate old JSON, does not run on project restore, does not silently rewrite parentId, and preserves out-of-rect handle coordinates.
+- Current upload adds regressions in `tests/arm-chain-resolver.test.js`, `tests/arm-handle-autoplace.test.js`, and related planner/status/depth/inspector tests. The full `tests/*.test.js` suite passed locally.
 - Existing project JSON load remains backward compatible: saved old punch `jointAction` beats and `part.keyframes` are restored unchanged and are only replaced when the user explicitly regenerates the selected punch.
 - No persisted schema changes, duplicate editor state, provider contract changes, Stability/Local SD changes, kick quality tuning, or B impact snap timing changes were added in these units.
 

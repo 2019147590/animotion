@@ -14,10 +14,13 @@
   function selectedPrimary(parts = [], selectedPartId = null, template = "punch") {
     const selected = parts.find((part) => part.id === selectedPartId) || null;
     if (!selected || template !== "punch") return selected;
+    const resolved = Animotion.armChainResolver?.resolve?.(parts, selected);
+    if (resolved?.terminalPart) return resolved.terminalPart;
     return terminalPunchPart(selected, parts) || selected;
   }
 
   function samePartReference(previousPartId, selectedPartId, primaryPartId, parts = []) {
+    if (Animotion.armChainResolver?.sameChainReference?.(previousPartId, selectedPartId, primaryPartId, parts)) return true;
     if (!previousPartId) return false;
     if (previousPartId === primaryPartId || previousPartId === selectedPartId) return true;
     const primary = parts.find((part) => part.id === primaryPartId);
@@ -63,7 +66,7 @@
   }
 
   function partKind(part = {}) {
-    return part.humanRole || part.type || "";
+    return Animotion.armChainResolver?.roleFor?.(part) || part.humanRole || part.type || "";
   }
 
   function parentIdFor(part = {}) {

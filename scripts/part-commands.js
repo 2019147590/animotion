@@ -90,6 +90,30 @@
     return updateSelectedPart({ customMotion: Animotion.motionModel.defaultCustomMotion() });
   }
 
+  function autoPlaceSelectedArmHandles() {
+    return autoPlaceArmHandles(Animotion.parts.selectedPart());
+  }
+
+  function autoPlaceArmHandles(partOrId) {
+    const part = findPart(partOrId);
+    const plan = Animotion.armHandleAutoPlace?.preview?.(state.parts, part?.id);
+    if (!part || !plan?.ok || !plan.patches.length) {
+      state.armHandleAutoPlaceStatus = { partId: part?.id || null, text: Animotion.armHandleAutoPlace?.statusText?.(plan) || "Auto place arm handles: unavailable" };
+      return null;
+    }
+    const before = collectPatchState(plan.patches);
+    for (const item of plan.patches) updatePart(item.partId, item.patch, { recordHistory: false });
+    const after = collectPatchState(plan.patches);
+    const resolved = Animotion.armChainResolver?.resolve?.(state.parts, part.id) || null;
+    state.armHandleAutoPlaceStatus = { partId: part.id, text: Animotion.armHandleAutoPlace.statusText({ ...plan, after: resolved }) };
+    Animotion.commandHistory?.record?.({
+      label: "auto-place-arm-handles",
+      undo: () => applyPatchState(before),
+      redo: () => applyPatchState(after),
+    });
+    return { ...plan, before, after, resolved };
+  }
+
   function deletePart(partOrId) {
     const part = findPart(partOrId);
     if (!part) return null;
@@ -125,6 +149,25 @@
     });
   }
 
+  function collectPatchState(items = []) {
+    return items.map((item) => {
+      const part = findPart(item.partId);
+      return { partId: item.partId, patch: pickHandles(part) };
+    });
+  }
+
+  function applyPatchState(items = []) {
+    for (const item of items) updatePart(item.partId, item.patch, { recordHistory: false });
+  }
+
+  function pickHandles(part = {}) {
+    return {
+      pivot: cloneValue(part.pivot),
+      joint: cloneValue(part.joint),
+      ...(part.handTip ? { handTip: cloneValue(part.handTip) } : { handTip: undefined }),
+    };
+  }
+
   function suggestedParentPart(type) {
     const parentId = suggestParent(type);
     return state.parts.find((part) => part.id === parentId) || null;
@@ -155,6 +198,7 @@
     if (hasOwn(next, "order")) next.order = Math.max(1, Math.round(Number(next.order) || part.order));
     if (hasOwn(next, "alpha")) next.alpha = geometry.clamp(Number(next.alpha) || 0, 0, 1);
     if (hasOwn(next, "hidden")) next.hidden = Boolean(next.hidden);
+    if (hasOwn(next, "humanRole")) next.humanRole = Animotion.humanRigSchema?.normalizeRole?.(next.humanRole) || null;
     if (hasOwn(next, "customMotion")) next.customMotion = Animotion.motionModel.normalizeCustomMotion(next.customMotion);
     Object.assign(next, Animotion.rigConnection?.metadataForPart?.({ ...part, ...next }, findPart(parentIdFor({ ...part, ...next }))) || {});
     return next;
@@ -216,6 +260,8 @@
     updateSelectedPart,
     updateSelectedPartMotion,
     resetSelectedPartMotion,
+    autoPlaceSelectedArmHandles,
+    autoPlaceArmHandles,
     deletePart,
     deleteSelectedPart,
   };

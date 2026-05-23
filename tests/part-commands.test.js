@@ -24,7 +24,11 @@ function loadAnimotion() {
     "scripts/config.js",
     "scripts/geometry.js",
     "scripts/motion-model.js",
+    "scripts/human-rig-schema.js",
+    "scripts/arm-role-semantics.js",
     "scripts/rig-connection.js",
+    "scripts/arm-chain-resolver.js",
+    "scripts/arm-handle-autoplace.js",
     "scripts/project-model.js",
     "scripts/project-serialization.js",
     "scripts/rigging.js",
@@ -177,4 +181,43 @@ test("part update command clears redo after a new edit", () => {
   Animotion.partCommands.updatePart(part.id, { name: "core" });
   assert.equal(Animotion.commandHistory.canRedo(), false);
   assert.equal(part.name, "core");
+});
+
+test("part update command normalizes optional humanRole without changing type", () => {
+  const Animotion = loadAnimotion();
+  const part = Animotion.partCommands.createPart("prop", { x: 0, y: 0, w: 20, h: 20 }, "front_glove");
+
+  Animotion.partCommands.updatePart(part.id, { humanRole: "hand" });
+  assert.equal(part.type, "prop");
+  assert.equal(part.humanRole, "hand");
+
+  Animotion.partCommands.updatePart(part.id, { humanRole: "claw" });
+  assert.equal(part.type, "prop");
+  assert.equal(part.humanRole, null);
+});
+
+test("part command auto-places separate arm handles as one undoable user action", () => {
+  const Animotion = loadAnimotion();
+  const torso = Animotion.partCommands.createPart("body", { x: 40, y: 10, w: 30, h: 80 }, "torso");
+  Animotion.partCommands.updatePart(torso.id, { humanRole: "torso" });
+  const upper = Animotion.partCommands.createPart("arm", { x: 80, y: 20, w: 20, h: 20 }, "front_upperArm");
+  Animotion.partCommands.updatePart(upper.id, { humanRole: "upperArm", parentId: torso.id });
+  const forearm = Animotion.partCommands.createPart("arm", { x: 125, y: 25, w: 18, h: 18 }, "front_forearm");
+  Animotion.partCommands.updatePart(forearm.id, { humanRole: "forearm", parentId: upper.id });
+  const glove = Animotion.partCommands.createPart("prop", { x: 170, y: 30, w: 14, h: 14 }, "front_glove");
+  Animotion.partCommands.updatePart(glove.id, { humanRole: "hand", parentId: forearm.id });
+  Animotion.state.selectedPartId = forearm.id;
+  const before = JSON.parse(JSON.stringify({ upper: upper.joint, forearm: forearm.pivot, glove: glove.pivot }));
+
+  const result = Animotion.partCommands.autoPlaceSelectedArmHandles();
+
+  assert.equal(result.resolved.separateRigPath, true);
+  assert.equal(result.resolved.elbowConnectionValid, true);
+  assert.equal(result.resolved.wristConnectionValid, true);
+  assert.equal(Animotion.state.armHandleAutoPlaceStatus.text.includes("separateRig=yes"), true);
+  assert.notDeepEqual(JSON.parse(JSON.stringify({ upper: upper.joint, forearm: forearm.pivot, glove: glove.pivot })), before);
+  assert.equal(Animotion.commandHistory.undo(), true);
+  assert.deepEqual(JSON.parse(JSON.stringify({ upper: upper.joint, forearm: forearm.pivot, glove: glove.pivot })), before);
+  assert.equal(Animotion.commandHistory.redo(), true);
+  assert.equal(Animotion.armChainResolver.resolve(Animotion.state.parts, forearm.id).separateRigPath, true);
 });

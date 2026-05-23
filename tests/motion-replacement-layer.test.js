@@ -23,6 +23,7 @@ function loadAnimotion() {
     "scripts/motion-model.js",
     "scripts/timeline.js",
     "scripts/rig-connection.js",
+    "scripts/arm-chain-resolver.js",
     "scripts/render-layer-utils.js",
     "scripts/arm-extension-controls.js",
     "scripts/arm-extension.js",

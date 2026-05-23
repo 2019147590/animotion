@@ -12,7 +12,8 @@
 
   function selectedEditableRigPointAtImagePoint(part, point) {
     const hit = closestRigPoint(part, point);
-    return hit && EDITABLE_RIG_ROLES.has(hit.role) ? hit : null;
+    if (!hit || !EDITABLE_RIG_ROLES.has(hit.role)) return null;
+    return Animotion.armRoleSemantics?.isRoleEditable?.(part, hit.role) === false ? null : hit;
   }
 
   function closestRigPoint(part, point) {
@@ -48,7 +49,8 @@
   }
 
   function preferredRigPointRole() {
-    return Animotion.dom?.els?.pivotEditTarget?.value === "handTip" ? "handTip" : null;
+    const selected = selectedPart();
+    return Animotion.dom?.els?.pivotEditTarget?.value === "handTip" && Animotion.armRoleSemantics?.isRoleEditable?.(selected, "handTip") !== false ? "handTip" : null;
   }
 
   function handTipTieDistance() {

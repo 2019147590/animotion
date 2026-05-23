@@ -191,6 +191,23 @@ test("legacy restore returns the motion UI to cutscene mode when a cutscene brid
   assert.deepEqual(JSON.parse(JSON.stringify(Animotion.state.parts[0].keyframes)), oldKeyframes);
 });
 
+test("legacy restore preserves invalid separate arm parent chain without migration", () => {
+  const Animotion = loadAnimotion();
+  const parts = [
+    { id: "body", name: "body", type: "body", humanRole: "torso", rect: { x: 40, y: 20, w: 20, h: 50 }, pivot: { x: 10, y: 10 }, joint: { x: 10, y: 40 } },
+    { id: "front_glove", name: "front_glove", type: "glove", humanRole: "hand", parentId: "body", parentPartId: "body", rect: { x: 70, y: 40, w: 16, h: 16 }, pivot: { x: -6, y: 8 }, joint: { x: 5, y: 5 }, handTip: { x: 24, y: 8 } },
+  ];
+  const saved = JSON.parse(JSON.stringify(parts[1]));
+
+  Animotion.sessionCommands.restoreLegacyRig({ parts, cutsceneBridge: null }, parts, null);
+
+  const glove = Animotion.state.parts.find((part) => part.id === "front_glove");
+  assert.equal(glove.parentId, "body");
+  assert.equal(glove.parentPartId, "body");
+  assert.deepEqual(JSON.parse(JSON.stringify({ pivot: glove.pivot, joint: glove.joint, handTip: glove.handTip })), { pivot: saved.pivot, joint: saved.joint, handTip: saved.handTip });
+  assert.equal(Animotion.state.parts.some((part) => part.id === "front_forearm"), false);
+});
+
 test("project restore preserves saved old punch joint action and part keyframes", () => {
   const Animotion = loadAnimotion();
   const oldBeat = { id: "impact", at: 24, pose: { lHand: [70, 8], lElbow: [68, -16], hip: [50, 63] } };

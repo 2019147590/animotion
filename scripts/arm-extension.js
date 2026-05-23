@@ -9,7 +9,7 @@
   function partsWithInferredHandTips(parts = [], primaryId = null, template = "") {
     if (template !== "punch") return parts;
     const primary = parts.find((part) => part.id === primaryId);
-    if (!primary || !isArmPart(primary) || primary.handTip || terminalHandFor(primary, parts)) return parts;
+    if (!primary || !isArmPart(primary) || primary.handTip || separateTerminalFor(primary, parts) || terminalHandFor(primary, parts)) return parts;
     const inferred = inferredHandTip(primary);
     if (!inferred) return parts;
     return parts.map((part) => part.id === primary.id ? { ...part, handTip: inferred } : part);
@@ -41,7 +41,7 @@
     if (!action || !isPunchAction(action) || style.punchStyle !== "rear-cross") return { active: false, reason: "not-rear-cross-punch", punchStyleSource: style.source, legacyDepthCompat: style.legacyDepthCompat };
     const primaryId = primaryIdFor(context.bridge, action, context);
     if (primaryId !== part?.id) return { active: false, reason: "not-primary", punchStyleSource: style.source, legacyDepthCompat: style.legacyDepthCompat };
-    if (!isArmPart(part) || terminalHandFor(part, context.parts || [])) return { active: false, reason: "not-arm-only" };
+    if (!isArmPart(part) || separateTerminalFor(part, context.parts || []) || terminalHandFor(part, context.parts || [])) return { active: false, reason: "not-arm-only" };
     const handTip = handTipWithSource(part), pose = Animotion.timeline?.evaluatePartAtFrame?.(part, context.frame) || part.customMotion || {};
     if (!handTip.point) return { active: false, reason: "missing-handTip", handTipSource: handTip.source };
     const controls = controlsForActionFrame(part, handTip.point, action, context.frame, pose);
@@ -55,7 +55,7 @@
     const hint = primary ? renderHintForPart(primary, context) : { active: false, reason: "missing-primary" };
     const style = punchStyleInfo(context, primary);
     return {
-      rearCrossArmOnlyPunch: style.punchStyle === "rear-cross" && Boolean(primary) && isArmPart(primary) && !terminalHandFor(primary, context.parts || []),
+      rearCrossArmOnlyPunch: style.punchStyle === "rear-cross" && Boolean(primary) && isArmPart(primary) && !separateTerminalFor(primary, context.parts || []) && !terminalHandFor(primary, context.parts || []),
       armExtensionActive: hint.active,
       handTipSource: hint.handTipSource || "missing",
       oldWholeArmTranslationReplaced: hint.active && !hint.legacyWholeTranslation,
@@ -89,7 +89,7 @@
   }
 
   function isLegacyRearArmOnlyPunch(primary, parts, bridge, action) {
-    if (!primary || !isPunchAction(action) || !isArmPart(primary) || terminalHandFor(primary, parts)) return false;
+    if (!primary || !isPunchAction(action) || !isArmPart(primary) || separateTerminalFor(primary, parts) || terminalHandFor(primary, parts)) return false;
     if (!handTipWithSource(primary).point) return false;
     const impact = beatById(action, "impact"), focus = action.focusKey;
     const target = pointFromArray(focus ? impact?.pose?.[focus] : null);
@@ -99,7 +99,7 @@
   }
 
   function isLayerCoveredLegacyArmPunch(primary, parts, context, action) {
-    if (!primary || !isPunchAction(action) || !isArmPart(primary) || terminalHandFor(primary, parts)) return false;
+    if (!primary || !isPunchAction(action) || !isArmPart(primary) || separateTerminalFor(primary, parts) || terminalHandFor(primary, parts)) return false;
     if (context.selectedPartId && context.selectedPartId !== primary.id) return false;
     if (pointFromArray(beatById(action, "impact")?.pose?.[action.focusKey])) return false;
     return hasHigherCoveringOverlap(primary, parts);
@@ -218,6 +218,7 @@
     return parts.find((candidate) => candidate.id !== part.id && partKind(candidate) === "hand" && isDescendantOf(candidate, part.id, parts))
       || parts.find((candidate) => partKind(candidate) === "hand" && numberedSuffix(candidate) === numberedSuffix(part));
   }
+  function separateTerminalFor(part, parts) { return Animotion.armChainResolver?.resolve?.(parts, part)?.terminalPart || null; }
 
   function isPunchAction(action = {}) { return action.actionTimeline?.template === "punch" || String(action.source || "").includes("punch"); }
   function primaryIdFor(bridge = {}, action = {}, context = {}) { return selectedOverrideId(bridge, action, context) || bridge.primaryPartId || action.targetDebug?.primaryPartId || context.selectedPartId || null; }
@@ -227,7 +228,7 @@
     if (!selectedId || !savedId || selectedId === savedId || action.targetDebug?.punchStyle !== "jab" || !isPunchAction(action)) return null;
     const parts = context.parts || [];
     const selected = parts.find((part) => part.id === selectedId);
-    if (!selected || !isArmPart(selected) || terminalHandFor(selected, parts)) return null;
+    if (!selected || !isArmPart(selected) || separateTerminalFor(selected, parts) || terminalHandFor(selected, parts)) return null;
     if (!hasPunchMotionEvidence(selected, context)) return null;
     return hasHigherCoveringOverlap(selected, parts) ? selectedId : null;
   }
@@ -282,8 +283,8 @@
 
   function rounded(value) { return Math.round(value * 100) / 100; }
 
-  function partKind(part = {}) { return part.humanRole || part.type || ""; }
-  function isArmPart(part = {}) { return part.type === "arm" || ["upperArm", "forearm"].includes(part.humanRole); }
+  function partKind(part = {}) { return Animotion.armChainResolver?.roleFor?.(part) || part.humanRole || part.type || ""; }
+  function isArmPart(part = {}) { return part.type === "arm" || part.type === "glove" || ["upperArm", "forearm", "hand", "glove"].includes(part.humanRole); }
   function parentIdFor(part = {}) { return Animotion.rigConnection?.parentIdFor?.(part) || part.parentId || part.parentPartId || null; }
   function numberedSuffix(part) { return String(`${part?.id || ""} ${part?.name || ""}`).match(/(?:^|[^0-9])([0-9]+)(?!.*[0-9])/)?.[1] || null; }
   function likelyCover(part) { return Animotion.renderLayerUtils?.isLikelyCoveringPart?.(part) || ["head", "hair", "eye", "mouth", "nose"].includes(part?.type) || ["head", "face", "hair"].includes(part?.humanRole); }

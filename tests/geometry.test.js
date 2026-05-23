@@ -1,8 +1,10 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+globalThis.Animotion = globalThis.Animotion || {};
 const geometry = require("../scripts/geometry.js");
 globalThis.Animotion.state = { panelSetup: {}, panelEditTarget: "source" };
 const panelEditor = require("../scripts/panel-editor.js");
+require("../scripts/arm-role-semantics.js");
 const rigging = require("../scripts/rigging.js");
 const motionModel = require("../scripts/motion-model.js");
 const jointCoordinates = require("../scripts/joint-coordinates.js");
@@ -128,6 +130,18 @@ test("limb joint defaults to the opposite movable side", () => {
   const rightLeg = { x: 52, y: 68, w: 12, h: 38 };
   assert.deepEqual(rigging.defaultJointForPart("arm", leftArm, body), { x: 2.16, y: 30.6 });
   assert.deepEqual(rigging.defaultJointForPart("leg", rightLeg, body), { x: 10.56, y: 33.44 });
+});
+
+test("role-aware arm handle defaults follow strict human arm semantics", () => {
+  const body = { x: 40, y: 20, w: 20, h: 50 };
+  const arm = { x: 15, y: 25, w: 18, h: 45 };
+  const glove = { x: 8, y: 48, w: 16, h: 14 };
+  assert.deepEqual(rigging.defaultPivotForPart("arm", arm, body, { humanRole: "upperArm" }), { x: 14.76, y: 6.300000000000001 });
+  assert.deepEqual(rigging.defaultJointForPart("arm", arm, body, { humanRole: "upperArm" }), { x: 3.2399999999999998, y: 35.1 });
+  assert.deepEqual(rigging.defaultPivotForPart("arm", arm, body, { humanRole: "forearm" }), { x: 14.76, y: 12.600000000000001 });
+  assert.deepEqual(rigging.defaultJointForPart("arm", arm, body, { humanRole: "forearm" }), { x: 3.2399999999999998, y: 27.9 });
+  assert.deepEqual(rigging.defaultPivotForPart("arm", glove, arm, { humanRole: "hand" }), { x: 13.12, y: 7 });
+  assert.deepEqual(rigging.defaultHandTipForPart("arm", glove, arm, { humanRole: "hand" }), { x: 5.6533333333333315, y: 14 });
 });
 
 test("localPointFromImagePoint preserves rig handles outside the part rect", () => {

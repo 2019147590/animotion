@@ -56,6 +56,8 @@
   }
 
   function rigRoleLabel(part = {}, role = "", participation = {}) {
+    const semantic = Animotion.armRoleSemantics?.explicitRole?.(part) ? Animotion.armRoleSemantics.labelFor(part, role) : null;
+    if (semantic) return semantic;
     if (role === "handTip") return participation.active ? "손끝/타격 끝점" : "손끝점";
     if (role === "joint") return participation.active ? "팔꿈치/bend 보조점" : "관절점";
     if (role === "rotationPivot" || role === "anchor") return isArmPart(part) ? "어깨/회전 기준점" : "회전 중심";
@@ -73,7 +75,7 @@
   }
 
   function isArmPart(part = {}) {
-    return part.type === "arm" || ["upperArm", "forearm"].includes(part.humanRole);
+    return part.type === "arm" || part.type === "glove" || ["upperArm", "forearm", "hand"].includes(part.humanRole);
   }
 
   Animotion.previewPointInfo = { rigPointInfo, trajectoryBeatInfo, anchorInfo, beatLabel };

@@ -17,6 +17,7 @@ globalThis.DOMPoint = class {
 
 const geometry = require("../scripts/geometry.js");
 const motionModel = require("../scripts/motion-model.js");
+const armRoleSemantics = require("../scripts/arm-role-semantics.js");
 const rigConnection = require("../scripts/rig-connection.js");
 const previewRigPoints = require("../scripts/preview-rig-points.js");
 const previewHitTest = require("../scripts/preview-hit-test.js");
@@ -35,6 +36,7 @@ function setup(part) {
   Object.assign(globalThis.Animotion, {
     geometry,
     motionModel,
+    armRoleSemantics,
     rigConnection,
     previewRigPoints,
     config: { hitTolerancePx: 8 },
@@ -111,5 +113,20 @@ test("hand tip edit intent wins when the elbow is slightly closer", () => {
   setup(selected);
   globalThis.Animotion.dom.els.pivotEditTarget.value = "handTip";
   const hit = previewHitTest.selectedEditableRigPoint({ clientX: 32, clientY: 37 });
+  assert.equal(hit.role, "handTip");
+});
+
+test("human upperArm and forearm handTip handles are not hit-test editable", () => {
+  const selected = { ...part(), type: "arm", humanRole: "forearm", handTip: { x: 14, y: 7 } };
+  setup(selected);
+  globalThis.Animotion.dom.els.pivotEditTarget.value = "handTip";
+  const hit = previewHitTest.selectedEditableRigPoint({ clientX: 34, clientY: 37 });
+  assert.notEqual(hit?.role, "handTip");
+});
+
+test("human hand hit testing selects punch contact point", () => {
+  const selected = { ...part(), type: "prop", humanRole: "hand", pivot: { x: 2, y: 10 }, handTip: { x: 26, y: 9 } };
+  setup(selected);
+  const hit = previewHitTest.selectedEditableRigPoint({ clientX: 46, clientY: 39 });
   assert.equal(hit.role, "handTip");
 });

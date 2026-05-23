@@ -33,6 +33,7 @@ function loadAnimotion() {
     "scripts/impact-exaggeration-layer.js",
     "scripts/render-layer-utils.js",
     "scripts/render-order-debug.js",
+    "scripts/arm-chain-resolver.js",
     "scripts/cutscene-depth.js",
     "scripts/timeline.js",
     "scripts/arm-extension-controls.js",
@@ -212,6 +213,111 @@ test("generated rear-cross target evidence shows the fixed target outside head f
   assert.equal(status.runtime.target.targetInsideHeadFaceBounds, false);
   assert.equal(status.runtime.target.targetNearHeadFaceBounds, false);
   assert.equal(status.runtime.targetGenerationFailure, false);
+});
+
+test("cutscene status exposes separate rig endpoint and hidden completion debug", () => {
+  const Animotion = loadAnimotion();
+  const punchParts = [
+    { id: "body", type: "body", humanRole: "torso", order: 1, rect: { x: 70, y: 28, w: 24, h: 70 }, pivot: { x: 12, y: 18 }, joint: { x: 12, y: 54 } },
+    { id: "rear_upperArm", type: "arm", humanRole: "upperArm", parentId: "body", order: 1, rect: { x: 42, y: 34, w: 28, h: 28 }, pivot: { x: 22, y: 6 }, joint: { x: 8, y: 18 } },
+    { id: "rear_forearm", type: "arm", humanRole: "forearm", parentId: "rear_upperArm", order: 2, rect: { x: 24, y: 40, w: 26, h: 28 }, pivot: { x: 20, y: 6 }, joint: { x: 8, y: 18 } },
+    { id: "rear_glove", type: "glove", parentId: "rear_forearm", order: 3, rect: { x: 80, y: 48, w: 16, h: 16 }, pivot: { x: 8, y: 8 }, joint: { x: 8, y: 8 } },
+  ];
+  const bridge = {
+    primaryPartId: "rear_glove",
+    impactFrame: 24,
+    durationFrames: 36,
+    jointAction: {
+      source: "motion-planner-punch-anchors-v1",
+      focusKey: "lHand",
+      actionTimeline: { template: "punch" },
+      targetDebug: {
+        punchStyle: "rear-cross",
+        selectedPartId: "rear_forearm",
+        terminalPunchPartId: "rear_glove",
+        resolvedArmChain: { upperArmId: "rear_upperArm", forearmId: "rear_forearm", handOrGloveId: "rear_glove" },
+        punchSide: "rear/rear-cross",
+        classificationBasis: "name-hint",
+        separateRigPath: true,
+        handParentIsForearm: true,
+        forearmParentIsUpperArm: true,
+        elbowConnectionValid: true,
+        wristConnectionValid: true,
+        chainParentingValid: true,
+        chainParentingWarning: null,
+        chainWarnings: [],
+        terminalPunchPointSource: "handTip",
+        replacementLayerUsed: false,
+        wristOverlapHandled: true,
+        hiddenCompletionCandidate: true,
+        selectedToEndpointText: "selected rear_forearm -> punching endpoint rear_glove",
+      },
+      beats: [{ id: "drive", at: 10 }, { id: "impact", at: 24, pose: { lHand: [130, 42] } }, { id: "recover", at: 36 }],
+    },
+  };
+
+  const status = Animotion.cutsceneMotionStatus.statusForBridge(bridge, { parts: punchParts, currentFrame: 24, selectedPartId: "rear_forearm" });
+
+  assert.equal(status.runtime.terminalPunchPartId, "rear_glove");
+  assert.equal(status.runtime.handParentIsForearm, true);
+  assert.equal(status.runtime.forearmParentIsUpperArm, true);
+  assert.equal(status.runtime.elbowConnectionValid, true);
+  assert.equal(status.runtime.wristConnectionValid, true);
+  assert.equal(status.runtime.chainParentingValid, true);
+  assert.equal(status.runtime.chainParentingWarning, null);
+  assert.equal(status.runtime.terminalPunchPointSource, "handTip");
+  assert.equal(status.runtime.replacementLayerUsed, false);
+  assert.equal(status.runtime.wristOverlapHandled, true);
+  assert.equal(status.runtime.hiddenCompletionCandidate, true);
+  assert.equal(Animotion.cutsceneMotionStatus.statusText(status).includes("selected rear_forearm -> punching endpoint rear_glove"), true);
+  assert.equal(Animotion.cutsceneMotionStatus.debugText(status).includes("separateRig=yes"), true);
+  assert.equal(Animotion.cutsceneMotionStatus.debugText(status).includes("chainParentingValid=yes"), true);
+});
+
+test("cutscene status exposes separate rig parent-chain warning", () => {
+  const Animotion = loadAnimotion();
+  const punchParts = [
+    { id: "body", type: "body", humanRole: "torso", order: 1, rect: { x: 70, y: 28, w: 24, h: 70 }, pivot: { x: 12, y: 18 }, joint: { x: 12, y: 54 } },
+    { id: "rear_glove", type: "glove", humanRole: "hand", parentId: "body", order: 3, rect: { x: 80, y: 48, w: 16, h: 16 }, pivot: { x: 8, y: 8 }, joint: { x: 8, y: 8 } },
+  ];
+  const bridge = {
+    primaryPartId: "rear_glove",
+    impactFrame: 24,
+    durationFrames: 36,
+    jointAction: {
+      source: "motion-planner-punch-anchors-v1",
+      focusKey: "lHand",
+      actionTimeline: { template: "punch" },
+      targetDebug: {
+        punchStyle: "rear-cross",
+        selectedPartId: "rear_glove",
+        terminalPunchPartId: "rear_glove",
+        resolvedArmChain: { upperArmId: null, forearmId: null, handOrGloveId: "rear_glove" },
+        separateRigPath: false,
+        armOnlyFallback: false,
+        handParentIsForearm: false,
+        forearmParentIsUpperArm: false,
+        elbowConnectionValid: false,
+        wristConnectionValid: false,
+        chainParentingValid: false,
+        chainParentingWarning: "hand/glove parent must be forearm",
+        chainWarnings: ["hand/glove parent must be forearm"],
+        terminalPunchPointSource: "fallback",
+      },
+      beats: [{ id: "drive", at: 10 }, { id: "impact", at: 24, pose: { lHand: [130, 42] } }, { id: "recover", at: 36 }],
+    },
+  };
+
+  const status = Animotion.cutsceneMotionStatus.statusForBridge(bridge, { parts: punchParts, currentFrame: 24, selectedPartId: "rear_glove" });
+
+  assert.equal(status.runtime.handParentIsForearm, false);
+  assert.equal(status.runtime.forearmParentIsUpperArm, false);
+  assert.equal(status.runtime.elbowConnectionValid, false);
+  assert.equal(status.runtime.wristConnectionValid, false);
+  assert.equal(status.runtime.chainParentingValid, false);
+  assert.equal(status.runtime.chainParentingWarning, "hand/glove parent must be forearm");
+  assert.equal(Animotion.cutsceneMotionStatus.statusText(status).includes("chain warning: hand/glove parent must be forearm"), true);
+  assert.equal(Animotion.cutsceneMotionStatus.debugText(status).includes("chainParentingValid=no"), true);
 });
 
 function rearArmOnlyParts() {

@@ -132,6 +132,8 @@
     }
     targetDebug.punchStyle = punchStyle;
     targetDebug.roleDecision = Animotion.motionAnchors?.classificationDebug?.(scopedPlan, parts, primary, base, active, direction, target, { selectedPartId: options.selectedPartId || primaryId, explicitActionOverride: Boolean(plan.targetDebug?.punchStyle) }) || null;
+    Object.assign(targetDebug, Animotion.armChainResolver?.targetDebug?.(parts, options.selectedPartId || primaryId, primary, targetDebug.roleDecision) || {});
+    if (targetDebug.hiddenCompletionCandidate) targetDebug.hiddenCompletionReason = "wrist/forearm area may be exposed by separate glove motion";
     const anchors = Animotion.motionAnchors?.anchorsFromPlan?.(scopedPlan, parts, primary, base, active, direction, target) || [], actionTimeline = actionTimelineFor(plan.template, bridge);
     const beats = templateBeats(plan.template, bridge).map((spec) => poseBeat(spec, base, active, target, direction, anchors, punchStyle));
     const trajectorySamples = Animotion.motionTargetState?.trajectorySamples?.(beats, active.end) || [];
@@ -214,7 +216,8 @@
     return { x: root.x + (end.x - root.x) * along + normal.x * height, y: root.y + (end.y - root.y) * along + normal.y * height };
   }
   function tracksForParts(parts, primary, beats, base, active, bridge) {
-    return parts.map((part) => ({ partId: part.id, keyframes: beats.map((beat) => trackKeyframe(part, primary, beat, base, active, bridge)) }));
+    const chain = Animotion.armChainResolver?.resolve?.(parts, primary?.id);
+    return parts.map((part) => ({ partId: part.id, keyframes: beats.map((beat) => trackKeyframe(part, primary, beat, base, active, bridge, chain)) }));
   }
   function tracksForJointAction(parts, primaryId, action) {
     const bridge = action?.jointAction ? action : { jointAction: action, bodyAssistEnabled: true };
@@ -224,17 +227,24 @@
     const active = activeKeys(primary, parts);
     return tracksForParts(parts, primary, bridge.jointAction?.beats || [], base, active, bridge);
   }
-  function trackKeyframe(part, primary, beat, base, active, bridge) {
+  function trackKeyframe(part, primary, beat, base, active, bridge, chain = null) {
     const pose = Animotion.motionModel.defaultCustomMotion(), parentId = parentIdFor(part);
+    const chainFactor = separateChainMotionFactor(part, chain);
     if (part.id === primary.id) {
       const extensionPose = Animotion.armExtension?.poseForArmOnlyRearPunch?.(part, beat, base, active, bridge);
-      if (extensionPose) Object.assign(pose, extensionPose); else if (active.motion === "translate" || drivesHandTipEndpoint(part, active)) {
-        pose.x = beat.pose[active.end][0] - base[active.end][0];
-        pose.y = beat.pose[active.end][1] - base[active.end][1];
+      if (extensionPose) Object.assign(pose, extensionPose); else if (active.motion === "translate" || drivesHandTipEndpoint(part, active) || chainFactor > 0) {
+        pose.x = (beat.pose[active.end][0] - base[active.end][0]) * (chainFactor || 1);
+        pose.y = (beat.pose[active.end][1] - base[active.end][1]) * (chainFactor || 1);
       } else {
         pose.jointX = beat.pose[active.end][0] - base[active.end][0];
         pose.jointY = beat.pose[active.end][1] - base[active.end][1];
       }
+      return { frame: beat.at, pose };
+    }
+    if (chainFactor > 0) {
+      pose.x = (beat.pose[active.end][0] - base[active.end][0]) * chainFactor;
+      pose.y = (beat.pose[active.end][1] - base[active.end][1]) * chainFactor;
+      pose.rotate = chainFactor * 8 * Math.sign(pose.x || 1);
       return { frame: beat.at, pose };
     }
     if (!parentId && bridge.bodyAssistEnabled !== false && bridge?.jointAction?.targetDebug?.chosenMotionScope === "full-character") {
@@ -251,6 +261,13 @@
     return { frame: beat.at, pose };
   }
   function drivesHandTipEndpoint(part, active) { return partKind(part) === "arm" && Boolean(Animotion.rigging?.handTipForPart?.(part) || part.handTip) && String(active.end || "").endsWith("Hand"); }
+  function separateChainMotionFactor(part, chain) {
+    if (!chain?.separateRigPath || !chain.handOrGloveId) return 0;
+    if (part.id === chain.upperArmId) return chain.forearmId ? 0.15 : 0.22;
+    if (part.id === chain.forearmId) return chain.upperArmId ? 0.3 : 0.35;
+    if (part.id === chain.handOrGloveId) return chain.upperArmId && chain.forearmId ? 0.55 : chain.forearmId ? 0.65 : 1;
+    return 0;
+  }
   function statusText(plan, part) {
     if (!part) return "파츠를 선택하면 움직임 목표 기반 궤적을 만들 수 있습니다.";
     const target = plan.target ? `움직임 목표 ${plan.target.x}, ${plan.target.y}` : "움직임 목표 없음";
@@ -331,7 +348,7 @@
   function insideRect(point, rect) { return point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h; }
   function activeTargetPoint(plan) { return plan.activeMotionTarget?.point || plan.target || null; }
   function motionTargetForPlan(plan, point) { return plan.activeMotionTarget ? { ...plan.activeMotionTarget, point } : Animotion.motionTargetState?.generatedTarget?.(point) || null; }
-  function sourceLabel(source) { return ({ manual: "수동", correspondence: "B컷 참조", generated: "자동 생성" })[source] || source; } function partKind(part = {}) { if (["thigh", "shin", "foot"].includes(part.humanRole) || part.type === "leg") return "leg"; if (["upperArm", "forearm", "hand"].includes(part.humanRole) || part.type === "arm") return "arm"; if (["torso", "pelvis"].includes(part.humanRole) || part.type === "body" || part.type === "spine") return "body"; if (part.humanRole === "head" || part.type === "head") return "head"; return part.type || null; } function isBodyPrimary(part) { return partKind(part) === "body"; }
+  function sourceLabel(source) { return ({ manual: "수동", correspondence: "B컷 참조", generated: "자동 생성" })[source] || source; } function partKind(part = {}) { if (["thigh", "shin", "foot"].includes(part.humanRole) || part.type === "leg") return "leg"; if (["upperArm", "forearm", "hand", "glove"].includes(part.humanRole) || ["arm", "glove"].includes(part.type)) return "arm"; if (["torso", "pelvis"].includes(part.humanRole) || part.type === "body" || part.type === "spine") return "body"; if (part.humanRole === "head" || part.type === "head") return "head"; return part.type || null; } function isBodyPrimary(part) { return partKind(part) === "body"; }
   function templateFor(template) { return TEMPLATES[template] || (Animotion.actionTimelineModel?.hasTemplate?.(template) ? Animotion.actionTimelineModel.timelineForTemplate(template) : null); } function actionTimelineFor(template, bridge) { return Animotion.actionTimelineModel?.hasTemplate?.(template) ? Animotion.actionTimelineModel.timelineForTemplate(template, bridge) : null; }
   function impactExaggerationFor(actionTimeline, parts, primary) { return Animotion.impactExaggerationLayer?.createDefaultImpactExaggerationForActionTimeline?.(actionTimeline, { parts, primaryPartId: primary?.id }) || null; }
   function actionTemplateName(action = {}) { return action?.actionTimeline?.template || String(action?.source || "").match(/^motion-planner-(punch|kick)-anchors-v1$/)?.[1] || null; }

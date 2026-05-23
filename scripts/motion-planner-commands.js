@@ -91,6 +91,7 @@
   }
 
   function samePartReference(previousPartId, selectedPartId, primaryPartId) {
+    if (Animotion.armChainResolver?.sameChainReference?.(previousPartId, selectedPartId, primaryPartId, Animotion.state?.parts || [])) return true;
     if (Animotion.motionPrimarySelection?.samePartReference) {
       return Animotion.motionPrimarySelection.samePartReference(previousPartId, selectedPartId, primaryPartId, Animotion.state?.parts || []);
     }
@@ -130,13 +131,13 @@
   }
 
   function partKind(part = {}) {
-    if (part.humanRole) return part.humanRole;
-    return part.type || "";
+    return Animotion.armChainResolver?.roleFor?.(part) || part.humanRole || part.type || "";
   }
 
   function primaryForAction(template, part) {
     if (template !== "punch" || !part) return part;
-    return terminalPunchPart(part) || part;
+    const resolved = Animotion.armChainResolver?.resolve?.(Animotion.state?.parts || [], part);
+    return resolved?.terminalPart || terminalPunchPart(part) || part;
   }
 
   function terminalPunchPart(part) {

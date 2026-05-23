@@ -3,30 +3,40 @@
   const Animotion = global.Animotion || (global.Animotion = {});
   const SIDE_PIVOT = { innerNear: 0.12, innerFar: 0.88, armY: 0.14, legY: 0.08 };
 
-  function defaultPivotForPart(type, rect, parentRect = null) {
+  function defaultPivotForPart(type, rect, parentRect = null, options = {}) {
+    const rolePivot = Animotion.armRoleSemantics?.defaultPivotForRole?.(roleFrom(type, options), rect, parentRect);
+    if (rolePivot) return rolePivot;
     if (type === "arm") return armShoulderPivot(rect, parentRect);
     if (type === "leg") return legHipPivot(rect, parentRect);
     if (type === "hair") return { x: rect.w * 0.5, y: rect.h * 0.12 };
     return { x: rect.w * 0.5, y: rect.h * 0.5 };
   }
 
-  function defaultJointForPart(type, rect, parentRect = null) {
+  function defaultJointForPart(type, rect, parentRect = null, options = {}) {
+    const roleJoint = Animotion.armRoleSemantics?.defaultJointForRole?.(roleFrom(type, options), rect, parentRect);
+    if (roleJoint) return roleJoint;
     if (type === "arm") return limbJoint(rect, parentRect, 0.68);
     if (type === "leg") return limbJoint(rect, parentRect, 0.88);
     return { x: rect.w * 0.5, y: rect.h * 0.5 };
   }
 
-  function defaultHandTipForPart(type, rect, parentRect = null) {
+  function defaultHandTipForPart(type, rect, parentRect = null, options = {}) {
+    const roleHandTip = Animotion.armRoleSemantics?.defaultHandTipForRole?.(roleFrom(type, options), rect, parentRect);
+    if (roleHandTip) return roleHandTip;
     if (type !== "arm") return null;
     return limbJoint(rect, parentRect, 0.88);
   }
 
   function handTipForPart(part = {}) {
+    const semantic = Animotion.armRoleSemantics?.handTipForPart?.(part);
+    if (semantic) return semantic;
     if (validHandTipForPart(part, part.handTip)) return localPoint(part.handTip);
     return inferredHandTipForPart(part);
   }
 
   function validHandTipForPart(part = {}, point = part.handTip) {
+    if (part.humanRole === "upperArm" || part.humanRole === "forearm") return false;
+    if (part.humanRole === "hand") return Boolean(localPoint(point));
     if (!isArmPart(part)) return false;
     const handTip = localPoint(point);
     const joint = localPoint(part.joint);
@@ -35,6 +45,8 @@
   }
 
   function inferredHandTipForPart(part = {}) {
+    const semantic = Animotion.armRoleSemantics?.handTipForPart?.(part);
+    if (semantic) return semantic;
     if (!isArmPart(part)) return null;
     const rect = part.rect || {};
     const pivot = part.pivot || { x: Number(rect.w || 0) * 0.5, y: Number(rect.h || 0) * 0.16 };
@@ -78,7 +90,11 @@
   }
 
   function isArmPart(part = {}) {
-    return part.type === "arm" || part.humanRole === "forearm" || part.humanRole === "upperArm";
+    return part.type === "arm" || ["upperArm", "forearm", "hand"].includes(part.humanRole);
+  }
+
+  function roleFrom(type, options = {}) {
+    return typeof type === "object" ? type.humanRole : options.humanRole;
   }
 
   function localPoint(point = null) {

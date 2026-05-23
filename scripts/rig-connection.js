@@ -29,10 +29,11 @@
 
   function previewPoints(part, parent = null) {
     const meta = metadataForPart(part, parent);
+    const labels = Animotion.armRoleSemantics?.roleLabels?.(part) || {};
     const points = [
       pointSpec("connection", meta.attachPointSelf, localAttachPoint(part, meta.attachPointSelf), labelForAttach(meta.attachPointSelf)),
-      pointSpec("rotationPivot", "rotationPivot", meta.rotationPivot, "회전 중심"),
-      pointSpec("joint", "joint", localPoint(part.joint, part.rect), "관절점"),
+      pointSpec("rotationPivot", "rotationPivot", meta.rotationPivot, labels.pivot || "회전 중심"),
+      jointPoint(part, labels),
       handTipPoint(part),
     ];
     if (parent) points.push(pointSpec("parentConnection", meta.attachPointParent, parentAttachPoint(parent, part, meta.attachPointParent), labelForAttach(meta.attachPointParent)));
@@ -75,14 +76,25 @@
   }
 
   function handTipPoint(part = {}) {
-    if (part.type !== "arm" && part.humanRole !== "forearm" && part.humanRole !== "upperArm") return null;
-    return pointSpec("handTip", "handTip", localPoint(Animotion.rigging?.handTipForPart?.(part) || part.handTip, part.rect), "손끝점");
+    if (Animotion.armRoleSemantics?.shouldShowPoint?.(part, "handTip") === false) return null;
+    if (part.type !== "arm" && part.humanRole !== "hand") return null;
+    const point = part.humanRole === "hand"
+      ? Animotion.armRoleSemantics?.contactPointForPart?.(part)
+      : Animotion.rigging?.handTipForPart?.(part) || part.handTip;
+    return pointSpec("handTip", "handTip", localPoint(point, part.rect), Animotion.armRoleSemantics?.labelFor?.(part, "handTip") || "손끝점");
+  }
+
+  function jointPoint(part = {}, labels = {}) {
+    if (Animotion.armRoleSemantics?.shouldShowPoint?.(part, "joint") === false) return null;
+    return pointSpec("joint", "joint", localPoint(part.joint, part.rect), labels.joint || "관절점");
   }
 
   function selfAttachKey(part, parent) {
     if (!parent) return "none";
     if (part.type === "head") return "neck";
-    if (part.type === "hand") return "wrist";
+    if (part.humanRole === "hand" || part.type === "hand") return "wrist";
+    if (part.humanRole === "forearm") return "elbow";
+    if (part.humanRole === "upperArm") return "shoulder";
     if (isForearm(part, parent)) return "elbow";
     if (part.type === "arm") return "shoulder";
     if (part.type === "leg") return "hip";
@@ -92,7 +104,9 @@
   function parentAttachKey(part, parent) {
     if (!parent) return "none";
     if (part.type === "head") return "neck";
-    if (part.type === "hand") return "wrist";
+    if (part.humanRole === "hand" || part.type === "hand") return "wrist";
+    if (part.humanRole === "forearm") return "elbow";
+    if (part.humanRole === "upperArm") return "shoulder";
     if (isForearm(part, parent)) return "elbow";
     if (part.type === "arm") return "shoulder";
     if (part.type === "leg") return "hip";

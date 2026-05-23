@@ -28,6 +28,7 @@ function loadAnimotion() {
     "scripts/action-timeline-model.js",
     "scripts/impact-exaggeration-layer.js",
     "scripts/rig-connection.js",
+    "scripts/arm-chain-resolver.js",
     "scripts/cutscene-depth.js",
     "scripts/pose-assist.js",
     "scripts/joint-coordinates.js",

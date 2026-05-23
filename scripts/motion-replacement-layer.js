@@ -14,7 +14,7 @@
     const existingHint = Animotion.armExtension?.renderHintForPart?.(part, context);
     if (!part?.id || (part.id !== primaryIdFor(bridge, action, context) && !existingHint?.active)) return inactive("not-primary");
     if (!isArmPart(part)) return inactive("not-arm-part");
-    if (terminalHandFor(part, parts)) return inactive("separate-hand-rig");
+    if (Animotion.armChainResolver?.resolve?.(parts, part)?.terminalPart || terminalHandFor(part, parts)) return inactive("separate-hand-rig");
     const handTip = handTipForPart(part);
     if (!handTip) return inactive("missing-handTip");
     const style = punchStyleInfo(context, part);
@@ -187,8 +187,8 @@
   }
 
   function isPunchAction(action = {}) { return action.actionTimeline?.template === "punch" || String(action.source || "").includes("punch"); }
-  function isArmPart(part = {}) { return part.type === "arm" || ["upperArm", "forearm"].includes(part.humanRole); }
-  function partKind(part = {}) { return part.humanRole || part.type || ""; }
+  function isArmPart(part = {}) { return part.type === "arm" || part.type === "glove" || ["upperArm", "forearm", "hand", "glove"].includes(part.humanRole); }
+  function partKind(part = {}) { return Animotion.armChainResolver?.roleFor?.(part) || part.humanRole || part.type || ""; }
   function parentIdFor(part = {}) { return Animotion.rigConnection?.parentIdFor?.(part) || part.parentId || part.parentPartId || null; }
   function numberedSuffix(part) { return String(`${part?.id || ""} ${part?.name || ""}`).match(/(?:^|[^0-9])([0-9]+)(?!.*[0-9])/)?.[1] || null; }
   function normalizeBeatId(id) { return String(id || "").toLowerCase(); }

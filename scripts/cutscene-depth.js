@@ -126,10 +126,10 @@
     return (minX + maxX) / 2;
   }
   function beatById(action, id) { return (Array.isArray(action?.beats) ? action.beats : []).find((beat) => beat.id === id) || null; }
-  function partKind(part = {}) { return part.humanRole || part.type || ""; }
+  function partKind(part = {}) { return Animotion.armChainResolver?.roleFor?.(part) || part.humanRole || part.type || ""; }
   function numberedSuffix(part) { return String(`${part?.id || ""} ${part?.name || ""}`).match(/(?:^|[^0-9])([0-9]+)(?!.*[0-9])/)?.[1] || null; }
   function parentIdFor(part) { return Animotion.rigConnection?.parentIdFor?.(part) || part.parentId || part.parentPartId || null; }
-  function isArmPart(part) { return part?.type === "arm" || ["upperArm", "forearm", "hand"].includes(part?.humanRole); }
+  function isArmPart(part) { return part?.type === "arm" || part?.type === "glove" || ["upperArm", "forearm", "hand", "glove"].includes(part?.humanRole); }
   function fallbackCoveringPart(part = {}) { return ["head", "hair", "eye", "mouth", "nose"].includes(part.type) || ["head", "face", "hair", "eye", "mouth", "nose"].includes(part.humanRole); }
   function boundsOverlap(a, b) { return Animotion.renderLayerUtils?.boundsOverlap?.(a, b) ?? Boolean(a && b && a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y); }
   function hasHigherCoveringOverlap(part, parts) {

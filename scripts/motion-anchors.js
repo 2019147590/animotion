@@ -136,7 +136,7 @@
     const targetSide = Math.sign(targetPoint.x - torso.x) || Math.sign(Number(direction?.x || 0)) || 1;
     const selectedSide = Math.sign(selected.x - torso.x);
     const shoulderSide = Math.sign(shoulder.x - torso.x);
-    const namedRear = namedRearState(primary);
+    const namedRear = namedRearState(primary, parts);
     const style = punchStyleFor(plan, parts, primary, base, active, direction, target);
     return {
       selectedPartId: options.selectedPartId || primary?.id || null,
@@ -162,15 +162,21 @@
 
   function isRearPunchArm(plan = {}, parts = [], primary = {}, base = {}, active = {}, direction = {}, target = null) {
     if (plan.template !== "punch") return false;
-    const namedRear = namedRearState(primary);
+    const namedRear = namedRearState(primary, parts);
     return namedRear !== null ? namedRear : geometryRearArm(parts, primary, base, active, direction, target);
   }
 
-  function namedRearState(part = {}) {
-    const text = partText(part);
+  function namedRearState(part = {}, parts = []) {
+    const text = chainText(part, parts);
     if (/\b(back|rear|trailing)\b/i.test(text)) return true;
     if (/\b(front|lead|leading)\b/i.test(text)) return false;
     return null;
+  }
+
+  function chainText(part = {}, parts = []) {
+    const chain = Animotion.armChainResolver?.resolve?.(parts, part);
+    const chainParts = chain?.chainPartIds?.length ? chain.chainPartIds.map((id) => parts.find((candidate) => candidate.id === id)).filter(Boolean) : [part];
+    return chainParts.map(partText).join(" ");
   }
 
   function geometryRearArm(parts, primary, base, active, direction, target) {
@@ -248,7 +254,7 @@
 
   function roleKind(part = {}) {
     if (["thigh", "shin", "foot"].includes(part.humanRole) || part.type === "leg") return "leg";
-    if (["upperArm", "forearm", "hand"].includes(part.humanRole) || part.type === "arm") return "arm";
+    if (["upperArm", "forearm", "hand", "glove"].includes(part.humanRole) || ["arm", "glove"].includes(part.type)) return "arm";
     if (["torso", "pelvis"].includes(part.humanRole) || part.type === "body" || part.type === "spine") return "body";
     if (part.humanRole === "head" || part.type === "head") return "head";
     return part.type || null;
@@ -292,7 +298,8 @@
   }
 
   function endpointSource(part = {}) {
-    if (part.type === "hand" || part.humanRole === "hand") return "terminal hand";
+    if (part.humanRole === "hand") return part.handTip ? "terminal handTip" : "inferred terminal contact";
+    if (part.type === "hand") return "terminal hand";
     if (part.handTip) return "handTip";
     if (Animotion.rigging?.handTipForPart?.(part)) return "inferred handTip";
     return part.joint ? "joint" : "part center";
