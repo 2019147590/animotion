@@ -22,6 +22,7 @@ function loadAnimotion() {
     "scripts/project-serialization.js",
     "scripts/motion-model.js",
     "scripts/timeline.js",
+    "scripts/cutscene-action-selectors.js",
     "scripts/rig-connection.js",
     "scripts/arm-chain-resolver.js",
     "scripts/render-layer-utils.js",

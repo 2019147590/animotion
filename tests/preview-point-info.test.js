@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 
 globalThis.Animotion = {};
 require("../scripts/arm-role-semantics.js");
+require("../scripts/cutscene-action-selectors.js");
 const pointInfo = require("../scripts/preview-point-info.js");
 
 function test(name, fn) {

@@ -72,6 +72,7 @@
       name: stringOrDefault(part.name, `part_${index + 1}`),
       type: PART_TYPES.has(part.type) ? part.type : "prop",
       humanRole: Animotion.humanRigSchema?.normalizeRole?.(part.humanRole) || null,
+      ...(part.splitFromPartId ? { splitFromPartId: String(part.splitFromPartId) } : {}), ...(part.originalSourcePartId ? { originalSourcePartId: String(part.originalSourcePartId) } : {}), ...(part.splitMethod ? { splitMethod: String(part.splitMethod) } : {}), ...(part.sourceArmOnlyPartId ? { sourceArmOnlyPartId: String(part.sourceArmOnlyPartId) } : {}),
       assetId: stringOrDefault(part.assetId, `asset-${id}`),
       sourceAssetId: stringOrDefault(part.sourceAssetId, "source-image"),
       parentId: connection.parentPartId,
@@ -124,7 +125,6 @@
   function normalizeArray(values, normalizer) {
     return Array.isArray(values) ? values.map(normalizer).filter(Boolean) : [];
   }
-
   function normalizeAsset(asset) {
     const patch = Animotion.hiddenCompletionAssets?.normalizeAsset?.(asset);
     if (patch) return patch;

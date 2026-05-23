@@ -162,10 +162,11 @@
 
   function normalizeJointAction(action, options = {}) {
     if (!action?.beats?.length) return null;
+    const timeline = Animotion.cutsceneActionSelectors?.rawActionTimeline?.(action) || null;
     return {
       source: String(action.source || "part-pivots-v1"),
       focusKey: action.focusKey ? String(action.focusKey) : null,
-      ...(action.actionTimeline ? { actionTimeline: Animotion.actionTimelineModel?.normalizeTimeline?.(action.actionTimeline, options) || clonePlain(action.actionTimeline) } : {}),
+      ...(timeline ? { actionTimeline: Animotion.actionTimelineModel?.normalizeTimeline?.(timeline, options) || clonePlain(timeline) } : {}),
       ...(action.impactExaggeration ? { impactExaggeration: Animotion.impactExaggerationLayer?.normalizeImpactExaggerationLayer?.(action.impactExaggeration) || clonePlain(action.impactExaggeration) } : {}),
       anchors: Animotion.motionAnchors?.normalizeAnchors?.(action.anchors, options) || [],
       beats: action.beats.map((beat) => normalizeBeat(beat, options)).filter(Boolean),

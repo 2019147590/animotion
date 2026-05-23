@@ -89,7 +89,8 @@
   }
 
   function currentAnchors() {
-    return Animotion.motionAnchors.normalizeAnchors(Animotion.state?.cutsceneBridge?.jointAction?.anchors || currentPlan().anchors);
+    const action = Animotion.cutsceneActionSelectors?.getActiveJointAction?.(Animotion.state)?.action;
+    return Animotion.motionAnchors.normalizeAnchors(action?.anchors || currentPlan().anchors);
   }
 
   function currentPlan() {
@@ -126,7 +127,7 @@
   }
 
   function isCutsceneEditable() {
-    return Animotion.dom?.els?.motionTemplate?.value === "cutscene" && Boolean(Animotion.state?.cutsceneBridge?.jointAction);
+    return Animotion.dom?.els?.motionTemplate?.value === "cutscene" && Boolean(Animotion.cutsceneActionSelectors?.getActiveJointAction?.(Animotion.state)?.active);
   }
 
   function freezePlayback() {

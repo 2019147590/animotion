@@ -26,6 +26,7 @@ function loadAnimotion() {
     "scripts/character-root-motion.js",
     "scripts/pose-assist.js",
     "scripts/joint-coordinates.js",
+    "scripts/cutscene-action-selectors.js",
     "scripts/cutscene-model.js",
     "scripts/motion-anchors.js",
     "scripts/action-timeline-model.js",

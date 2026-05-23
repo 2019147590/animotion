@@ -1,6 +1,7 @@
 {
   const global = typeof window !== "undefined" ? window : globalThis;
   const Animotion = global.Animotion || (global.Animotion = {});
+  let symmetryWarning = "";
 
   function installControls() {
     if (typeof document === "undefined" || document.querySelector("#hiddenCompletionPartTools")) return;
@@ -19,6 +20,7 @@
     ui.box.classList.toggle("hidden", !state.part);
     ui.create.disabled = !state.canCreate;
     ui.createMesh.disabled = !state.canCreate;
+    if (ui.symmetry) ui.symmetry.disabled = !state.canCreateSymmetry;
     if (ui.meshPreset && !ui.meshPreset.value) ui.meshPreset.value = "quad";
     renderPatchSelect(ui.patchSelect, state);
     const selectedState = panelState({ selectedAssetId: ui.patchSelect?.value || "" });
@@ -35,7 +37,6 @@
     refresh();
     return asset;
   }
-
   function createMeshGuide() {
     ensureDraftForGuide();
     const state = panelState();
@@ -50,7 +51,26 @@
     refresh();
     return asset;
   }
-
+  function createSymmetryDraft() {
+    ensureDraftForGuide();
+    const state = panelState();
+    if (!state.canCreateSymmetry) return null;
+    const result = Animotion.hiddenCompletionSymmetry.createPatchAsset(state.part, Animotion.state.parts, {
+      id: uniqueAssetId(`hidden-${state.part.id}-symmetry`),
+      activeAsset: state.asset,
+    });
+    if (!result.ok) return setSymmetryWarning(result.warning);
+    upsertAsset(result.asset);
+    Animotion.motionDraftEditor.updateHiddenCompletion({
+      status: state.draft.hiddenCompletion?.status && state.draft.hiddenCompletion.status !== "none" ? state.draft.hiddenCompletion.status : "candidate",
+      assetKind: "hiddenCompletionPatch",
+      assetStatus: "ready",
+      assetId: result.asset.id,
+    });
+    symmetryWarning = "";
+    refresh();
+    return result.asset;
+  }
   function linkSelectedPatch() {
     const assetId = refs().patchSelect?.value || "";
     ensureDraftForGuide();
@@ -89,6 +109,7 @@
       patches,
       selectedAssetId,
       canCreate: Boolean(part && canUseOrCreateDraft(draft) && Animotion.hiddenCompletionGuideEditor?.createGuideFromSelectedPart),
+      canCreateSymmetry: Boolean(part && canUseOrCreateDraft(draft) && Animotion.hiddenCompletionSymmetry?.createPatchAsset && Animotion.motionDraftEditor?.updateHiddenCompletion),
       canLinkSelected: Boolean(part && canUseOrCreateDraft(draft) && patches.some((patch) => patch.id === selectedAssetId)),
       canUnlink: Boolean(part && draft?.hiddenCompletion?.assetId),
       status: statusText(part, draft, asset),
@@ -105,7 +126,7 @@
   }
 
   function canCreateCutsceneDraft() {
-    return Boolean(Animotion.state?.cutsceneBridge?.jointAction && Animotion.motionDrafts?.compileFromHints && Animotion.motionCommands?.updateJointAction);
+    return Boolean(Animotion.cutsceneActionSelectors?.getActiveJointAction?.(Animotion.state)?.active && Animotion.motionDrafts?.compileFromHints && Animotion.motionCommands?.updateJointAction);
   }
 
   function ensureDraftForGuide() {
@@ -116,10 +137,9 @@
       hiddenCompletion: "candidate",
     }, { partId: part.id });
     if (!draft) return null;
-    Animotion.motionCommands.updateJointAction({
-      ...Animotion.state.cutsceneBridge.jointAction,
-      motionDraft: Animotion.motionDrafts.snapshot?.(draft) || draft,
-    });
+    const action = Animotion.cutsceneActionSelectors?.getActiveJointAction?.(Animotion.state)?.action;
+    if (!action) return null;
+    Animotion.motionCommands.updateJointAction({ ...action, motionDraft: Animotion.motionDrafts.snapshot?.(draft) || draft });
     return draft;
   }
 
@@ -144,6 +164,7 @@
   function statusText(part, draft, asset) {
     if (!part) return "파츠를 선택하면 숨은 부위 보완을 시작할 수 있습니다.";
     if (!draft) return "먼저 이 파츠로 컷신 초안을 생성하면 보완 가이드를 만들 수 있습니다.";
+    if (symmetryWarning) return symmetryWarning;
     if (!asset) return `${part.name || part.id} 기준 guide/mask 패치를 만들거나 기존 패치를 연결합니다.`;
     return `${asset.name || asset.id} 연결됨 · ${asset.renderMode || "guideOnly"}`;
   }
@@ -191,6 +212,7 @@
         </select>
       </label>
       <button id="createHiddenCompletionMeshGuide" type="button">2D 메시 가이드 만들기</button>
+      <button id="createHiddenCompletionSymmetryDraft" type="button">반대 파츠로 대칭 보완 초안 만들기</button>
       <label>
         기존 보완 패치
         <select id="hiddenCompletionPatchSelect"></select>
@@ -207,6 +229,7 @@
   function bindControls() {
     bindClick("#createHiddenCompletionGuideFromPart", createGuide);
     bindClick("#createHiddenCompletionMeshGuide", createMeshGuide);
+    bindClick("#createHiddenCompletionSymmetryDraft", createSymmetryDraft);
     bindClick("#linkHiddenCompletionPatch", linkSelectedPatch);
     bindClick("#unlinkHiddenCompletionPatch", unlinkPatch);
     bindChange("#hiddenCompletionPatchSelect", refreshControls);
@@ -230,14 +253,10 @@
 
   function refs() {
     return {
-      box: document.querySelector("#hiddenCompletionPartTools"),
-      create: document.querySelector("#createHiddenCompletionGuideFromPart"),
-      createMesh: document.querySelector("#createHiddenCompletionMeshGuide"),
-      meshPreset: document.querySelector("#hiddenCompletionMeshPreset"),
-      patchSelect: document.querySelector("#hiddenCompletionPatchSelect"),
-      link: document.querySelector("#linkHiddenCompletionPatch"),
-      unlink: document.querySelector("#unlinkHiddenCompletionPatch"),
-      status: document.querySelector("#hiddenCompletionPartStatus"),
+      box: document.querySelector("#hiddenCompletionPartTools"), create: document.querySelector("#createHiddenCompletionGuideFromPart"),
+      createMesh: document.querySelector("#createHiddenCompletionMeshGuide"), symmetry: document.querySelector("#createHiddenCompletionSymmetryDraft"),
+      meshPreset: document.querySelector("#hiddenCompletionMeshPreset"), patchSelect: document.querySelector("#hiddenCompletionPatchSelect"),
+      link: document.querySelector("#linkHiddenCompletionPatch"), unlink: document.querySelector("#unlinkHiddenCompletionPatch"), status: document.querySelector("#hiddenCompletionPartStatus"),
     };
   }
 
@@ -247,11 +266,9 @@
     option.textContent = count ? "패치를 선택하세요" : "이 파츠의 보완 패치 없음";
     return option;
   }
-
   function optionForAsset(asset) {
     const option = document.createElement("option");
-    option.value = asset.id;
-    option.textContent = `${asset.name || asset.id} · ${asset.renderMode || "guideOnly"}`;
+    option.value = asset.id; option.textContent = `${asset.name || asset.id} · ${asset.renderMode || "guideOnly"}`;
     return option;
   }
 
@@ -259,7 +276,24 @@
     Animotion.ui?.refreshUi?.();
   }
 
-  Animotion.hiddenCompletionPartPanel = { installControls, refreshControls, createGuide, createMeshGuide, linkSelectedPatch, unlinkPatch, panelState };
+  function upsertAsset(asset) {
+    const project = Animotion.state.project || (Animotion.state.project = Animotion.projectModel?.createEmptyProject?.() || { assets: [] });
+    const assets = Array.isArray(project.assets) ? project.assets : [];
+    const index = assets.findIndex((candidate) => candidate.id === asset.id);
+    project.assets = index >= 0 ? assets.map((candidate, i) => i === index ? asset : candidate) : [...assets, asset];
+  }
+  function uniqueAssetId(base) {
+    const ids = new Set((Animotion.state.project?.assets || []).map((asset) => asset.id));
+    if (!ids.has(base)) return base;
+    for (let index = 2; ; index += 1) if (!ids.has(`${base}-${index}`)) return `${base}-${index}`;
+  }
+  function setSymmetryWarning(message) {
+    symmetryWarning = message || "symmetry patch could not be created";
+    refresh();
+    return null;
+  }
+
+  Animotion.hiddenCompletionPartPanel = { installControls, refreshControls, createGuide, createMeshGuide, createSymmetryDraft, linkSelectedPatch, unlinkPatch, panelState };
   installControls();
   if (typeof module !== "undefined") module.exports = Animotion.hiddenCompletionPartPanel;
 }

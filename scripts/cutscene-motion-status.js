@@ -3,23 +3,25 @@
   const Animotion = global.Animotion || (global.Animotion = {});
 
   function statusForBridge(bridge = {}, options = {}) {
-    if (!bridge) return { active: false };
+    if (!bridge) return { active: false, reason: "no-cutscene-bridge" };
     const safe = Animotion.cutsceneModel?.normalizeBridge?.(bridge) || bridge || {};
-    const action = safe.jointAction;
-    const actionType = actionTypeFor(action);
-    if (!action || !["punch", "kick"].includes(actionType)) return { active: false };
+    const status = Animotion.cutsceneActionSelectors?.getCutsceneActionStatus?.(safe, options) || {};
+    const action = status.action;
+    const actionType = status.template;
+    if (!action || !["punch", "kick"].includes(actionType)) return { active: false, reason: status.reason || "unsupported-cutscene-action" };
     const beats = Array.isArray(action.beats) ? action.beats : [];
     const impactBeat = beatById(beats, "impact");
     const currentBeat = currentBeatFor(beats, options.currentFrame || 1);
-    const timelineBeats = Array.isArray(action.actionTimeline?.beats) ? action.actionTimeline.beats : [];
+    const timeline = status.timeline || null;
+    const timelineBeats = Array.isArray(timeline?.beats) ? timeline.beats : [];
     const runtime = runtimeDebug(safe, action, options);
     return {
       active: true,
       actionType,
       currentBeatId: currentBeat?.id || null,
       currentBeatFrame: currentBeat?.at || null,
-      impactFrame: safe.impactFrame || action.actionTimeline?.impactFrame || impactBeat?.at || null,
-      primaryPartRole: action.actionTimeline?.primaryPartRole || null,
+      impactFrame: safe.impactFrame || timeline?.impactFrame || impactBeat?.at || null,
+      primaryPartRole: timeline?.primaryPartRole || null,
       primaryPartId: safe.primaryPartId || action.targetDebug?.primaryPartId || null,
       bodyRootAssistActive: bodyRootAssistActive(safe, action),
       hipRootAnchorPresent: hipRootAnchorPresent(action.anchors),
@@ -159,13 +161,7 @@
   }
 
   function actionTypeFor(action = {}) {
-    if (!action) return null;
-    const template = action.actionTimeline?.template || action.actionTimeline?.id || "";
-    if (template === "punch" || template === "kick") return template;
-    const source = String(action.source || "");
-    if (source.includes("punch")) return "punch";
-    if (source.includes("kick")) return "kick";
-    return null;
+    return Animotion.cutsceneActionSelectors?.actionTemplate?.(action) || null;
   }
 
   function currentBeatFor(beats = [], frame) {

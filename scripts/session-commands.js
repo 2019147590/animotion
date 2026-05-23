@@ -20,13 +20,12 @@
       sourceZoom: 1,
       sourcePan: { x: 0, y: 0 },
       startTime: performance.now(),
-      cutsceneBridge: null,
       lookismPreset: null,
       panelEditTarget: "source",
       panelSetup: defaultPanelSetup(),
       correspondences: [],
-      motionPlan: defaultMotionPlan(),
     });
+    resetMotionStateForImageUpload();
     clearHistory();
   }
 
@@ -131,6 +130,14 @@
 
   function defaultMotionPlan() {
     return Animotion.motionPlanner?.normalizePlan?.() || { template: "kick", target: null, targetMode: false };
+  }
+
+  function resetMotionStateForImageUpload() {
+    return Animotion.cutsceneActionSelectors?.resetMotionStateForImageUpload?.(state) || Object.assign(state, {
+      cutsceneBridge: null,
+      selectedPartId: null,
+      motionPlan: defaultMotionPlan(),
+    });
   }
 
   function loadedSelectedPartId(partId) {

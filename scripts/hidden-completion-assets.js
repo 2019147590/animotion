@@ -22,6 +22,8 @@
       generatedResult: options.generatedResult || { status: "none" },
       renderMode: options.renderMode || "guideOnly",
       patchStatus: options.patchStatus || "guide",
+      completionMethod: options.completionMethod,
+      symmetrySource: options.symmetrySource,
       preview: options.preview,
     });
   }
@@ -41,6 +43,8 @@
       ...(guide ? { guide } : {}),
       ...(asset.generatedResult ? { generatedResult: normalizeGeneratedResult(asset.generatedResult) } : {}),
       ...(asset.renderMode ? { renderMode: normalizeRenderMode(asset.renderMode) } : {}),
+      ...(asset.completionMethod ? { completionMethod: normalizeCompletionMethod(asset.completionMethod) } : {}),
+      ...(asset.symmetrySource ? { symmetrySource: normalizeSymmetrySource(asset.symmetrySource) } : {}),
       patchStatus: normalizeStatus(asset.patchStatus),
       preview: normalizePreview(asset.preview),
     };
@@ -194,6 +198,22 @@
 
   function normalizeRenderMode(mode) {
     return RENDER_MODES.has(mode) ? mode : "guideOnly";
+  }
+
+  function normalizeCompletionMethod(method) {
+    return method === "symmetry" ? "symmetry" : String(method || "manual");
+  }
+
+  function normalizeSymmetrySource(source = {}) {
+    return {
+      method: "symmetry",
+      counterpartPartId: stringOrNull(source.counterpartPartId),
+      targetPartId: stringOrNull(source.targetPartId),
+      targetRegion: stringOrNull(source.targetRegion),
+      sourceRegion: stringOrNull(source.sourceRegion),
+      confidence: clamp01(source.confidence ?? 0),
+      warnings: (Array.isArray(source.warnings) ? source.warnings : []).map(String).filter(Boolean),
+    };
   }
 
   function quadPoints() {

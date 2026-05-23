@@ -111,8 +111,8 @@
   }
   function shouldEraseSourceRigParts(cutscene) {
     if (!cutscene?.active || !state.parts.length) return false;
-    const action = cutscene.bridge?.jointAction;
-    if (action?.actionTimeline || Array.isArray(action?.beats)) return true;
+    const actionStatus = Animotion.cutsceneActionSelectors?.getActiveJointAction?.(cutscene.bridge) || {};
+    if (actionStatus.active && Array.isArray(actionStatus.action?.beats)) return true;
     return state.parts.some((part) => Array.isArray(part.keyframes) && part.keyframes.length);
   }
   function visiblePartIds() {
@@ -127,6 +127,7 @@
     const matrixCache = new Map();
     previewCtx.save();
     Animotion.previewTransform.applySourceFrame(previewCtx, view, state.previewSourceFrame, state.previewSourceTransform);
+    drawHiddenCompletionPatches(t, matrixCache);
     for (const part of orderedPartsForFrame(t, cutscene)) {
       if (!part.hidden) drawPart(part, t, matrixCache, view, 1, cutscene);
     }
@@ -135,6 +136,22 @@
       ? Animotion.characterRootMotion?.evaluationDebug?.(state.parts, state.currentFrame, cutscene.bridge)
       : null;
     return matrixCache;
+  }
+  function drawHiddenCompletionPatches(t, matrixCache) {
+    for (const part of state.parts) {
+      if (!part.hidden) drawHiddenCompletionPatch(part, t, matrixCache);
+    }
+  }
+  function drawHiddenCompletionPatch(part, t, matrixCache) {
+    const result = Animotion.hiddenCompletionRender?.drawForPart?.(previewCtx, part, { state, parts: state.parts, t, matrixCache, worldMatrix });
+    if (!result) return;
+    recordPartDraw(part, result.ok ? "hidden-completion-symmetry" : "hidden-completion-symmetry-failed", "hidden-completion-patch", result.drawnBounds, {
+      hiddenCompletionPatchId: result.assetId,
+      completionMethod: result.method || "symmetry",
+      counterpartPartId: result.counterpartPartId || null,
+      hiddenCompletionRenderFailure: result.ok === false,
+      hiddenCompletionRenderReason: result.reason || null,
+    });
   }
   function drawGhostParts(view, now, cutscene) {
     if (!state.running) return;
@@ -355,7 +372,8 @@
   }
   function impactTransformHint(part) {
     if (els.motionTemplate.value !== "cutscene") return { scaleX: 1, scaleY: 1 };
-    const bridge = Animotion.cutsceneModel?.normalizeBridge?.(state.cutsceneBridge), layer = bridge?.jointAction?.impactExaggeration;
+    const action = Animotion.cutsceneActionSelectors?.getActiveJointAction?.(state)?.action;
+    const layer = action?.impactExaggeration;
     return Animotion.impactExaggerationLayer?.transformHintForPart?.(layer, part, state.currentFrame) || { scaleX: 1, scaleY: 1 };
   }
   function jointRotation(part, transform) {

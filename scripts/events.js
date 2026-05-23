@@ -241,7 +241,7 @@
   }
 
   function updateImpactExaggerationEnabled() {
-    const action = state.cutsceneBridge?.jointAction;
+    const action = Animotion.cutsceneActionSelectors?.getActiveJointAction?.(state)?.action;
     if (!action?.impactExaggeration) return;
     Animotion.motionCommands.updateJointAction({
       ...action,

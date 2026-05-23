@@ -94,10 +94,7 @@
   }
 
   function actionBeats(action = {}) {
-    const beats = Array.isArray(action.beats) ? action.beats : [];
-    const timeline = Array.isArray(action.actionTimeline?.beats) ? action.actionTimeline.beats : [];
-    const byId = new Map(beats.map((beat) => [beat.id, beat]));
-    return timeline.length ? timeline.map((beat) => ({ ...beat, ...(byId.get(beat.id) || {}) })) : beats;
+    return Animotion.cutsceneActionSelectors?.timelineBeats?.(action) || (Array.isArray(action.beats) ? action.beats : []);
   }
 
   function currentBeat(beats, frame) {
@@ -186,7 +183,7 @@
     return { ...beat, label: id === "extend" ? "extension" : id };
   }
 
-  function isPunchAction(action = {}) { return action.actionTimeline?.template === "punch" || String(action.source || "").includes("punch"); }
+  function isPunchAction(action = {}) { return Animotion.cutsceneActionSelectors?.isPunchAction?.(action) || false; }
   function isArmPart(part = {}) { return part.type === "arm" || part.type === "glove" || ["upperArm", "forearm", "hand", "glove"].includes(part.humanRole); }
   function partKind(part = {}) { return Animotion.armChainResolver?.roleFor?.(part) || part.humanRole || part.type || ""; }
   function parentIdFor(part = {}) { return Animotion.rigConnection?.parentIdFor?.(part) || part.parentId || part.parentPartId || null; }

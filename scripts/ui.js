@@ -27,6 +27,7 @@
     els.separateCharacter.checked = state.separateCharacter;
     Animotion.panelEditor?.refreshControls?.();
     Animotion.motionPlanner?.refreshControls?.();
+    Animotion.armChainRebind?.refreshControls?.();
     Animotion.actionFrameEditor?.refreshControls?.();
     Animotion.motionAnchorPicker?.refreshControls?.();
     Animotion.motionPathExplainer?.refreshControls?.();
@@ -57,8 +58,8 @@
 
   function renderImpactExaggerationStatus() {
     if (!els.impactExaggerationStatus) return;
-    const bridge = Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge);
-    const layer = bridge.jointAction?.impactExaggeration;
+    const action = Animotion.cutsceneActionSelectors?.getActiveJointAction?.(state)?.action;
+    const layer = action?.impactExaggeration;
     if (!layer) {
       if (els.impactExaggerationEnabled) {
         els.impactExaggerationEnabled.checked = false;

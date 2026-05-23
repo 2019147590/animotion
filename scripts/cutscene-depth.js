@@ -107,7 +107,7 @@
   function likelyCoveringPart(part = {}) {
     return Animotion.renderLayerUtils?.isLikelyCoveringPart?.(part) || fallbackCoveringPart(part);
   }
-  function isPunchAction(action = {}) { return action.actionTimeline?.template === "punch" || String(action.source || "").includes("punch"); }
+  function isPunchAction(action = {}) { return Animotion.cutsceneActionSelectors?.isPunchAction?.(action) || false; }
   function poseHasMotion(pose = {}) { return ["x", "y", "rotate", "scaleY", "jointX", "jointY"].some((key) => Math.abs(Number(pose?.[key] || 0)) > 0.001); }
   function isArmOnly(part, parts) { return isArmPart(part) && partKind(part) !== "hand" && !terminalHandFor(part, parts); }
   function terminalHandFor(part, parts) { return parts.find((candidate) => candidate.id !== part?.id && partKind(candidate) === "hand" && numberedSuffix(candidate) === numberedSuffix(part)); }

@@ -23,6 +23,7 @@ function loadAnimotion() {
     "scripts/project-model.js",
     "scripts/correspondence-model.js",
     "scripts/project-serialization.js",
+    "scripts/cutscene-action-selectors.js",
     "scripts/cutscene-model.js",
     "scripts/motion-planner.js",
   ]) runScript(context, path);

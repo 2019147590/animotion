@@ -21,6 +21,7 @@ function loadAnimotion() {
     "scripts/hidden-completion-assets.js",
     "scripts/motion-hints.js",
     "scripts/motion-drafts.js",
+    "scripts/cutscene-action-selectors.js",
     "scripts/motion-draft-editor.js",
     "scripts/hidden-completion-guide-editor.js",
   ]) runScript(context, path);

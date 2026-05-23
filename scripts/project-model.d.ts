@@ -50,6 +50,10 @@ export type Part = {
   name: string;
   type: "head" | "body" | "spine" | "arm" | "leg" | "hand" | "hair" | "eye" | "mouth" | "clothes" | "prop" | "background";
   humanRole?: HumanRole | null;
+  splitFromPartId?: string;
+  originalSourcePartId?: string;
+  splitMethod?: "manual" | string;
+  sourceArmOnlyPartId?: string;
   assetId: string;
   sourceAssetId?: string;
   parentId?: string | null;

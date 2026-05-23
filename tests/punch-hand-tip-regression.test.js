@@ -26,6 +26,7 @@ function loadAnimotion() {
     "scripts/motion-target-debug.js",
     "scripts/character-root-motion.js",
     "scripts/action-timeline-model.js",
+    "scripts/cutscene-action-selectors.js",
     "scripts/impact-exaggeration-layer.js",
     "scripts/rig-connection.js",
     "scripts/arm-chain-resolver.js",

@@ -111,11 +111,11 @@
   }
 
   function isCutscenePathActive(state, els) {
-    return els.motionTemplate?.value === "cutscene" && Boolean(state.cutsceneBridge?.jointAction);
+    return els.motionTemplate?.value === "cutscene" && Boolean(Animotion.cutsceneActionSelectors?.getActiveJointAction?.(state)?.active);
   }
 
   function motionPathDetail(state) {
-    const action = state.cutsceneBridge?.jointAction;
+    const action = Animotion.cutsceneActionSelectors?.getActiveJointAction?.(state)?.action;
     const samples = action?.trajectorySamples || action?.trajectoryPoints || [];
     return samples.length ? `${samples.length} samples` : "생성된 경로 없음";
   }

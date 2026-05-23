@@ -106,11 +106,8 @@
   }
 
   function actionTemplate(action) {
-    const timelineTemplate = action?.actionTimeline?.template;
-    if (isCanonicalAction(timelineTemplate)) return timelineTemplate;
-    const source = String(action?.source || "");
-    const match = source.match(/^motion-planner-(punch|kick)-anchors-v1$/);
-    return match?.[1] || null;
+    const template = Animotion.cutsceneActionSelectors?.actionTemplate?.(action);
+    return isCanonicalAction(template) ? template : null;
   }
 
   function invalidatedDraftPlan(plan) {

@@ -15,7 +15,7 @@ function test(name, fn) {
 function loadArmExtension() {
   const context = { window: { Animotion: {} } };
   vm.createContext(context);
-  for (const path of ["scripts/arm-extension-controls.js", "scripts/arm-extension.js"]) {
+  for (const path of ["scripts/cutscene-action-selectors.js", "scripts/arm-extension-controls.js", "scripts/arm-extension.js"]) {
     vm.runInContext(fs.readFileSync(path, "utf8"), context, { filename: path });
   }
   return context.window.Animotion;

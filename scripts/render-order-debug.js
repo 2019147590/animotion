@@ -45,7 +45,7 @@
     const segmentedFailures = selectedDraws.filter((entry) => entry.segmentedRenderFailure || entry.drawPath === "segmented-arm-failed");
     const motionReplacementDraws = selectedDraws.filter((entry) => entry.drawPath === "motion-replacement");
     const motionReplacementFailures = selectedDraws.filter((entry) => entry.replacementRenderFailure || entry.drawPath === "motion-replacement-failed");
-    const visualDraws = selectedDraws.filter((entry) => entry.drawPath === "segmented-arm" || entry.drawPath === "action-pose-patch" || entry.drawPath === "motion-replacement" || entry.drawPath === "normal-part");
+    const visualDraws = selectedDraws.filter((entry) => entry.drawPath === "segmented-arm" || entry.drawPath === "action-pose-patch" || entry.drawPath === "motion-replacement" || entry.drawPath === "normal-part" || entry.drawPath === "hidden-completion-symmetry");
     const selectedDraw = motionReplacementDraws[motionReplacementDraws.length - 1] || segmentedDraws[segmentedDraws.length - 1] || selectedDraws[selectedDraws.length - 1] || null;
     const selectedBounds = selectedDraw?.bounds || rectBounds((options.parts || []).find((part) => part.id === selectedId)?.rect);
     const coverDraws = sequence.filter((entry) => entry.kind === "part" && entry.partId !== selectedId && (entry.likelyCoveringLayer || boundsOverlap(entry.bounds, selectedBounds)));

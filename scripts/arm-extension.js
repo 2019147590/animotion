@@ -220,7 +220,7 @@
   }
   function separateTerminalFor(part, parts) { return Animotion.armChainResolver?.resolve?.(parts, part)?.terminalPart || null; }
 
-  function isPunchAction(action = {}) { return action.actionTimeline?.template === "punch" || String(action.source || "").includes("punch"); }
+  function isPunchAction(action = {}) { return Animotion.cutsceneActionSelectors?.isPunchAction?.(action) || false; }
   function primaryIdFor(bridge = {}, action = {}, context = {}) { return selectedOverrideId(bridge, action, context) || bridge.primaryPartId || action.targetDebug?.primaryPartId || context.selectedPartId || null; }
   function selectedOverrideId(bridge = {}, action = {}, context = {}) {
     const selectedId = context.selectedPartId;

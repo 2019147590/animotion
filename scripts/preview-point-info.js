@@ -71,7 +71,7 @@
   }
 
   function isPunchAction(action = {}) {
-    return action?.actionTimeline?.template === "punch" || String(action?.source || "").includes("punch");
+    return Animotion.cutsceneActionSelectors?.isPunchAction?.(action) || false;
   }
 
   function isArmPart(part = {}) {

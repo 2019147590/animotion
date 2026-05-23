@@ -44,8 +44,9 @@
   }
 
   function framesForBridge(bridge = Animotion.state?.cutsceneBridge) {
-    const action = bridge?.jointAction;
-    if (actionType(action) !== "punch") return [];
+    const status = Animotion.cutsceneActionSelectors?.getCutsceneActionStatus?.(bridge) || {};
+    const action = status.action;
+    if (status.template !== "punch") return [];
     return uniqueFrames(actionBeats(action))
       .filter((beat) => PUNCH_BEAT_ORDER.includes(normalizeBeatId(beat.id)) || hasPose(beat))
       .sort((a, b) => a.frame - b.frame);
@@ -96,11 +97,7 @@
   }
 
   function actionBeats(action = {}) {
-    const beats = Array.isArray(action.beats) ? action.beats : [];
-    const timeline = Array.isArray(action.actionTimeline?.beats) ? action.actionTimeline.beats : [];
-    const byId = new Map(beats.map((beat) => [beat.id, beat]));
-    const timelineFrames = timeline.map((beat) => ({ ...beat, ...(byId.get(beat.id) || {}) }));
-    return timelineFrames.length ? timelineFrames : beats;
+    return Animotion.cutsceneActionSelectors?.timelineBeats?.(action) || (Array.isArray(action.beats) ? action.beats : []);
   }
 
   function uniqueFrames(beats = []) {
@@ -125,9 +122,7 @@
   }
 
   function actionType(action = {}) {
-    const template = action?.actionTimeline?.template || action?.actionTimeline?.id;
-    if (template === "punch") return "punch";
-    return String(action?.source || "").includes("punch") ? "punch" : null;
+    return Animotion.cutsceneActionSelectors?.actionTemplate?.(action) === "punch" ? "punch" : null;
   }
 
   function normalizeBeatId(id) {

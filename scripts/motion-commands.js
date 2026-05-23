@@ -120,7 +120,7 @@
       ...state.cutsceneBridge,
       jointAction: action,
     });
-    return state.cutsceneBridge.jointAction;
+    return Animotion.cutsceneActionSelectors?.getActiveJointAction?.(state)?.action || null;
   }
 
   function findPart(partOrId) {
@@ -147,8 +147,7 @@
   function regenerablePunchBridge(bridge, partId) {
     const action = bridge?.jointAction;
     if (!action || !partId || bridge.primaryPartId !== partId) return false;
-    if (action.actionTimeline?.template === "punch") return true;
-    return /^motion-planner-punch-/.test(String(action.source || ""));
+    return Animotion.cutsceneActionSelectors?.isPunchAction?.(action) || false;
   }
 
   function hasOwn(value, key) {

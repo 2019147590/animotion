@@ -176,7 +176,7 @@
     const bridge = Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge);
     const primaryId = runtimePrimaryId(bridge);
     const plan = { ...currentPlan(), anchors: currentAction()?.anchors || [] };
-    const primary = plan.anchors.find((anchor) => anchor.key === bridge.jointAction?.focusKey && anchor.role === "primary");
+    const primary = plan.anchors.find((anchor) => anchor.key === currentAction()?.focusKey && anchor.role === "primary");
     if (primary?.point) plan.target = { ...primary.point };
     const result = Animotion.motionPlanner.createPlan(state.parts, primaryId, bridge, plan);
     Animotion.motionCommands.applyMotionPlanResult(bridge, plan, result);
@@ -191,7 +191,7 @@
   }
 
   function currentAction() {
-    return Animotion.state?.cutsceneBridge?.jointAction || null;
+    return Animotion.cutsceneActionSelectors?.getActiveJointAction?.(Animotion.state)?.action || null;
   }
 
   function beatSelection(beat, focusKey) {

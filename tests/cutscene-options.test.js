@@ -12,6 +12,7 @@ require("../scripts/pose-assist.js");
 require("../scripts/joint-coordinates.js");
 require("../scripts/motion-anchors.js");
 const motionPanelMapper = require("../scripts/motion-panel-mapper.js");
+require("../scripts/cutscene-action-selectors.js");
 const cutsceneModel = require("../scripts/cutscene-model.js");
 const motionPlanner = require("../scripts/motion-planner.js");
 require("../scripts/motion-primary-selection.js");

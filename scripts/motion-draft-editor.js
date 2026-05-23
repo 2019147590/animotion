@@ -18,7 +18,7 @@
     renderInspector(context);
   }
   function activeDraftContext() {
-    const action = Animotion.state?.cutsceneBridge?.jointAction;
+    const action = Animotion.cutsceneActionSelectors?.getActiveJointAction?.(Animotion.state)?.action;
     if (action?.motionDraft) return { scope: "action-snapshot", draft: Animotion.motionDrafts.normalize(action.motionDraft) };
     const plan = Animotion.motionCommands?.currentMotionPlan?.() || Animotion.motionPlanner?.normalizePlan?.(Animotion.state?.motionPlan);
     if (plan?.motionDraft) return { scope: "plan", draft: Animotion.motionDrafts.normalize(plan.motionDraft) };
@@ -90,7 +90,7 @@
   }
 
   function updateActionDraft(draft) {
-    const action = Animotion.state.cutsceneBridge?.jointAction;
+    const action = Animotion.cutsceneActionSelectors?.getActiveJointAction?.(Animotion.state)?.action;
     if (!action) return;
     Animotion.motionCommands.updateJointAction({ ...action, motionDraft: { ...draft, draftScope: "action-snapshot" } });
   }

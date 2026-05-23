@@ -41,6 +41,46 @@ The hardcoded demo genga cut remains available, but it should be treated as the 
 
 ## Current Implemented State
 
+### Latest 2026-05-24 Stability And Arm Completion Upload
+
+This upload completed three connected work units around hidden completion, legacy arm-chain rebinding, and upload-time cutscene state safety.
+
+Hidden completion symmetry draft:
+
+- Added a manual, non-AI symmetry path for `hiddenCompletionPatch` draft assets.
+- The user can create a draft patch from the opposite/counterpart part for exposed upperArm/forearm/hand/glove gaps and torso left/right guide regions.
+- Symmetry patches store `completionMethod: "symmetry"` and stable `symmetrySource` metadata with counterpart/target ids, regions, confidence, and method.
+- Patch assets use the existing `project.assets`, `motionDraft.hiddenCompletion`, guide mesh, and patch transform flows, so they remain editable and non-destructive.
+- Preview composites ready symmetry patches after source-panel erase and before foreground/occluding part drawing, preventing blank source-erase holes when a ready patch exists.
+- Missing counterparts or low-confidence counterpart matches return warnings instead of generating a bad patch.
+- No AI generation and no provider/request payload changes were added.
+
+Manual legacy arm-split rebind:
+
+- Added `scripts/arm-chain-rebind.js` for explicit "분리된 팔 체인으로 다시 연결" support after a user manually splits a loaded arm-only part into upperArm/forearm/hand parts.
+- The resolver detects replacement chains from `splitFromPartId`, `originalSourcePartId`, `sourceArmOnlyPartId`, `splitMethod: "manual"`, humanRole, parent links, name/id hints, and geometry fallbacks.
+- Loaded JSON remains unchanged on load. Rebind only happens when the user explicitly applies it.
+- Rebind updates the active punch/cutscene draft to use the new terminal hand/glove, regenerates planner output against the separated chain, and preserves the original arm-only part unless the user later hides/deletes it.
+- Counterpart matching after rebind pairs upperArm/forearm/hand roles against the opposite separated chain and avoids preferring the old arm-only source part for symmetry completion.
+- Punch planner, arm-chain resolver, and provider contracts were not bypassed or rewritten.
+
+Central cutscene action selector and upload stability:
+
+- Added `scripts/cutscene-action-selectors.js` as the only approved runtime module that reads `.actionTimeline` directly.
+- Central selectors expose `getActiveJointAction(state)`, `getActiveActionTimeline(state)`, `getCutsceneActionStatus(state)`, `actionTemplate(action)`, and `timelineBeats(action)`.
+- The inactive app state is now explicit. Missing/incomplete state, `cutsceneBridge === null`, `jointAction === null`, missing `actionTimeline`, empty parts, and `selectedPartId === null` return inactive results such as `reason: "no-cutscene-action"` instead of throwing.
+- `resetMotionStateForImageUpload(state)` centralizes image-upload/session reset for motion/cutscene state and clears stale selected/action-frame/trajectory/rebind/debug references before UI refresh.
+- UI refresh paths, motion status, rebind controls, hidden-completion panels, preview/render order, motion draft/editor helpers, trajectory/anchor editors, and action-frame helpers now route action/timeline reads through the selector layer.
+- A regression test scans `scripts/` so raw `.actionTimeline` access outside `cutscene-action-selectors.js` fails.
+- Normal image upload with no parts, no selected part, no cutscene bridge, null `jointAction`, or null/missing timeline is a first-class valid state.
+- No fake punch timelines, auto-created `cutsceneBridge`, broad try/catch crash hiding, AI/provider changes, or kick behavior changes were added.
+
+Verification for this upload:
+
+- Full JavaScript suite passed locally via all `tests/*.test.js`.
+- Explicitly exercised regressions for cutscene motion status, image upload/session reset, arm-chain rebind, hidden-completion symmetry, motion planner commands, punch hand tip, cutscene depth, and preview render order.
+- Unrelated untracked local artifacts remain unstaged: `.codex_video_frames/` and the extra `lookism/*.png` files.
+
 ### Manual Rigging
 
 - A cut image upload.

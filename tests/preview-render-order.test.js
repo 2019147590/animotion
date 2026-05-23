@@ -29,7 +29,7 @@ function loadPreview() {
   Animotion.parts = { selectedPart: () => Animotion.state.parts.find((part) => part.id === Animotion.state.selectedPartId) };
   Animotion.previewRigPoints = { localPoint: (part, spec) => spec.localPoint || part.pivot, imagePoint: (part, spec) => ({ x: part.rect.x + (spec.localPoint || part.pivot).x, y: part.rect.y + (spec.localPoint || part.pivot).y }) };
   Animotion.previewTransform.imagePointToScreen = (point) => point;
-  for (const path of ["scripts/motion-model.js", "scripts/timeline.js", "scripts/rig-connection.js", "scripts/arm-chain-resolver.js", "scripts/render-layer-utils.js", "scripts/render-order-debug.js", "scripts/arm-extension-controls.js", "scripts/arm-extension.js", "scripts/arm-extension-render.js", "scripts/motion-replacement-layer.js", "scripts/motion-replacement-render.js", "scripts/cutscene-depth.js"]) runScript(context, path);
+  for (const path of ["scripts/hidden-completion-assets.js", "scripts/motion-model.js", "scripts/timeline.js", "scripts/cutscene-action-selectors.js", "scripts/rig-connection.js", "scripts/arm-chain-resolver.js", "scripts/render-layer-utils.js", "scripts/render-order-debug.js", "scripts/arm-extension-controls.js", "scripts/arm-extension.js", "scripts/arm-extension-render.js", "scripts/motion-replacement-layer.js", "scripts/motion-replacement-render.js", "scripts/cutscene-depth.js", "scripts/hidden-completion-render.js"]) runScript(context, path);
   Animotion.motion = { motionFor: (part) => Animotion.motionModel.poseToTransform(Animotion.timeline.evaluatePartAtFrame(part, Animotion.state.currentFrame)) };
   runScript(context, "scripts/preview.js");
   return Animotion;
@@ -56,7 +56,7 @@ function stateFixture() {
     part("face_layer", "prop", 5000, { x: 52, y: 26, w: 34, h: 30 }, "face"),
     part("hair_front", "hair", 7000, { x: 46, y: 16, w: 48, h: 26 }),
   ];
-  return { image: { naturalWidth: 200, naturalHeight: 160 }, parts, selectedPartId: "arm_01", currentFrame: 24, running: false, pausedTime: 0, separateCharacter: false, nextImage: null, cutsceneBridge: bridge() };
+  return { image: { naturalWidth: 200, naturalHeight: 160 }, parts, selectedPartId: "arm_01", currentFrame: 24, running: false, pausedTime: 0, separateCharacter: false, nextImage: null, project: { assets: [] }, cutsceneBridge: bridge() };
 }
 function part(id, type, order, rect, humanRole = type) {
   return { id, name: id, type, humanRole, order, rect, pivot: { x: rect.w / 2, y: rect.h * 0.2 }, joint: { x: rect.w / 2, y: rect.h * 0.8 }, alpha: 1, keyframes: [], customMotion: {}, canvas: { id } };
@@ -145,6 +145,47 @@ test("cutscene preview erases runtime rigged character from source panel before 
   assert.equal(analysis.sourcePanelConflictRisk, false);
   assert.equal(analysis.sourceEraseWithoutReplacement, false);
   assert.equal(Animotion.state.separateCharacter, savedSeparateCharacter);
+});
+
+test("symmetry hidden completion patch composites after source erase before occluding parts", () => {
+  const Animotion = loadPreview();
+  Animotion.dom.els.backgroundOpacity.value = "1";
+  Animotion.state.parts.splice(2, 0, { ...part("arm_02", "arm", 3, { x: 86, y: 34, w: 34, h: 38 }), humanRole: "forearm", handTip: { x: 30, y: 34 } });
+  Animotion.state.project.assets = [Animotion.hiddenCompletionAssets.normalizeAsset({
+    id: "hidden-arm-symmetry",
+    type: "hiddenCompletionPatch",
+    sourcePartId: "arm_01",
+    sourceRectNormalized: { xNorm: 0.19, yNorm: 0.21, wNorm: 0.21, hNorm: 0.26 },
+    guide: {
+      meshVerticesNormalized: [{ xNorm: 0, yNorm: 0 }, { xNorm: 1, yNorm: 0 }, { xNorm: 1, yNorm: 1 }, { xNorm: 0, yNorm: 1 }],
+      meshFaces: [[0, 1, 2], [0, 2, 3]],
+      silhouetteVerticesNormalized: [{ xNorm: 0, yNorm: 0 }, { xNorm: 1, yNorm: 0 }, { xNorm: 1, yNorm: 1 }, { xNorm: 0, yNorm: 1 }],
+    },
+    patchStatus: "draft",
+    renderMode: "manualOverride",
+    completionMethod: "symmetry",
+    symmetrySource: { counterpartPartId: "arm_02", targetPartId: "arm_01", confidence: 0.9 },
+  })];
+  Animotion.state.cutsceneBridge.jointAction.motionDraft = {
+    partId: "arm_01",
+    hiddenCompletion: { needed: true, status: "candidate", assetKind: "hiddenCompletionPatch", assetStatus: "ready", assetId: "hidden-arm-symmetry" },
+  };
+
+  Animotion.preview.drawPreview(0, () => {}, () => {});
+
+  const sequence = Animotion.state.previewDrawSequenceDebug.sequence;
+  const sourcePanel = sequence.find((entry) => entry.pass === "source-panel");
+  const patch = sequence.find((entry) => entry.drawPath === "hidden-completion-symmetry");
+  const arm = sequence.find((entry) => entry.partId === "arm_01" && entry.pass === "main-part");
+  const face = sequence.find((entry) => entry.partId === "face_layer" && entry.pass === "main-part");
+  assert.equal(sourcePanel.sourcePanelMode, "runtime-part-erased");
+  assert.ok(patch);
+  assert.equal(patch.hiddenCompletionPatchId, "hidden-arm-symmetry");
+  assert.equal(patch.counterpartPartId, "arm_02");
+  assert.equal(patch.index > sourcePanel.index, true);
+  assert.equal(patch.index < arm.index, true);
+  assert.equal(patch.index < face.index, true);
+  assert.equal(sequence.some((entry) => entry.drawPath === "hidden-completion-symmetry-failed"), false);
 });
 
 test("replacement render failure falls back to normal arm draw", () => {

@@ -15,7 +15,7 @@ function test(name, fn) {
 function loadDepth() {
   const context = { window: { Animotion: {} } };
   vm.createContext(context);
-  for (const path of ["scripts/rig-connection.js", "scripts/arm-chain-resolver.js", "scripts/render-layer-utils.js", "scripts/cutscene-depth.js"]) {
+  for (const path of ["scripts/cutscene-action-selectors.js", "scripts/rig-connection.js", "scripts/arm-chain-resolver.js", "scripts/render-layer-utils.js", "scripts/cutscene-depth.js"]) {
     vm.runInContext(fs.readFileSync(path, "utf8"), context, { filename: path });
   }
   return context.window.Animotion.cutsceneDepth;

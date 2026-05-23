@@ -31,10 +31,8 @@
   }
 
   function actionTemplate(action = {}) {
-    const timelineTemplate = action?.actionTimeline?.template;
-    if (["punch", "kick"].includes(timelineTemplate)) return timelineTemplate;
-    const source = String(action?.source || "");
-    return source.match(/^motion-planner-(punch|kick)-anchors-v1$/)?.[1] || null;
+    const template = Animotion.cutsceneActionSelectors?.actionTemplate?.(action);
+    return ["punch", "kick"].includes(template) ? template : null;
   }
 
   function terminalPunchPart(part, parts) {

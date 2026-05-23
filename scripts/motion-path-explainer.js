@@ -23,9 +23,10 @@
 
   function explain(bridge = {}, options = {}) {
     const safe = Animotion.cutsceneModel?.normalizeBridge?.(bridge) || bridge || {};
-    const action = safe.jointAction;
-    if (!action) return { active: false };
-    const type = actionType(action);
+    const status = Animotion.cutsceneActionSelectors?.getCutsceneActionStatus?.(safe, options) || {};
+    const action = status.action;
+    if (!action) return { active: false, reason: status.reason || "no-cutscene-action" };
+    const type = status.template;
     if (!["punch", "kick"].includes(type)) return { active: false };
     const parts = options.parts || [];
     const primary = parts.find((part) => part.id === (safe.primaryPartId || action.targetDebug?.primaryPartId)) || null;
@@ -53,7 +54,7 @@
   }
 
   function drawOverlay(ctx, view, cutscene) {
-    const action = cutscene?.bridge?.jointAction;
+    const action = Animotion.cutsceneActionSelectors?.getActiveJointAction?.(cutscene?.bridge)?.action;
     if (!action?.beats?.length || Animotion.state?.running || Animotion.state?.exporting) return;
     const focusKey = action.focusKey;
     drawBeatLabels(ctx, view, action, focusKey);
@@ -79,7 +80,7 @@
     const info = styleInfo(bridge, parts, primary);
     if (info.punchStyle !== "rear-cross" || !primary || !isArmOnly(primary, parts)) return;
     const base = Animotion.jointCoordinates?.inferJointPose?.(parts) || {};
-    const side = String(bridge.jointAction?.focusKey || "").startsWith("l") ? "l" : "r";
+    const side = String(Animotion.cutsceneActionSelectors?.getActiveJointAction?.(bridge)?.action?.focusKey || "").startsWith("l") ? "l" : "r";
     const points = [
       [base[`${side}Shoulder`], "어깨 기준", "#0f7f79"],
       [base[`${side}Elbow`], "팔꿈치 보조", "#f1b83b"],
@@ -118,7 +119,8 @@
   }
 
   function styleInfo(bridge, parts, primary) {
-    return Animotion.armExtension?.punchStyleInfo?.({ parts, bridge }, primary) || { punchStyle: bridge?.jointAction?.targetDebug?.punchStyle || null, source: bridge?.jointAction?.targetDebug?.punchStyle ? "explicit" : "missing" };
+    const action = Animotion.cutsceneActionSelectors?.getActiveJointAction?.(bridge)?.action;
+    return Animotion.armExtension?.punchStyleInfo?.({ parts, bridge }, primary) || { punchStyle: action?.targetDebug?.punchStyle || null, source: action?.targetDebug?.punchStyle ? "explicit" : "missing" };
   }
   function endpointLabel(part, parts, focusKey) {
     if (!part) return focusKey || "none";
@@ -136,7 +138,7 @@
   function anchorSummary(anchors = []) { return (anchors || []).map((anchor) => `${anchor.key}:${roleLabel(anchor.role)}`).join(", "); }
   function roleLabel(role) { return ({ primary: "목표", bendHint: "굽힘", root: "몸통", balance: "균형", follow: "따라감" })[role] || role; }
   function labelForBeat(id) { return BEAT_LABELS[id] || id; }
-  function actionType(action = {}) { action = action || {}; const t = action.actionTimeline?.template || ""; return t || (String(action.source || "").includes("punch") ? "punch" : String(action.source || "").includes("kick") ? "kick" : null); }
+  function actionType(action = {}) { return Animotion.cutsceneActionSelectors?.actionTemplate?.(action) || null; }
   function primaryKeyFor(type) { return type === "kick" ? "rFoot" : "rHand"; }
   function isArmOnly(part, parts) { return part?.type === "arm" && !parts.some((candidate) => candidate.id !== part.id && (candidate.type === "hand" || candidate.humanRole === "hand")); }
   function beat(action, id) { return (action?.beats || []).find((entry) => entry.id === id) || null; }
