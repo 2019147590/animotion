@@ -43,7 +43,9 @@
       ["eye", { x: w * 0.42, y: h * 0.29, w: w * 0.16, h: h * 0.06 }],
       ["mouth", { x: w * 0.45, y: h * 0.38, w: w * 0.1, h: h * 0.05 }],
     ];
-    for (const [type, rect] of boxes) Animotion.parts.createPart(type, roundedRect(rect, w, h));
+    const before = Animotion.partCommands.historySnapshot?.();
+    for (const [type, rect] of boxes) Animotion.parts.createPart(type, roundedRect(rect, w, h), "", { recordHistory: false });
+    Animotion.partCommands.recordHistorySnapshot?.("create-guide-parts", before, Animotion.partCommands.historySnapshot?.());
     Animotion.ui.refreshUi();
   }
 

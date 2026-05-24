@@ -74,6 +74,8 @@ function loadAnimotion() {
   Animotion.panelEditor = {};
   Animotion.parts = { selectedPart: () => null };
   Animotion.ui = { refreshUi() {} };
+  runScript(context, "scripts/history-controls.js");
+  Animotion.historyControls.installControls();
   runScript(context, "scripts/events.js");
   Animotion.events.bindEvents();
   return { Animotion, listeners, HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, EditableElement };
@@ -91,8 +93,22 @@ function elementMap(selectors) {
   return Object.fromEntries(
     Object.keys(selectors)
       .filter((key) => key !== "sourceCanvas" && key !== "previewCanvas")
-      .map((key) => [key, { addEventListener() {}, value: "", checked: false, textContent: "" }])
+      .map((key) => [key, controlElement()])
   );
+}
+
+function controlElement() {
+  return {
+    checked: false,
+    dataset: {},
+    disabled: false,
+    listeners: {},
+    textContent: "",
+    value: "",
+    addEventListener(type, handler) {
+      this.listeners[type] = handler;
+    },
+  };
 }
 
 function keyEvent(overrides = {}) {
@@ -133,6 +149,21 @@ test("Ctrl+Y and Ctrl+Shift+Z trigger command history redo at runtime", () => {
   listeners.keydown(keyEvent());
   listeners.keydown(keyEvent({ shiftKey: true }));
   assert.equal(redoCount, 2);
+});
+
+test("history buttons trigger command history undo and redo", () => {
+  const { Animotion } = loadAnimotion();
+  let undoCount = 0;
+  let redoCount = 0;
+  Animotion.commandHistory.record({
+    undo: () => { undoCount += 1; },
+    redo: () => { redoCount += 1; },
+  });
+  Animotion.dom.els.undoCommand.listeners.click();
+  assert.equal(undoCount, 1);
+  assert.equal(Animotion.dom.els.redoCommand.disabled, false);
+  Animotion.dom.els.redoCommand.listeners.click();
+  assert.equal(redoCount, 1);
 });
 
 test("history shortcuts do not intercept text input targets", () => {

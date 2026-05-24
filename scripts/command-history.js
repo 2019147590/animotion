@@ -15,6 +15,7 @@
     history.undoStack.push(command);
     if (history.undoStack.length > MAX_HISTORY) history.undoStack.shift();
     history.redoStack = [];
+    notify();
     return command;
   }
 
@@ -30,6 +31,7 @@
     const history = ensureState();
     history.undoStack = [];
     history.redoStack = [];
+    notify();
   }
 
   function canUndo() {
@@ -49,6 +51,7 @@
       command[method]();
       history[targetKey].push(command);
       Animotion.ui?.refreshUi?.();
+      notify();
       return true;
     } finally {
       history.applying = false;
@@ -57,6 +60,10 @@
 
   function isCommand(command) {
     return command && typeof command.undo === "function" && typeof command.redo === "function";
+  }
+
+  function notify() {
+    Animotion.historyControls?.refreshControls?.();
   }
 
   Animotion.commandHistory = { record, undo, redo, clear, canUndo, canRedo };

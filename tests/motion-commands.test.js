@@ -36,6 +36,7 @@ function loadAnimotion() {
     },
   };
   runScript(context, "scripts/motion-commands.js");
+  runScript(context, "scripts/motion-command-history.js");
   return Animotion;
 }
 
@@ -124,6 +125,25 @@ test("motion command applies generated tracks by part id", () => {
   assert.equal(arm.keyframes.length, 0);
 });
 
+test("generated tracks record undo and redo as one motion command", () => {
+  const Animotion = loadAnimotion();
+  const head = partFixture({ id: "head" });
+  const arm = partFixture({ id: "arm" });
+  Animotion.state.parts = [head, arm];
+  Animotion.motionCommands.applyGeneratedTracks([
+    { partId: "head", keyframes: [{ frame: 5, pose: { rotate: 12 } }] },
+    { partId: "arm", keyframes: [{ frame: 8, pose: { rotate: 6 } }] },
+  ]);
+  assert.equal(head.keyframes.length, 1);
+  assert.equal(arm.keyframes.length, 1);
+  assert.equal(Animotion.commandHistory.undo(), true);
+  assert.equal(head.keyframes.length, 0);
+  assert.equal(arm.keyframes.length, 0);
+  assert.equal(Animotion.commandHistory.redo(), true);
+  assert.equal(head.keyframes[0].frame, 5);
+  assert.equal(arm.keyframes[0].frame, 8);
+});
+
 test("motion command applies a planner result as one state change", () => {
   const Animotion = loadAnimotion();
   const part = partFixture({ id: "leg" });
@@ -141,6 +161,31 @@ test("motion command applies a planner result as one state change", () => {
   );
   assert.equal(Animotion.state.cutsceneBridge.primaryPartId, "leg");
   assert.equal(Animotion.state.motionPlan.template, "kick");
+  assert.equal(Animotion.state.motionPlan.target.x, 30);
+  assert.equal(part.keyframes[0].pose.x, 9);
+});
+
+test("planner result records undo and redo for bridge, plan, and tracks", () => {
+  const Animotion = loadAnimotion();
+  const part = partFixture({ id: "leg" });
+  Animotion.state.parts = [part];
+  Animotion.state.motionPlan = { template: "kick", target: null, targetMode: false };
+  Animotion.motionCommands.applyMotionPlanResult(
+    { primaryPartId: "leg", durationFrames: 18, impactFrame: 15 },
+    { template: "kick", targetMode: true },
+    {
+      target: { x: 30, y: 40 },
+      anchors: [],
+      jointAction: { source: "test", beats: [{ id: "impact", at: 15, pose: { rFoot: [30, 40] } }] },
+      partTracks: [{ partId: "leg", keyframes: [{ frame: 15, pose: { x: 9 } }] }],
+    }
+  );
+  assert.equal(Animotion.state.cutsceneBridge.primaryPartId, "leg");
+  assert.equal(part.keyframes.length, 1);
+  assert.equal(Animotion.commandHistory.undo(), true);
+  assert.equal(Animotion.state.cutsceneBridge, null);
+  assert.equal(part.keyframes.length, 0);
+  assert.equal(Animotion.commandHistory.redo(), true);
   assert.equal(Animotion.state.motionPlan.target.x, 30);
   assert.equal(part.keyframes[0].pose.x, 9);
 });

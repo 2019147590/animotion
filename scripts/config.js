@@ -82,6 +82,8 @@
     motionPhase: "#motionPhase",
     resetPartMotion: "#resetPartMotion",
     deletePart: "#deletePart",
+    undoCommand: "#undoCommand",
+    redoCommand: "#redoCommand",
     saveRig: "#saveRig",
     loadRig: "#loadRig",
   };

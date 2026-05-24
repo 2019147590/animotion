@@ -41,6 +41,31 @@ The hardcoded demo genga cut remains available, but it should be treated as the 
 
 ## Current Implemented State
 
+### Latest 2026-05-24 Core Manual Undo/Redo Upload
+
+This upload focuses on the manual editor undo/redo gap. The AI rig server and hidden-completion provider paths remain deferred and were not changed.
+
+Core undo/redo coverage:
+
+- Added visible Project-panel controls for Undo and Redo, so history is available through UI buttons as well as keyboard shortcuts.
+- Added `scripts/history-controls.js` to bind the buttons to `Animotion.commandHistory` and keep their disabled state in sync after record, undo, redo, and clear.
+- Added `scripts/part-command-history.js` as a small wrapper layer over the existing part command API. Part creation, part deletion, selected-part deletion, and shape/mask application now record restorable part snapshots as single user commands.
+- Kept existing focused part update history intact. Inspector-style part updates still use the existing patch-based `updatePart` command history.
+- Grouped automatic guide-part creation into one undoable command instead of recording or restoring each generated guide part separately.
+- Added `scripts/motion-command-history.js` to make generated tracks and motion-plan application undoable as one motion command, including `cutsceneBridge`, `motionPlan`, `customMotion`, and keyframe state.
+
+Scope and assumptions:
+
+- This is not a full global state-store rewrite. New mutating features should still route through command APIs or add command-history wrappers if they need undo/redo.
+- Ephemeral UI state, provider/server state, and AI runner behavior were not brought into undo/redo scope.
+- The current priority remains core manual authoring. `ai-rig-server` contract cleanup is intentionally lower priority because it is not planned for immediate use.
+
+Verification for this upload:
+
+- Added/expanded regressions in `tests/part-commands.test.js`, `tests/motion-commands.test.js`, and `tests/events-history-shortcuts.test.js`.
+- Full JavaScript suite passed locally via all `tests/*.test.js`.
+- Unrelated untracked local artifacts remain unstaged: `.codex_video_frames/` and the extra `lookism/*.png` files.
+
 ### Latest 2026-05-24 Stability And Arm Completion Upload
 
 This upload completed three connected work units around hidden completion, legacy arm-chain rebinding, and upload-time cutscene state safety.

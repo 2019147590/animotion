@@ -23,16 +23,16 @@
     part.canvas = makePartCanvas(part.rect, part.mask);
   }
 
-  function createPartFromShape(type, shape, name = "") {
-    return Animotion.partCommands.createPartFromShape(type, shape, name);
+  function createPartFromShape(type, shape, name = "", options = {}) {
+    return Animotion.partCommands.createPartFromShape(type, shape, name, options);
   }
 
-  function createPart(type, rect, name = "") {
-    return Animotion.partCommands.createPart(type, rect, name);
+  function createPart(type, rect, name = "", options = {}) {
+    return Animotion.partCommands.createPart(type, rect, name, options);
   }
 
-  function applyShapeToPart(part, shape) {
-    return Animotion.partCommands.applyShapeToPart(part, shape);
+  function applyShapeToPart(part, shape, options = {}) {
+    return Animotion.partCommands.applyShapeToPart(part, shape, options);
   }
 
   function selectedPart() {

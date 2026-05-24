@@ -44,6 +44,7 @@ function loadAnimotion() {
   runScript(context, "scripts/path.js");
   runScript(context, "scripts/parts.js");
   runScript(context, "scripts/part-commands.js");
+  runScript(context, "scripts/part-command-history.js");
   return context.window.Animotion;
 }
 
@@ -86,6 +87,18 @@ test("part command creates a selected part and syncs project parts", () => {
   assert.equal(part.rect.x, 10);
 });
 
+test("part creation records undo and redo as a single part snapshot", () => {
+  const Animotion = loadAnimotion();
+  const part = Animotion.partCommands.createPart("body", { x: 10, y: 12, w: 20, h: 30 });
+  assert.equal(Animotion.state.parts.length, 1);
+  assert.equal(Animotion.commandHistory.undo(), true);
+  assert.equal(Animotion.state.parts.length, 0);
+  assert.equal(Animotion.state.selectedPartId, null);
+  assert.equal(Animotion.commandHistory.redo(), true);
+  assert.equal(Animotion.state.parts[0].id, part.id);
+  assert.equal(Animotion.state.selectedPartId, part.id);
+});
+
 test("part command rejects cyclic parent updates", () => {
   const Animotion = loadAnimotion();
   const parent = Animotion.partCommands.createPart("body", { x: 0, y: 0, w: 20, h: 20 });
@@ -116,6 +129,20 @@ test("part command delete removes the part and clears child parents", () => {
   assert.equal(Animotion.state.parts[0].id, child.id);
   assert.equal(Animotion.state.parts[0].parentId, null);
   assert.equal(Animotion.state.parts[0].parentPartId, null);
+});
+
+test("part deletion can be undone with child parent links restored", () => {
+  const Animotion = loadAnimotion();
+  const parent = Animotion.partCommands.createPart("body", { x: 0, y: 0, w: 20, h: 20 });
+  const child = Animotion.partCommands.createPart("head", { x: 4, y: 0, w: 10, h: 10 });
+  Animotion.commandHistory.clear();
+  Animotion.partCommands.deletePart(parent.id);
+  assert.equal(Animotion.state.parts.length, 1);
+  assert.equal(Animotion.commandHistory.undo(), true);
+  assert.equal(Animotion.state.parts.length, 2);
+  assert.equal(Animotion.state.parts.find((part) => part.id === child.id).parentId, parent.id);
+  assert.equal(Animotion.commandHistory.redo(), true);
+  assert.equal(Animotion.state.parts.length, 1);
 });
 
 test("part command parent compatibility uses parentPartId for cycles and delete cleanup", () => {
@@ -156,6 +183,18 @@ test("arm parts preserve hand tip rig point through shape edits", () => {
   Animotion.partCommands.applyShapeToPart(part.id, Animotion.geometry.rectShape({ x: 30, y: 30, w: 12, h: 12 }));
   assert.deepEqual({ x: part.rect.x + part.handTip.x, y: part.rect.y + part.handTip.y }, handTipImage);
   assert.equal(part.handTip.x > part.rect.w, true);
+});
+
+test("part shape application records undo and redo", () => {
+  const Animotion = loadAnimotion();
+  const part = Animotion.partCommands.createPart("arm", { x: 20, y: 20, w: 20, h: 20 });
+  Animotion.commandHistory.clear();
+  Animotion.partCommands.applyShapeToPart(part.id, Animotion.geometry.rectShape({ x: 30, y: 30, w: 12, h: 12 }));
+  assert.equal(Animotion.state.parts[0].rect.x, 30);
+  assert.equal(Animotion.commandHistory.undo(), true);
+  assert.equal(Animotion.state.parts[0].rect.x, 20);
+  assert.equal(Animotion.commandHistory.redo(), true);
+  assert.equal(Animotion.state.parts[0].rect.w, 12);
 });
 
 test("part update command records undo and redo patches", () => {
