@@ -1,6 +1,6 @@
 {
   const global = typeof window !== "undefined" ? window : globalThis;
-  const Animotion = global.Animotion || (global.Animotion = {});
+  const Animotion = global.Animotion || (global.Animotion = {}), helpers = Animotion.hiddenCompletionPartPanelHelpers;
   let symmetryWarning = "";
 
   function installControls() {
@@ -21,6 +21,11 @@
     ui.create.disabled = !state.canCreate;
     ui.createMesh.disabled = !state.canCreate;
     if (ui.symmetry) ui.symmetry.disabled = !state.canCreateSymmetry;
+    if (ui.symmetryRegionRow) ui.symmetryRegionRow.classList.toggle("hidden", !state.isTorso);
+    if (ui.symmetryRegion) {
+      ui.symmetryRegion.disabled = !state.isTorso;
+      if (!ui.symmetryRegion.value) ui.symmetryRegion.value = state.symmetryRegion;
+    }
     if (ui.meshPreset && !ui.meshPreset.value) ui.meshPreset.value = "quad";
     renderPatchSelect(ui.patchSelect, state);
     const selectedState = panelState({ selectedAssetId: ui.patchSelect?.value || "" });
@@ -42,7 +47,7 @@
     const state = panelState();
     if (!state.canCreate) return null;
     const preset = refs().meshPreset?.value || "quad";
-    const guide = meshGuideForPreset(state.part, preset);
+    const guide = helpers.meshGuideForPreset(state.part, preset);
     const asset = Animotion.hiddenCompletionGuideEditor.createGuideFromSelectedPart({
       guide,
       name: `${state.part.name || state.part.id} 2D mesh guide`,
@@ -55,9 +60,11 @@
     ensureDraftForGuide();
     const state = panelState();
     if (!state.canCreateSymmetry) return null;
+    const targetRegion = helpers.symmetryTargetRegion(state.part, refs().symmetryRegion?.value);
     const result = Animotion.hiddenCompletionSymmetry.createPatchAsset(state.part, Animotion.state.parts, {
       id: uniqueAssetId(`hidden-${state.part.id}-symmetry`),
       activeAsset: state.asset,
+      ...(targetRegion ? { targetRegion } : {}),
     });
     if (!result.ok) return setSymmetryWarning(result.warning);
     upsertAsset(result.asset);
@@ -102,12 +109,15 @@
     const asset = activePatchAsset(draft, part);
     const patches = patchAssetsForPart(part);
     const selectedAssetId = options.selectedAssetId ?? asset?.id ?? "";
+    const isTorso = helpers.isTorsoPart(part);
     return {
       part,
       draft,
       asset,
       patches,
       selectedAssetId,
+      isTorso,
+      symmetryRegion: isTorso ? helpers.symmetryTargetRegion(part, options.symmetryRegion, asset) || "left" : "",
       canCreate: Boolean(part && canUseOrCreateDraft(draft) && Animotion.hiddenCompletionGuideEditor?.createGuideFromSelectedPart),
       canCreateSymmetry: Boolean(part && canUseOrCreateDraft(draft) && Animotion.hiddenCompletionSymmetry?.createPatchAsset && Animotion.motionDraftEditor?.updateHiddenCompletion),
       canLinkSelected: Boolean(part && canUseOrCreateDraft(draft) && patches.some((patch) => patch.id === selectedAssetId)),
@@ -165,28 +175,10 @@
     if (!part) return "파츠를 선택하면 숨은 부위 보완을 시작할 수 있습니다.";
     if (!draft) return "먼저 이 파츠로 컷신 초안을 생성하면 보완 가이드를 만들 수 있습니다.";
     if (symmetryWarning) return symmetryWarning;
-    if (!asset) return `${part.name || part.id} 기준 guide/mask 패치를 만들거나 기존 패치를 연결합니다.`;
+    if (!asset) return helpers.isTorsoPart(part)
+      ? `${part.name || part.id} 몸통의 왼쪽/오른쪽 보완 영역을 고른 뒤 대칭 초안을 만듭니다.`
+      : `${part.name || part.id} 기준 guide/mask 패치를 만들거나 기존 패치를 연결합니다.`;
     return `${asset.name || asset.id} 연결됨 · ${asset.renderMode || "guideOnly"}`;
-  }
-
-  function meshGuideForPreset(part, preset) {
-    const base = Animotion.hiddenCompletionAssets.defaultGuideForPart(part);
-    if (preset !== "centerFan") return base;
-    return {
-      ...base,
-      meshVerticesNormalized: [
-        point(0, 0),
-        point(1, 0),
-        point(1, 1),
-        point(0, 1),
-        point(0.5, 0.5),
-      ],
-      meshFaces: [[0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]],
-    };
-  }
-
-  function point(xNorm, yNorm) {
-    return { xNorm, yNorm, coordinateSpace: "part-local-normalized" };
   }
 
   function renderPatchSelect(select, state) {
@@ -212,7 +204,14 @@
         </select>
       </label>
       <button id="createHiddenCompletionMeshGuide" type="button">2D 메시 가이드 만들기</button>
-      <button id="createHiddenCompletionSymmetryDraft" type="button">반대 파츠로 대칭 보완 초안 만들기</button>
+      <label id="hiddenCompletionSymmetryRegionRow">
+        몸통 보완 영역
+        <select id="hiddenCompletionSymmetryRegion">
+          <option value="left">왼쪽을 보완</option>
+          <option value="right">오른쪽을 보완</option>
+        </select>
+      </label>
+      <button id="createHiddenCompletionSymmetryDraft" type="button">대칭 보완 초안 만들기</button>
       <label>
         기존 보완 패치
         <select id="hiddenCompletionPatchSelect"></select>
@@ -233,6 +232,7 @@
     bindClick("#linkHiddenCompletionPatch", linkSelectedPatch);
     bindClick("#unlinkHiddenCompletionPatch", unlinkPatch);
     bindChange("#hiddenCompletionPatchSelect", refreshControls);
+    bindChange("#hiddenCompletionSymmetryRegion", refreshControls);
   }
 
   function bindClick(selector, handler) {
@@ -255,7 +255,8 @@
     return {
       box: document.querySelector("#hiddenCompletionPartTools"), create: document.querySelector("#createHiddenCompletionGuideFromPart"),
       createMesh: document.querySelector("#createHiddenCompletionMeshGuide"), symmetry: document.querySelector("#createHiddenCompletionSymmetryDraft"),
-      meshPreset: document.querySelector("#hiddenCompletionMeshPreset"), patchSelect: document.querySelector("#hiddenCompletionPatchSelect"),
+      meshPreset: document.querySelector("#hiddenCompletionMeshPreset"), symmetryRegionRow: document.querySelector("#hiddenCompletionSymmetryRegionRow"),
+      symmetryRegion: document.querySelector("#hiddenCompletionSymmetryRegion"), patchSelect: document.querySelector("#hiddenCompletionPatchSelect"),
       link: document.querySelector("#linkHiddenCompletionPatch"), unlink: document.querySelector("#unlinkHiddenCompletionPatch"), status: document.querySelector("#hiddenCompletionPartStatus"),
     };
   }

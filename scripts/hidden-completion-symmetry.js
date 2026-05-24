@@ -37,12 +37,12 @@
     const role = partRole(part);
     if (role === "torso") return torsoCounterpart(part, options);
     if (!ARM_ROLES.has(role)) return warning("symmetry draft supports torso, upperArm, forearm, and hand/glove parts");
-    const side = sideFor(part);
-    if (!side) return warning("selected part needs front/rear or left/right side metadata");
+    const side = sideFor(part, parts);
+    if (!side) return warning("selected part needs front/rear or left/right side metadata, or a torso/body part for geometry matching");
     const counterpartSide = oppositeSide(side);
     const counterpart = parts
-      .filter((candidate) => candidate.id !== part.id && partRole(candidate) === role && sideFor(candidate) === counterpartSide)
-      .sort((a, b) => counterpartScore(b, parts) - counterpartScore(a, parts))[0];
+      .filter((candidate) => candidate.id !== part.id && partRole(candidate) === role && sideFor(candidate, parts) === counterpartSide)
+      .sort((a, b) => counterpartScore(b, part, parts) - counterpartScore(a, part, parts))[0];
     if (!counterpart) return warning(`missing ${counterpartSide} ${role} counterpart`);
     return { ok: true, counterpart, targetRegion: side, sourceRegion: counterpartSide, confidence: 0.9 };
   }
@@ -88,7 +88,11 @@
     return Animotion.armChainResolver?.roleFor?.(part) || null;
   }
 
-  function sideFor(part = {}) {
+  function sideFor(part = {}, parts = []) {
+    return sideHint(part) || geometrySide(part, parts);
+  }
+
+  function sideHint(part = {}) {
     const text = `${part.id || ""} ${part.name || ""}`.replace(/[_-]+/g, " ").toLowerCase();
     if (/\b(front|lead)\b/.test(text)) return "front";
     if (/\b(rear|back|trailing)\b/.test(text)) return "rear";
@@ -97,13 +101,28 @@
     return null;
   }
 
+  function geometrySide(part, parts = []) {
+    const torso = parts.find((candidate) => partRole(candidate) === "torso");
+    if (!part?.rect || !torso?.rect) return null;
+    return centerX(part) < centerX(torso) ? "rear" : "front";
+  }
+
   function oppositeSide(side) {
     return ({ front: "rear", rear: "front", left: "right", right: "left" })[side] || null;
   }
 
-  function counterpartScore(part, parts) {
+  function counterpartScore(part, target, parts) {
     const chain = Animotion.armChainResolver?.resolve?.(parts, part.id);
-    return (chain?.separateRigPath ? 10 : 0) + (splitSourceId(part) ? 3 : 0);
+    return (chain?.separateRigPath ? 10 : 0)
+      + (splitSourceId(part) ? 3 : 0)
+      + geometryPairScore(part, target);
+  }
+
+  function geometryPairScore(part = {}, target = {}) {
+    if (!part.rect || !target.rect) return 0;
+    const yDelta = Math.abs(centerY(part) - centerY(target));
+    const sizeDelta = Math.abs(Number(part.rect.h || 0) - Number(target.rect?.h || 0));
+    return Math.max(0, 3 - yDelta / 40) + Math.max(0, 2 - sizeDelta / 30);
   }
 
   function splitSourceId(part = {}) {
@@ -116,6 +135,14 @@
 
   function point(xNorm, yNorm) {
     return { xNorm, yNorm, coordinateSpace: "part-local-normalized" };
+  }
+
+  function centerX(part = {}) {
+    return Number(part.rect?.x || 0) + Number(part.rect?.w || 0) / 2;
+  }
+
+  function centerY(part = {}) {
+    return Number(part.rect?.y || 0) + Number(part.rect?.h || 0) / 2;
   }
 
   function clone(value) {

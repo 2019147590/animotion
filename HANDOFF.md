@@ -41,6 +41,41 @@ The hardcoded demo genga cut remains available, but it should be treated as the 
 
 ## Current Implemented State
 
+### Latest 2026-05-24 Symmetry Hidden Completion UX Upload
+
+This upload focuses on manual, non-AI hidden-completion symmetry drafts for existing/legacy JSON projects. It does not change provider contracts, Stability/Local SD logic, generated image compositing, or punch/kick timing.
+
+Symmetry counterpart matching:
+
+- Existing JSON projects can now participate in symmetry matching after the user edits parts into reasonable roles. For arm/hand parts, `humanRole` still wins first, then legacy type/name/id hints, and now neutral names such as `arm_01`/`arm_02` can fall back to torso/body geometry.
+- If a target arm part has no front/rear/left/right name hint, symmetry matching can infer side from the part center relative to a torso/body/spine part. The inferred target side uses the selected part as the area to fill and the opposite side as the symmetry source.
+- Candidate counterpart scoring still prefers clean separated arm chains and manual split metadata, then uses simple geometry similarity to choose the closest matching opposite-side part.
+- Missing torso/body geometry or missing counterpart candidates still returns a warning instead of fabricating a patch.
+
+Torso side completion UX:
+
+- The hidden-completion selected-part panel now exposes an explicit `몸통 보완 영역` left/right selector when the selected source part is torso/body/spine.
+- For torso/body/spine, the selected region is the target area to fill: `왼쪽을 보완` uses the right side of the same torso part as the symmetry source, and `오른쪽을 보완` uses the left side.
+- Torso symmetry still creates a normal `hiddenCompletionPatch` asset with `completionMethod: "symmetry"` and `symmetrySource.targetRegion/sourceRegion` metadata. The same torso part id is stored as the counterpart source.
+- `scripts/hidden-completion-part-panel-helpers.js` now holds small panel helpers for torso detection, target-region selection, and mesh preset generation so the main panel stays within the file-size limit.
+- The hidden-completion panel loads the helper through `scripts/bootstrap.js` before `scripts/hidden-completion-part-panel.js`.
+
+Editing and compositing behavior:
+
+- Symmetry patches remain separate non-destructive patch assets. They do not rewrite, replace, or delete the existing source part canvas/mask/geometry.
+- Preview compositing can visually cover existing visible pixels if the patch guide/silhouette is broad. Torso defaults are intentionally broad half-rectangles, and the user can narrow or reshape the guide vertices in the existing guide editor.
+- `선택 패치 연결` only links an existing patch asset for the selected source part into the active `motionDraft.hiddenCompletion`; it does not create a new patch and does not delete the asset when unlinked.
+- The current implementation does not automatically detect the exact exposed hole. Guide/silhouette editing remains the user-controlled way to refine the visible patch area.
+
+Verification for this upload:
+
+- Added/expanded regressions in `tests/hidden-completion-symmetry.test.js`, `tests/hidden-completion-part-panel.test.js`, `tests/hidden-completion-part-panel-torso.test.js`, and `tests/hidden-completion-roundtrip.test.js`.
+- Verified neutral legacy arm names can match by edited roles plus torso geometry.
+- Verified torso left/right target region selection is passed from the UI into symmetry draft creation.
+- Verified symmetry metadata, including torso same-part left/right `targetRegion/sourceRegion`, survives save/load/save round trips.
+- Full JavaScript suite passed locally via `Get-ChildItem tests -Filter *.test.js | ForEach-Object { node $_.FullName }`.
+- Unrelated untracked local artifacts remain unstaged: `.codex_video_frames/`, extra `lookism/*.png`, and the user-provided root screenshot PNG.
+
 ### Latest 2026-05-24 Core Manual Undo/Redo Upload
 
 This upload focuses on the manual editor undo/redo gap. The AI rig server and hidden-completion provider paths remain deferred and were not changed.
@@ -476,7 +511,8 @@ Current architecture note:
 - The motion draft `request/generate` control can call the local provider server. If the local server is unavailable, the hidden completion state moves to `queued`.
 - Provider tests use mocked fetch/worker calls only. Manual Stability validation requires starting the local Node provider server with `STABILITY_API_KEY` set.
 - Generated patch images can be stored as texture assets and linked from `hiddenCompletionPatch.generatedResult`, but renderer compositing of generated hidden patches is still future work.
-- Guide mesh preview is currently an editor overlay. It is not a final image patch and should be treated as AI/input guidance only. Users can now create a guide patch or a 2D mesh guide preset from the selected part inspector, then adjust guide vertices in the preview.
+- Guide mesh preview is currently an editor overlay. It is not a final image patch and should be treated as AI/input guidance only. Users can now create a guide patch, 2D mesh guide preset, or non-AI symmetry draft from the selected part inspector, then adjust guide vertices in the preview.
+- Symmetry hidden-completion drafts are editable, non-destructive patch assets. They may initially cover a broad guide area, especially torso half-rectangles, and rely on user guide-vertex editing rather than automatic exposed-hole detection.
 - Time-varying z-order / z-swap editing is not implemented.
 - The motion planner is template/rule based, not image-understanding based.
 - The generated motion is a draft; anchor editing exists, but detailed anchor/keyframe graph tooling is still limited.
@@ -511,7 +547,10 @@ Current architecture note:
 - `scripts/character-root-motion.js`: character root delta evaluation and propagation for cutscene motion.
 - `scripts/hidden-completion-assets.js`: hidden-completion patch asset normalization, guide mesh model, and runtime guide mesh restoration.
 - `scripts/hidden-completion-guide-editor.js`: guide-only patch creation, preview overlay, and guide vertex dragging.
-- `scripts/hidden-completion-part-panel.js`: selected-part hidden-completion UI for guide creation, 2D mesh guide presets, patch selection, link/unlink, and cutscene-draft fallback creation.
+- `scripts/hidden-completion-symmetry.js`: non-AI symmetry hidden-completion draft creation, counterpart matching, torso same-part side completion, and symmetry metadata writing.
+- `scripts/hidden-completion-part-panel-helpers.js`: small selected-part panel helpers for torso detection, explicit left/right target-region selection, and mesh preset guide creation.
+- `scripts/hidden-completion-part-panel.js`: selected-part hidden-completion UI for guide creation, 2D mesh guide presets, torso left/right symmetry drafts, patch selection, link/unlink, and cutscene-draft fallback creation.
+- `scripts/hidden-completion-render.js`: runtime preview compositing for ready symmetry patches after source-panel erase and before occluding foreground parts.
 - `scripts/hidden-completion-request.js`: provider-neutral hidden-completion request builder.
 - `scripts/hidden-completion-request.d.ts`: request payload/options TypeScript declarations.
 - `scripts/hidden-completion-prep.js`: source crop and mask descriptor preparation.
@@ -622,6 +661,8 @@ node tests\preview-hit-test.test.js
 node tests\preview-pointer-arbitration.test.js
 node tests\events-history-shortcuts.test.js
 node tests\hidden-completion-part-panel.test.js
+node tests\hidden-completion-part-panel-torso.test.js
+node tests\hidden-completion-symmetry.test.js
 node tests\hidden-completion-roundtrip.test.js
 node tests\hidden-completion-request.test.js
 node tests\hidden-completion-provider.test.js
@@ -649,19 +690,20 @@ Continue stabilizing creator-controlled rigging and motion authoring before addi
 Smallest next scope:
 
 ```text
-boxer punch browser smoke demo
--> verify handTip endpoint visualization and cutscene depth ordering in the browser
--> punch windup/drive/impact/recover manual edit QA
--> visible keyframe/frame feedback for hand, arm, torso, and depth phase behavior
--> explicit "regenerate punch" vs "keep manual edits" UX language
--> only after punch demo is stable, resume kick quality tuning
+hidden-completion symmetry browser QA
+-> load or create an existing-style JSON with torso/body, neutral arm names, and edited humanRole values
+-> create arm/forearm/hand symmetry drafts and verify the selected part is the fill target
+-> create torso left/right symmetry drafts and verify same-part source/target metadata
+-> adjust broad guide vertices in the preview so the visible patch area matches the exposed gap
+-> save/load/save and confirm linked patch ids plus symmetrySource metadata remain stable
+-> only after this manual completion loop is stable, resume punch/kick quality tuning
 ```
 
 Why this is next:
 
-- The new product center is direct character rigging and motion editing, so the edit loop must remain dependable before AI or A/B reference features expand.
-- The first stability pass covered inspector parent fallback, out-of-rect pivot/joint preservation, pointer arbitration regressions, and motionDraft/hiddenCompletionPatch guide round trips.
-- The current motion target is narrower: make the boxer punch auto-generation, handTip endpoint behavior, cutscene depth ordering, and manual correction loop reliable before spending time on kick tuning.
+- The new product center is direct character rigging and motion editing, so exposed-area completion must remain dependable before AI or A/B reference features expand.
+- User QA found no major blocker in the boxer punch browser smoke path, making hidden-completion symmetry authoring the higher-value next manual loop.
+- The current completion target is narrower: make selected-part/counterpart semantics, torso left/right semantics, guide adjustment, preview compositing, and save/load stability reliable before spending time on provider generation or kick tuning.
 - Remaining work should stay in the current command, inspector/status, `motionPlan`, `cutsceneBridge.jointAction`, `part.keyframes`, `hiddenCompletionPatch`, and `project.assets` flows.
 
 Do not change `HiddenCompletionRequestPayload`, hidden-completion provider contracts, Stability/Local SD provider logic, or B impact snap timing while continuing this rigging/motion stability pass.
@@ -683,7 +725,7 @@ master
 Latest known implementation baseline:
 
 ```text
-current upload builds on the rear-hand punch baseline with separate upperArm/forearm/hand chains, role-specific handles, clean-chain validation, and explicit arm handle auto-placement
+current upload builds on manual hidden-completion symmetry drafts with legacy JSON counterpart fallback, explicit torso left/right target selection, editable guide regions, and save/load stability
 ```
 
 Current upload status:
@@ -694,12 +736,17 @@ this upload includes implementation, tests, and this handoff update on origin/ma
 
 ## Current Project Notes
 
-As of this handoff update on 2026-05-23, implementation work includes the previous `ce43f68 Stabilize rigging and motion authoring state` baseline, the image upload/session restore and canonical punch/kick selected-part generation work, punch/kick draft context invalidation, boxer punch manual-edit workflow stabilization, arm-only `handTip` endpoint support, cutscene-only rear-cross depth ordering, separate arm-chain punch resolution, role-specific rig handle semantics, clean separate-chain validation, and explicit arm handle auto-placement.
+As of this handoff update on 2026-05-24, implementation work includes the previous `ce43f68 Stabilize rigging and motion authoring state` baseline, the image upload/session restore and canonical punch/kick selected-part generation work, punch/kick draft context invalidation, boxer punch manual-edit workflow stabilization, arm-only `handTip` endpoint support, cutscene-only rear-cross depth ordering, separate arm-chain punch resolution, role-specific rig handle semantics, clean separate-chain validation, explicit arm handle auto-placement, core manual Undo/Redo coverage, and hidden-completion symmetry draft stabilization for existing JSON workflows.
 
 Latest completed implementation commits:
 
 - `f2536d3 Add cutscene motion status visibility`: read-only punch/kick cutscene status line in the motion panel, backed by `scripts/cutscene-motion-status.js` and `tests/cutscene-motion-status.test.js`.
 - `ce43f68 Stabilize rigging and motion authoring state`: inspector parent fallback, `parentId`/`parentPartId` compatibility, out-of-rect pivot/joint preservation, pointer arbitration regressions, and motionDraft plus hiddenCompletionPatch guide round-trip coverage.
+- Current upload: symmetry hidden-completion drafts can be created for legacy/neutral arm names after users edit parts into reasonable `humanRole` values. If no side name hint exists, arm counterpart matching can infer front/rear from torso/body geometry.
+- Current upload: torso/body/spine selected parts expose explicit `왼쪽을 보완` and `오른쪽을 보완` target-region choices. Torso symmetry uses the same torso part as the counterpart source and stores stable `symmetrySource.targetRegion/sourceRegion` metadata.
+- Current upload: symmetry patches remain non-destructive project assets linked through `motionDraft.hiddenCompletion.assetId`. They can visually cover broad guide areas until the user narrows the guide vertices, but they do not overwrite saved source part geometry or masks.
+- Current upload: new helper `scripts/hidden-completion-part-panel-helpers.js` keeps torso detection, target-region selection, and mesh preset generation out of the main panel file. `scripts/bootstrap.js` loads it before the selected-part hidden-completion panel.
+- Current upload: regressions cover neutral legacy counterpart geometry fallback, torso left/right UI option propagation, symmetry request-contract isolation, and arm/torso symmetry metadata save/load/save stability. The full `tests/*.test.js` suite passed locally.
 - Current upload: arm-only rigs now support an explicit `handTip` endpoint in the inspector, rig handles, hit testing, render overlay, project model, serialization, part creation, and shape edit preservation paths.
 - Current upload: punch generation uses the selected arm's `handTip` as the actual endpoint when no separate hand part exists, while separate hand-part rigs still resolve to the terminal hand part.
 - Current upload: explicit punch regeneration after loading legacy elbow-only keyframes replaces generated punch tracks, keeps `actionTimeline.template === "punch"`, and uses base geometry for rear/front classification, target computation, windup, impact, and recover.

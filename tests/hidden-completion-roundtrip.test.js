@@ -17,6 +17,7 @@ function loadAnimotion() {
   vm.createContext(context);
   for (const path of [
     "scripts/coordinate-spaces.js",
+    "scripts/human-rig-schema.js",
     "scripts/hidden-completion-assets.js",
     "scripts/motion-drafts.js",
     "scripts/project-model.js",
@@ -159,6 +160,86 @@ test("motion draft and hidden patch guide survive save load save round trip toge
   assert.equal(patch.guide.meshVerticesNormalized[2].yNorm, 1.15);
   assert.equal(secondSave.parts[0].pivotNormalized.xNorm, -0.2);
   assert.equal(secondSave.parts[0].jointNormalized.yNorm, 1.1);
+});
+
+test("symmetry hidden patch metadata survives legacy project save load save", () => {
+  const Animotion = loadAnimotion();
+  const parts = [
+    { id: "body", name: "body", type: "body", humanRole: "torso", rect: { x: 40, y: 10, w: 40, h: 90 }, pivot: { x: 20, y: 20 }, joint: { x: 20, y: 80 }, customMotion: {}, keyframes: [] },
+    { id: "arm_01", name: "arm_01", type: "arm", humanRole: "forearm", rect: { x: 92, y: 30, w: 22, h: 38 }, pivot: { x: 6, y: 8 }, joint: { x: 18, y: 32 }, customMotion: {}, keyframes: [] },
+    { id: "arm_02", name: "arm_02", type: "arm", humanRole: "forearm", rect: { x: 8, y: 32, w: 22, h: 38 }, pivot: { x: 16, y: 8 }, joint: { x: 4, y: 32 }, customMotion: {}, keyframes: [] },
+  ];
+  const asset = Animotion.hiddenCompletionAssets.normalizeAsset({
+    id: "hidden-arm-01-symmetry",
+    type: "hiddenCompletionPatch",
+    sourcePartId: "arm_01",
+    patchStatus: "draft",
+    renderMode: "manualOverride",
+    completionMethod: "symmetry",
+    symmetrySource: {
+      counterpartPartId: "arm_02",
+      targetPartId: "arm_01",
+      targetRegion: "front",
+      sourceRegion: "rear",
+      confidence: 0.82,
+    },
+  });
+  const draft = Animotion.motionDrafts.normalize({
+    partId: "arm_01",
+    hiddenCompletion: { needed: true, status: "candidate", assetKind: "hiddenCompletionPatch", assetStatus: "ready", assetId: asset.id },
+  }, { assets: [asset] });
+  const project = Animotion.projectModel.createEmptyProject({ canvas: { width: 140, height: 100 } });
+  project.assets = [asset];
+
+  const firstSave = saveProject(Animotion, project, { naturalWidth: 140, naturalHeight: 100 }, parts, { motionDraft: draft });
+  const loaded = Animotion.projectModel.normalizeProject(JSON.parse(JSON.stringify(firstSave)), { imageBounds: { width: 140, height: 100 } });
+  const secondSave = saveProject(Animotion, loaded, { naturalWidth: 140, naturalHeight: 100 }, Animotion.projectModel.editorPartsFromProject(loaded), loaded.editor.motionPlan);
+  const patch = secondSave.assets.find((candidate) => candidate.id === asset.id);
+  const savedTarget = secondSave.parts.find((part) => part.id === "arm_01");
+
+  assert.equal(patch.completionMethod, "symmetry");
+  assert.equal(patch.symmetrySource.counterpartPartId, "arm_02");
+  assert.equal(patch.symmetrySource.targetRegion, "front");
+  assert.equal(secondSave.editor.motionPlan.motionDraft.hiddenCompletion.assetId, asset.id);
+  assert.equal(savedTarget.humanRole, "forearm");
+});
+
+test("torso symmetry side metadata survives save load save", () => {
+  const Animotion = loadAnimotion();
+  const torso = {
+    id: "body",
+    name: "body",
+    type: "body",
+    humanRole: "torso",
+    rect: { x: 20, y: 10, w: 60, h: 90 },
+    pivot: { x: 30, y: 18 },
+    joint: { x: 30, y: 78 },
+    customMotion: {},
+    keyframes: [],
+  };
+  const asset = Animotion.hiddenCompletionAssets.normalizeAsset({
+    id: "hidden-body-right-symmetry",
+    type: "hiddenCompletionPatch",
+    sourcePartId: torso.id,
+    completionMethod: "symmetry",
+    symmetrySource: {
+      counterpartPartId: torso.id,
+      targetPartId: torso.id,
+      targetRegion: "right",
+      sourceRegion: "left",
+      confidence: 0.82,
+    },
+  });
+  const project = Animotion.projectModel.createEmptyProject({ canvas: { width: 100, height: 100 } });
+  project.assets = [asset];
+  const firstSave = saveProject(Animotion, project, { naturalWidth: 100, naturalHeight: 100 }, [torso]);
+  const loaded = Animotion.projectModel.normalizeProject(JSON.parse(JSON.stringify(firstSave)), { imageBounds: { width: 100, height: 100 } });
+  const secondSave = saveProject(Animotion, loaded, { naturalWidth: 100, naturalHeight: 100 }, Animotion.projectModel.editorPartsFromProject(loaded));
+  const patch = secondSave.assets.find((candidate) => candidate.id === asset.id);
+
+  assert.equal(patch.symmetrySource.counterpartPartId, "body");
+  assert.equal(patch.symmetrySource.targetRegion, "right");
+  assert.equal(patch.symmetrySource.sourceRegion, "left");
 });
 
 test("project rig serialization preserves parentPartId fallback links", () => {

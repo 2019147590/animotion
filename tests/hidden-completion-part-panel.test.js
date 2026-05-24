@@ -27,6 +27,9 @@ function loadPanel() {
   vm.runInContext(fs.readFileSync("scripts/cutscene-action-selectors.js", "utf8"), context, {
     filename: "scripts/cutscene-action-selectors.js",
   });
+  vm.runInContext(fs.readFileSync("scripts/hidden-completion-part-panel-helpers.js", "utf8"), context, {
+    filename: "scripts/hidden-completion-part-panel-helpers.js",
+  });
   vm.runInContext(fs.readFileSync("scripts/hidden-completion-part-panel.js", "utf8"), context, {
     filename: "scripts/hidden-completion-part-panel.js",
   });

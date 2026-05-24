@@ -96,6 +96,7 @@
     "ui",
     "motion-draft-editor",
     "hidden-completion-guide-editor",
+    "hidden-completion-part-panel-helpers",
     "hidden-completion-part-panel",
     "preview-pointer-arbitration",
     "editor",

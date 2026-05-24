@@ -119,6 +119,21 @@ test("symmetry counterpart prefers manual split forearm over old arm-only part",
   assert.equal(result.asset.symmetrySource.counterpartPartId, "rear_forearm_new");
 });
 
+test("legacy neutral names can match counterparts from edited roles and torso geometry", () => {
+  const Animotion = loadAnimotion();
+  const torso = { ...part("part_body", "torso", { type: "body", rect: { x: 40, y: 10, w: 40, h: 90 } }) };
+  const target = part("arm_01", "forearm", { name: "arm_01", rect: { x: 92, y: 30, w: 22, h: 38 } });
+  const counterpart = part("arm_02", "forearm", { name: "arm_02", rect: { x: 8, y: 32, w: 22, h: 38 } });
+
+  const result = Animotion.hiddenCompletionSymmetry.createPatchAsset(target, [torso, target, counterpart], { id: "hidden-arm-01-symmetry" });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.asset.sourcePartId, "arm_01");
+  assert.equal(result.asset.symmetrySource.counterpartPartId, "arm_02");
+  assert.equal(result.asset.symmetrySource.targetRegion, "front");
+  assert.equal(result.asset.symmetrySource.sourceRegion, "rear");
+});
+
 function assertJsonEqual(actual, expected) {
   assert.deepEqual(JSON.parse(JSON.stringify(actual)), expected);
 }
