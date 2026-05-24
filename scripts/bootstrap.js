@@ -37,6 +37,7 @@
     "motion-model",
     "motion-hints",
     "motion-drafts",
+    "motion-draft-action-store",
     "motion-target-policy",
     "motion-target-state",
     "motion-target-debug",

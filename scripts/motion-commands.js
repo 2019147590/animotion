@@ -116,10 +116,12 @@
 
   function updateJointAction(action) {
     if (!state.cutsceneBridge) return null;
+    const previousAction = state.cutsceneBridge.jointAction;
+    const nextAction = Animotion.motionDraftActionStore?.preservePreviousDraft?.(previousAction, action, { assets: projectAssets() }) || action;
     state.cutsceneBridge = Animotion.cutsceneModel.normalizeBridge({
       ...state.cutsceneBridge,
-      jointAction: action,
-    });
+      jointAction: nextAction,
+    }, { assets: projectAssets() });
     return Animotion.cutsceneActionSelectors?.getActiveJointAction?.(state)?.action || null;
   }
 

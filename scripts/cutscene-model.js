@@ -52,7 +52,7 @@
       sourceMotionEnabled: bridge.sourceMotionEnabled === true,
       bodyAssistEnabled: bridge.bodyAssistEnabled !== false,
       ghostEnabled: bridge.ghostEnabled !== false,
-      jointAction: normalizeJointAction(bridge.jointAction, { imageBounds, durationFrames, impactFrame: bridge.impactFrame }),
+      jointAction: normalizeJointAction(bridge.jointAction, { imageBounds, durationFrames, impactFrame: bridge.impactFrame, assets: options.assets }),
     };
   }
 
@@ -163,6 +163,7 @@
   function normalizeJointAction(action, options = {}) {
     if (!action?.beats?.length) return null;
     const timeline = Animotion.cutsceneActionSelectors?.rawActionTimeline?.(action) || null;
+    const hiddenCompletionDrafts = Animotion.motionDraftActionStore?.normalizeList?.(action.hiddenCompletionDrafts, { assets: options.assets }) || [];
     return {
       source: String(action.source || "part-pivots-v1"),
       focusKey: action.focusKey ? String(action.focusKey) : null,
@@ -175,6 +176,7 @@
       ...(action.trajectoryPoints ? { trajectoryPoints: clonePlain(action.trajectoryPoints) } : {}),
       ...(action.motionHints ? { motionHints: Animotion.motionHints?.normalize?.(action.motionHints) || action.motionHints } : {}),
       ...(action.motionDraft ? { motionDraft: Animotion.motionDrafts?.normalize?.(action.motionDraft, { assets: options.assets }) || action.motionDraft } : {}),
+      ...(hiddenCompletionDrafts.length ? { hiddenCompletionDrafts } : {}),
     };
   }
 

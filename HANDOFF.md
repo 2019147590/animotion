@@ -41,6 +41,37 @@ The hardcoded demo genga cut remains available, but it should be treated as the 
 
 ## Current Implemented State
 
+### Latest 2026-05-24 Per-Part Hidden Completion Draft Upload
+
+This upload fixes the hidden-completion draft ownership gap found during manual QA: creating an upperArm completion patch could make a previously linked body completion patch disappear from the selected-part UI/preview path.
+
+Per-part hidden-completion draft storage:
+
+- Added `scripts/motion-draft-action-store.js` as the small action-level store for hidden-completion motion drafts.
+- A cutscene action can now keep multiple linked hidden-completion drafts in `jointAction.hiddenCompletionDrafts`, keyed by `partId`.
+- `body`, `upperArm`, and other parts can each keep their own ready linked patch asset without one part replacing another.
+- The legacy single `jointAction.motionDraft` remains supported for old JSON and current planner/editor compatibility.
+- When an action update replaces a legacy single `motionDraft`, `motionCommands.updateJointAction()` preserves the previous ready hidden-completion draft into `hiddenCompletionDrafts` before normalization.
+- The active motion draft editor now resolves the selected part's draft first, then falls back to the legacy action snapshot and plan draft.
+
+Preview and save/load behavior:
+
+- Symmetry hidden-completion preview now asks the per-part action store for the draft linked to the part being drawn.
+- `cutsceneModel.normalizeBridge()` preserves normalized `jointAction.hiddenCompletionDrafts` so the links survive save/load/save and existing project restore flows.
+- Bootstrap loads the action store before motion planning/editor modules that need it.
+- This does not change symmetry patch generation, guide shape defaults, provider contracts, Stability/Local SD logic, or generated image compositing.
+
+Verification for this upload:
+
+- Added `tests/hidden-completion-action-drafts.test.js`.
+- Verified the motion draft editor keeps body and upperArm hidden-completion links at the same time.
+- Verified a legacy single ready `motionDraft` is preserved when a new part draft replaces the active action snapshot.
+- Verified preview lookup resolves the patch linked to each rendered part.
+- Verified cutscene bridge normalization preserves `hiddenCompletionDrafts`.
+- Full JavaScript suite passed locally via `Get-ChildItem tests -Filter *.test.js | ForEach-Object { node $_.FullName }`.
+- `git diff --check` passed with only CRLF conversion warnings.
+- Unrelated untracked local artifacts remain unstaged: `.codex_video_frames/`, extra `lookism/*.png`, and the user-provided root screenshot PNG.
+
 ### Latest 2026-05-24 Symmetry Hidden Completion UX Upload
 
 This upload focuses on manual, non-AI hidden-completion symmetry drafts for existing/legacy JSON projects. It does not change provider contracts, Stability/Local SD logic, generated image compositing, or punch/kick timing.

@@ -34,6 +34,8 @@
 
   function activeDraftForPart(part, state = {}) {
     const action = Animotion.cutsceneActionSelectors?.getActiveJointAction?.(state)?.action;
+    const linked = Animotion.motionDraftActionStore?.draftForPart?.(action, part?.id, { assets: state.project?.assets });
+    if (linked) return linked;
     const drafts = [
       action?.motionDraft,
       state.motionPlan?.motionDraft,

@@ -18,6 +18,8 @@
     renderInspector(context);
   }
   function activeDraftContext() {
+    const context = Animotion.motionDraftActionStore?.activeDraftContext?.(Animotion.state, { assets: projectAssets() });
+    if (context) return context;
     const action = Animotion.cutsceneActionSelectors?.getActiveJointAction?.(Animotion.state)?.action;
     if (action?.motionDraft) return { scope: "action-snapshot", draft: Animotion.motionDrafts.normalize(action.motionDraft) };
     const plan = Animotion.motionCommands?.currentMotionPlan?.() || Animotion.motionPlanner?.normalizePlan?.(Animotion.state?.motionPlan);
@@ -83,16 +85,18 @@
     const context = activeDraftContext();
     if (!context?.draft) return null;
     const next = Animotion.motionDrafts.normalize(updater(context.draft), { assets: projectAssets() });
-    if (context.scope === "action-snapshot") updateActionDraft(next);
+    if (context.scope === "action-snapshot" || context.scope === "action-hidden-completion") updateActionDraft(next, { setPrimary: context.scope === "action-snapshot" });
     else Animotion.motionCommands.setMotionPlan({ motionDraft: next });
     refresh();
     return next;
   }
 
-  function updateActionDraft(draft) {
+  function updateActionDraft(draft, options = {}) {
     const action = Animotion.cutsceneActionSelectors?.getActiveJointAction?.(Animotion.state)?.action;
     if (!action) return;
-    Animotion.motionCommands.updateJointAction({ ...action, motionDraft: { ...draft, draftScope: "action-snapshot" } });
+    const next = Animotion.motionDraftActionStore?.withActionDraft?.(action, draft, { assets: projectAssets(), setPrimary: options.setPrimary })
+      || { ...action, motionDraft: { ...draft, draftScope: "action-snapshot" } };
+    Animotion.motionCommands.updateJointAction(next);
   }
   function updateLastKeyframe(track, value) {
     if (!track?.keyframes?.length) return track;
