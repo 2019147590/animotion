@@ -45,6 +45,7 @@ function loadAnimotion() {
   const Animotion = context.window.Animotion;
   Animotion.state = stateFixture();
   Animotion.imageBounds = () => ({ width: 200, height: 160 });
+  runScript(context, "scripts/part-supplemental-transform.js");
   runScript(context, "scripts/part-commands.js");
   runScript(context, "scripts/motion-commands.js");
   return Animotion;

@@ -67,9 +67,7 @@
   }
 
   function drawSegmentedPart(ctx, part, hint, alpha = 1) {
-    if (!hint?.active || !hint.controls) return { ok: false, reason: "inactive", fallbackUsed: true, segmentCount: 0 };
-    return Animotion.armExtensionRender?.drawSegmentedPart?.(ctx, part, hint, alpha)
-      || { ok: false, reason: "missing-renderer", fallbackUsed: true, segmentCount: 0, sourceBounds: part?.rect || null };
+    return Animotion.armExtensionSegment?.drawSegmentedPart?.(ctx, part, hint, alpha) || (!hint?.active || !hint.controls ? { ok: false, reason: "inactive", fallbackUsed: true, segmentCount: 0 } : { ok: false, reason: "missing-renderer", fallbackUsed: true, segmentCount: 0, sourceBounds: part?.rect || null });
   }
 
   function isArmHandTipPart(part, active) {

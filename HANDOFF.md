@@ -41,6 +41,68 @@ The hardcoded demo genga cut remains available, but it should be treated as the 
 
 ## Current Implemented State
 
+### Latest 2026-05-25 Rig Part Transform Controls and 300-Line Legacy Refactor Handoff
+
+This handoff captures the latest rig-part transform feature work and the first incremental 300-line legacy refactor passes.
+
+Rig part transform controls:
+
+- Added selected rig part copy, horizontal flip, clockwise rotation, and counter-clockwise rotation.
+- Added user-controlled rotation angle input. The default is `90` degrees; clockwise/counter-clockwise buttons apply the current input value.
+- Transform controls are inserted into a normal `리깅 파츠 변형` inspector section, not the `위험 작업` section.
+- `위험 작업` now remains reserved for destructive delete behavior.
+- The public command surface is preserved through `Animotion.partCommands`:
+  - `copySelectedPart`
+  - `flipSelectedPartHorizontal`
+  - `rotateSelectedPartClockwise`
+  - `rotateSelectedPartCounterClockwise`
+  - `rotateSelectedPartBy`
+- Copy creates a selected duplicate with a small offset, preserves project sync, and records history.
+- Flip and rotation update the selected part's static `transform` through existing part update/history paths.
+- Static part transforms are applied by preview matrix evaluation and are covered by parent/world transform regression tests.
+
+Preview/render-order module split:
+
+- `scripts/preview.js` was split into smaller runtime modules while preserving `Animotion.preview.drawPreview`, `worldMatrix`, `localMatrix`, and `currentMotionFrame`.
+- New preview helper modules:
+  - `scripts/preview-scene.js`
+  - `scripts/preview-hidden-fill.js`
+  - `scripts/preview-supplemental-renderer.js`
+  - `scripts/preview-part-renderer.js`
+  - `scripts/preview-rig-overlay.js`
+  - `scripts/preview-static-transform.js`
+- `tests/preview-render-order.test.js` was split into focused test files plus `tests/preview-render-order-fixture.js`.
+- Render behavior was not intentionally changed. The split preserves existing source panel, cutscene effects, ghost part, hidden-completion fill, supplemental, depth top-up, and overlay behavior.
+
+Legacy 300-line refactor status:
+
+- `scripts/preview.js`: reduced to 158 lines through the preview module split.
+- `tests/preview-render-order.test.js`: reduced to 115 lines through focused test files and a shared fixture.
+- `scripts/part-commands.js`: reduced from 334 to 281 lines by extracting supplemental-part transform patch calculation to `scripts/part-supplemental-transform.js`.
+- `scripts/arm-extension.js`: reduced from 301 to 299 lines by extracting segmented render adapter behavior to `scripts/arm-extension-segment.js`.
+- All modified/added files from these passes are under 300 lines.
+- Persisted schema, planner output, render output, and existing public APIs were intentionally kept unchanged.
+
+Important untracked local files:
+
+- `animotion-project (10).json`, `animotion-project (11).json`, several `lookism/*.png` files, and one screenshot remain untracked local QA/user artifacts.
+- They were not staged for the code upload unless explicitly requested later.
+
+Verification already run before this handoff update:
+
+- `node tests\part-transform-commands.test.js`
+- `node tests\part-action-controls.test.js`
+- `node tests\part-commands.test.js`
+- `node tests\arm-extension-controls.test.js`
+- `node tests\motion-replacement-layer.test.js`
+- `node tests\cutscene-motion-status.test.js`
+- `node tests\hand-tip-fallback.test.js`
+- `node tests\punch-hand-tip-regression.test.js`
+- `Get-ChildItem tests -Filter *.test.js | ForEach-Object { node $_.FullName }`
+- `git diff --check`
+
+Result: all tests passed locally. `git diff --check` passed with only CRLF conversion warnings.
+
 ### Latest 2026-05-25 Hidden Completion Render Order and Canvas Snapshot Handoff
 
 This section supersedes the earlier assumption that supplemental hidden-completion parts are safely rendered immediately after their source part. The latest real-project QA with `animotion-project (10).json` and `animotion-project (11).json` proved two separate failure layers and fixes:

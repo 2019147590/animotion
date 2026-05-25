@@ -36,6 +36,7 @@
     Animotion.hiddenCompletionPartPanel?.refreshControls?.();
     Animotion.correspondenceEditor?.refreshControls?.();
     Animotion.cutsceneOptions?.refreshControls?.();
+    Animotion.partActionControls?.refreshControls?.();
     renderLookismPresetStatus();
     renderPanelScaleControls();
     renderKeyframeStatus();
@@ -292,9 +293,7 @@
     return Animotion.config.timelineFrames;
   }
 
-  function timelineLikeMode() {
-    return els.motionTemplate.value === "keyframes" || els.motionTemplate.value === "cutscene";
-  }
+  function timelineLikeMode() { return els.motionTemplate.value === "keyframes" || els.motionTemplate.value === "cutscene"; }
 
   Animotion.ui = { refreshUi, updateSelectedPart };
 }

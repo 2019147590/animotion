@@ -54,6 +54,7 @@ function loadAnimotion() {
   Animotion.config = { hitTolerancePx: 12 };
   Animotion.imageBounds = () => ({ width: 100, height: 80 });
   Animotion.previewPointerArbitration = { setActiveDragOwner() {}, clearActiveDragOwner() {} };
+  runScript(context, "scripts/part-supplemental-transform.js");
   runScript(context, "scripts/part-commands.js");
   runScript(context, "scripts/motion-commands.js");
   runScript(context, "scripts/preview-events.js");

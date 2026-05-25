@@ -43,6 +43,7 @@ function loadAnimotion() {
   context.window.Animotion.imageBounds = () => ({ width: 100, height: 80 });
   runScript(context, "scripts/path.js");
   runScript(context, "scripts/parts.js");
+  runScript(context, "scripts/part-supplemental-transform.js");
   runScript(context, "scripts/part-commands.js");
   runScript(context, "scripts/part-command-history.js");
   return context.window.Animotion;

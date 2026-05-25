@@ -22,6 +22,7 @@ function loadPreview() {
     "scripts/motion-model.js",
     "scripts/timeline.js",
     "scripts/rig-connection.js",
+    "scripts/preview-static-transform.js",
   ]) runScript(context, path);
   const Animotion = context.window.Animotion;
   Animotion.dom = {
@@ -125,4 +126,16 @@ test("head with parentPartId inherits body world transform during cutscene playb
   const expected = transformPoint(bodyMatrix, headPivot(head));
   const actual = transformPoint(headMatrix, headPivot(head));
   assert.deepEqual(rounded(actual), rounded(expected));
+});
+
+test("part static transform affects local preview matrix around pivot", () => {
+  const Animotion = loadPreview();
+  const part = Animotion.state.parts[0];
+  part.keyframes = [];
+  part.transform = { x: 7, y: -3, rotation: 90, scaleX: -1, scaleY: 1 };
+  const pivot = { x: part.rect.x + part.pivot.x, y: part.rect.y + part.pivot.y };
+
+  const actual = transformPoint(Animotion.preview.localMatrix(part, 0), pivot);
+
+  assert.deepEqual(rounded(actual), { x: pivot.x + 7, y: pivot.y - 3 });
 });
