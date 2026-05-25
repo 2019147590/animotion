@@ -41,6 +41,89 @@ The hardcoded demo genga cut remains available, but it should be treated as the 
 
 ## Current Implemented State
 
+### Latest 2026-05-26 Visibility Mask Edit Target and Transformed Source Editing Handoff
+
+This handoff captures the completed visibility-mask edit-target model, transformed source/original-cut editing fixes, and regression coverage.
+
+Edit target model:
+
+- Added `scripts/edit-target.js` as a runtime-only edit-target helper.
+- `state.editTarget` now defaults to `{ kind: "part", partId: null, maskId: null }`.
+- Visibility masks remain persisted only under `part.visibilityMasks[]`; they are not real entries in `state.parts`.
+- Selecting a parent part sets the edit target to `kind: "part"` and clears stale visibility-mask selection.
+- Selecting a visibility-mask child sets the edit target to `kind: "visibilityMask"` for the owning part and mask id.
+- Legacy loose fields `selectedPartId`, `selectedVisibilityMaskId`, and `selectedVisibilityMaskPartId` are kept synchronized for compatibility.
+- Existing projects without `editTarget` still load and behave as part-editing sessions.
+
+Source/original-cut editor behavior:
+
+- Source editor hit-testing now follows the same transformed geometry used for rendering copied, moved, flipped, and rotated parts.
+- When `editTarget.kind === "part"`, only the selected part outline handles are draggable; visibility-mask polygon handles are not editable.
+- When `editTarget.kind === "visibilityMask"`, only the active mask polygon handles are draggable; the parent part outline is not edited.
+- Edited visibility-mask points are saved back in the parent part's local coordinate space.
+- Polygon selection used for creating a new visibility mask is cleared after creation so it does not accidentally remain as a later part-edit input.
+
+Inspector and controls:
+
+- The visibility-mask controls now show mask entries as child edit targets under the selected parent part.
+- The `Edit part` child control switches back to parent part-outline editing.
+- Strength, keyframe, and remove controls are enabled only when a visibility-mask edit target is active.
+- Source overlays draw the selected part outline and visibility-mask polygons with different styles; only the active edit target shows draggable handles.
+
+Clone/copy and render behavior:
+
+- Copying/duplicating a part regenerates every cloned `visibilityMasks[].id`.
+- Copying a part selects the new copy as a part edit target, preventing accidental selection of a mask id shared with the original.
+- Visibility-mask rendering remains isolated to the owning part: masks are applied with `destination-out` inside an offscreen/local part layer, then composited back to the main canvas.
+- A mask on one part no longer erases previously drawn overlapping parts or the original source image background.
+
+Relevant files:
+
+- `scripts/edit-target.js`
+- `scripts/dom-state.js`
+- `scripts/bootstrap.js`
+- `scripts/editor.js`
+- `scripts/render.js`
+- `scripts/ui.js`
+- `scripts/session-commands.js`
+- `scripts/part-commands.js`
+- `scripts/part-command-history.js`
+- `scripts/part-transform-commands.js`
+- `scripts/part-transform-geometry.js`
+- `scripts/part-visibility-mask-commands.js`
+- `scripts/part-visibility-mask-controls.js`
+- `scripts/part-visibility-mask-render.js`
+- `scripts/part-visibility-masks.js`
+- `scripts/preview-part-renderer.js`
+
+Regression tests added or updated:
+
+- `tests/source-editor-transform.test.js`
+- `tests/part-visibility-mask-controls.test.js`
+- `tests/part-visibility-masks.test.js`
+- `tests/part-transform-commands.test.js`
+- `tests/source-visibility-mask-render.test.js`
+- `tests/preview-render-order.test.js`
+
+Verification already run before this handoff update:
+
+- `node tests\source-editor-transform.test.js`
+- `node tests\part-visibility-masks.test.js`
+- `node tests\part-visibility-mask-controls.test.js`
+- `node tests\part-transform-commands.test.js`
+- `node tests\source-visibility-mask-render.test.js`
+- `node tests\preview-render-order.test.js`
+- `node tests\ui-inspector.test.js`
+- `node tests\session-commands.test.js`
+- `Get-ChildItem tests -Filter *.test.js | ForEach-Object { node $_.FullName }`
+- `git diff --check`
+
+Result: all focused tests and the full JavaScript test suite passed locally. `git diff --check` reported only CRLF conversion warnings.
+
+Important untracked local files:
+
+- `_analysis_frames/`, `animotion-project (10).json`, `animotion-project (11).json`, `lookism/*.png`, and screenshot/video artifacts are local QA/user artifacts and should not be committed unless explicitly requested.
+
 ### Latest 2026-05-26 Polygon Structure, Visibility Masks, and Render Hook Fix Handoff
 
 This handoff captures the latest part-structure UI, animated visibility-mask feature, `index.html` size refactor, and the follow-up crash fix from real QA video review.

@@ -36,9 +36,12 @@ function loadAnimotion() {
     image: { naturalWidth: 100, naturalHeight: 80 },
     parts: [],
     selectedPartId: null,
+    editTarget: { kind: "part", partId: null, maskId: null },
     project: context.window.Animotion.projectModel.createEmptyProject(),
   };
   context.window.Animotion.imageBounds = () => ({ width: 100, height: 80 });
+  runScript(context, "scripts/part-visibility-masks.js");
+  runScript(context, "scripts/edit-target.js");
   runScript(context, "scripts/path.js");
   runScript(context, "scripts/parts.js");
   runScript(context, "scripts/part-supplemental-transform.js");
@@ -77,6 +80,10 @@ class FakePath2D {
   ellipse() {}
 }
 
+function plain(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
 test("selected part copy creates an offset selected duplicate with undo", () => {
   const Animotion = loadAnimotion();
   const source = Animotion.partCommands.createPart("body", { x: 10, y: 12, w: 20, h: 30 }, "torso");
@@ -96,6 +103,19 @@ test("selected part copy creates an offset selected duplicate with undo", () => 
   assert.equal(Animotion.state.selectedPartId, source.id);
   assert.equal(Animotion.commandHistory.redo(), true);
   assert.equal(Animotion.state.parts.length, 2);
+});
+
+test("selected part copy gives visibility masks fresh ids and keeps part edit target", () => {
+  const Animotion = loadAnimotion();
+  const source = Animotion.partCommands.createPart("body", { x: 10, y: 12, w: 20, h: 30 }, "torso");
+  source.visibilityMasks = [{ id: "mask-original", mask: { kind: "polygon", points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }] }, keyframes: [{ frame: 1, strength: 1 }] }];
+
+  const copy = Animotion.partCommands.copySelectedPart();
+
+  assert.equal(copy.visibilityMasks.length, 1);
+  assert.notEqual(copy.visibilityMasks[0].id, source.visibilityMasks[0].id);
+  assert.deepEqual(plain(Animotion.state.editTarget), { kind: "part", partId: copy.id, maskId: null });
+  assert.equal(Animotion.state.selectedVisibilityMaskId, null);
 });
 
 test("selected part horizontal flip toggles static scaleX", () => {

@@ -58,8 +58,9 @@ test("cutscene preview erases runtime rigged character from source panel before 
 test("normal part render passes current frame to visibility mask hook", () => {
   const Animotion = loadPreview();
   const frames = [];
-  Animotion.partVisibilityMaskRender.apply = (_ctx, _part, frame) => {
+  Animotion.partVisibilityMaskRender.drawPartImage = (ctx, part, frame) => {
     frames.push(frame);
+    ctx.drawImage(part.canvas, part.rect.x, part.rect.y, part.rect.w, part.rect.h);
     return null;
   };
 
@@ -67,6 +68,35 @@ test("normal part render passes current frame to visibility mask hook", () => {
 
   assert.equal(frames.length > 0, true);
   assert.equal(frames.every((frame) => frame === Animotion.state.currentFrame), true);
+});
+
+test("rigging preview visibility mask does not erase a previously drawn overlapping hand", () => {
+  const Animotion = loadPreview();
+  const hand = part("hand_before_mask", "hand", 1, { x: 60, y: 58, w: 22, h: 18 });
+  const upperArm = {
+    ...part("masked_upper_arm", "arm", 2, { x: 54, y: 46, w: 34, h: 34 }),
+    humanRole: "upperArm",
+    visibilityMasks: [{
+      id: "mask-overlap",
+      mask: { kind: "polygon", points: [{ x: 0, y: 0 }, { x: 34, y: 0 }, { x: 34, y: 34 }, { x: 0, y: 34 }] },
+      keyframes: [{ frame: 24, strength: 1 }],
+    }],
+  };
+  Animotion.state.parts = [hand, upperArm];
+  Animotion.state.selectedPartId = upperArm.id;
+  Animotion.state.cutsceneBridge.primaryPartId = "none";
+  Animotion.createdCanvases.length = 0;
+
+  Animotion.preview.drawPreview(0, () => {}, () => {});
+  const layer = Animotion.createdCanvases.find((canvas) => canvas.__ctx.__ops.some((op) => op.name === "drawImage" && op.args[0] === upperArm.canvas));
+  const handIndex = Animotion.previewCtxOps.findIndex((op) => op.name === "drawImage" && op.args[0] === hand.canvas);
+  const layerIndex = Animotion.previewCtxOps.findIndex((op) => op.name === "drawImage" && op.args[0] === layer);
+
+  assert.ok(layer);
+  assert.equal(layer.__ctx.__ops.some((op) => op.name === "composite" && op.args[0] === "destination-out"), true);
+  assert.equal(Animotion.previewCtxOps.some((op) => op.name === "composite" && op.args[0] === "destination-out"), false);
+  assert.equal(handIndex > -1, true);
+  assert.equal(layerIndex > handIndex, true);
 });
 
 test("symmetry hidden completion patch composites before foreground occluders", () => {

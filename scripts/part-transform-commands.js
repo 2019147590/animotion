@@ -36,7 +36,7 @@
     const before = historySnapshot();
     const copy = duplicatePart(source);
     Animotion.state.parts.push(copy);
-    Animotion.state.selectedPartId = copy.id;
+    selectPart(copy);
     syncProjectParts();
     recordHistory("copy-part", before, historySnapshot());
     return copy;
@@ -56,6 +56,7 @@
     copy.order = nextOrder();
     copy.layerIndex = copy.order;
     copy.transform = offsetTransform(copy.transform);
+    copy.visibilityMasks = reidentifiedVisibilityMasks(copy.visibilityMasks);
     Animotion.parts?.updatePartCanvas?.(copy);
     return copy;
   }
@@ -92,6 +93,16 @@
   function normalizeAngle(value) {
     const angle = numberOrDefault(value, 0) % 360;
     return Object.is(angle, -0) ? 0 : angle;
+  }
+
+  function reidentifiedVisibilityMasks(masks = []) {
+    if (!Array.isArray(masks)) return [];
+    return masks.map((mask) => ({ ...mask, id: crypto.randomUUID() }));
+  }
+
+  function selectPart(part) {
+    if (Animotion.editTarget?.setPart) Animotion.editTarget.setPart(part);
+    else Animotion.state.selectedPartId = part.id;
   }
 
   function uniqueCopyName(name) {

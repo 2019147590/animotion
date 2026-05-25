@@ -35,7 +35,7 @@
     targets.push(...activeModeTargets(event));
     targets.push(optionalTarget("selected-part-transform-handle", Animotion.partTransformEditor?.hitTarget?.(event)));
     targets.push(trajectoryTarget(event));
-    targets.push(optionalTarget("part-body", Animotion.previewEvents?.partBodyTarget?.(event)));
+    targets.push(optionalTarget("part-body", Animotion.previewPartDrag?.partBodyTarget?.(event) || Animotion.previewEvents?.partBodyTarget?.(event)));
     return targets.filter(Boolean).concat(emptyTarget());
   }
 
@@ -53,6 +53,7 @@
     if (target.kind === "active-mode-guide-point") return Animotion[target.editorKey]?.beginDragFromTarget?.(event, target) === true;
     if (target.kind === "motion-trajectory-point") return Animotion.trajectoryEditor?.beginDragFromTarget?.(event, target) === true;
     if (target.kind === "selected-part-transform-handle") return Animotion.partTransformEditor?.beginDragFromTarget?.(event, target) === true;
+    if (target.kind === "part-body") return Animotion.previewPartDrag?.beginDragFromTarget?.(event, target) === true;
     return false;
   }
 

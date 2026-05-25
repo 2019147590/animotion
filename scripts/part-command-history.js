@@ -30,6 +30,7 @@
   function historySnapshot() {
     return {
       selectedPartId: Animotion.state?.selectedPartId || null,
+      editTarget: clone(Animotion.state?.editTarget || { kind: "part", partId: Animotion.state?.selectedPartId || null, maskId: null }),
       parts: (Animotion.state?.parts || []).map(partSnapshot),
     };
   }
@@ -39,6 +40,7 @@
     state.parts = (snapshot?.parts || []).map(restorePart);
     const ids = new Set(state.parts.map((part) => part.id));
     state.selectedPartId = ids.has(snapshot?.selectedPartId) ? snapshot.selectedPartId : null;
+    state.editTarget = restoredEditTarget(snapshot?.editTarget, ids, state.selectedPartId);
     if (state.project) state.project.parts = state.parts;
   }
 
@@ -65,6 +67,12 @@
     const restored = clone(part);
     if (Animotion.state?.image && Animotion.parts?.updatePartCanvas) Animotion.parts.updatePartCanvas(restored);
     return restored;
+  }
+
+  function restoredEditTarget(target = {}, ids, selectedPartId) {
+    const partId = ids.has(target.partId) ? target.partId : selectedPartId;
+    if (target.kind === "visibilityMask" && partId) return { kind: "visibilityMask", partId, maskId: target.maskId || null };
+    return { kind: "part", partId: partId || null, maskId: null };
   }
 
   function sameValue(left, right) {

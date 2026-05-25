@@ -32,7 +32,7 @@
     });
     Animotion.parts.updatePartCanvas(part);
     state.parts.push(part);
-    state.selectedPartId = part.id;
+    selectPart(part);
     syncProjectParts();
     return part;
   }
@@ -130,7 +130,7 @@
     state.parts = state.parts
       .filter((candidate) => candidate.id !== part.id)
       .map((candidate) => parentIdFor(candidate) === part.id ? { ...candidate, parentId: null, parentPartId: null } : candidate);
-    state.selectedPartId = state.parts[0]?.id || null;
+    selectPart(state.parts[0] || null);
     syncProjectParts();
     return part;
   }
@@ -262,6 +262,11 @@
 
   function syncProjectParts() {
     if (state.project) state.project.parts = state.parts;
+  }
+
+  function selectPart(part) {
+    if (Animotion.editTarget?.setPart) Animotion.editTarget.setPart(part);
+    else state.selectedPartId = part?.id || null;
   }
 
   Animotion.partCommands = {

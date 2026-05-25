@@ -13,11 +13,19 @@ function test(name, fn) {
 
 function loadPreview() {
   const ctx = canvasContext();
-  const context = { window: { Animotion: {}, devicePixelRatio: 1 }, DOMMatrix: Matrix, performance: { now: () => 0 }, document: { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) } };
+  const createdCanvases = [];
+  const context = {
+    window: { Animotion: {}, devicePixelRatio: 1 },
+    DOMMatrix: Matrix,
+    performance: { now: () => 0 },
+    document: { createElement: () => fakeCanvas(createdCanvases) },
+    crypto: { randomUUID: () => "test-id" },
+  };
   vm.createContext(context);
   const Animotion = context.window.Animotion;
   Animotion.dom = { previewCanvas: { width: 200, height: 160 }, previewCtx: ctx, els: elements() };
   Animotion.previewCtxOps = ctx.__ops;
+  Animotion.createdCanvases = createdCanvases;
   Animotion.state = stateFixture();
   Animotion.config = { timelineFps: 24, timelineFrames: 120 };
   Animotion.view = { resizeCanvas() {} };
@@ -136,7 +144,7 @@ function point(value) { return { x: Math.round(Number(value.x)), y: Math.round(N
 function canvasContext() {
   const ops = [];
   const record = (name, ...args) => ops.push({ name, args });
-  return {
+  const ctx = {
     __ops: ops, save: () => record("save"), restore: () => record("restore"), scale: (...args) => record("scale", ...args),
     clearRect: (...args) => record("clearRect", ...args), fillRect: (...args) => record("fillRect", ...args), fill: (...args) => record("fill", ...args),
     translate: (...args) => record("translate", ...args), transform: (...args) => record("transform", ...args), drawImage: (...args) => record("drawImage", ...args),
@@ -144,6 +152,15 @@ function canvasContext() {
     lineTo: (...args) => record("lineTo", ...args), closePath: (...args) => record("closePath", ...args), clip: (...args) => record("clip", ...args),
     rotate: (...args) => record("rotate", ...args),
   };
+  Object.defineProperty(ctx, "globalAlpha", { get() { return this._alpha ?? 1; }, set(value) { this._alpha = value; record("alpha", value); } });
+  Object.defineProperty(ctx, "globalCompositeOperation", { get() { return this._composite ?? "source-over"; }, set(value) { this._composite = value; record("composite", value); } });
+  return ctx;
+}
+
+function fakeCanvas(createdCanvases) {
+  const canvas = { width: 0, height: 0, __ctx: canvasContext(), getContext() { return this.__ctx; } };
+  createdCanvases.push(canvas);
+  return canvas;
 }
 
 function lastOpIndexBefore(ops, beforeIndex, name) {

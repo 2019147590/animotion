@@ -17,6 +17,7 @@
       selection: null,
       drag: null,
       selectedPartId: null,
+      editTarget: { kind: "part", partId: null, maskId: null },
       sourceZoom: 1,
       sourcePan: { x: 0, y: 0 },
       startTime: performance.now(),
@@ -59,7 +60,7 @@
     Animotion.motionCommands.setMotionPlan(project.editor?.motionPlan || state.motionPlan);
     Animotion.motionCommands.setCutsceneBridge(project.editor?.cutsceneBridge || null);
     state.currentFrame = project.timeline?.currentFrame || state.currentFrame;
-    state.selectedPartId = loadedSelectedPartId(project.editor?.selectedPartId);
+    selectPart(loadedSelectedPartId(project.editor?.selectedPartId));
     restoreMotionTemplate();
     clearHistory();
   }
@@ -85,7 +86,7 @@
     });
     state.project = Animotion.projectModel.projectFromEditorState(state);
     state.project.parts = state.parts;
-    state.selectedPartId = options.selectedPartId;
+    selectPart(options.selectedPartId);
     Animotion.motionCommands.setCutsceneBridge(options.bridge);
     state.lookismPreset = options.lookismPreset;
     clearHistory();
@@ -142,6 +143,14 @@
 
   function loadedSelectedPartId(partId) {
     return state.parts.some((part) => part.id === partId) ? partId : null;
+  }
+
+  function selectPart(partId) {
+    if (Animotion.editTarget?.setPart) Animotion.editTarget.setPart(partId);
+    else {
+      state.selectedPartId = partId || null;
+      state.editTarget = { kind: "part", partId: state.selectedPartId, maskId: null };
+    }
   }
 
   function setCorrespondences(correspondences) {

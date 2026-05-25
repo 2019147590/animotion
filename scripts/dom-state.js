@@ -34,6 +34,7 @@
     previewDrag: null,
     parts: project.parts,
     selectedPartId: null,
+    editTarget: { kind: "part", partId: null, maskId: null },
     running: true,
     startTime: performance.now(),
     pausedTime: 0,

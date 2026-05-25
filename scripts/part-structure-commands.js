@@ -83,6 +83,7 @@
       parentPartId: parentId,
       transform: commonTransform(parts),
     });
+    merged.visibilityMasks = mergedVisibilityMasks(parts, merged);
     clearSplitMetadata(merged);
     return merged;
   }
@@ -130,6 +131,26 @@
     return parts.every((part) => JSON.stringify(part.transform || {}) === first)
       ? clone(parts[0].transform || {})
       : { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
+  }
+
+  function mergedVisibilityMasks(parts, merged) {
+    return parts.flatMap((part) => {
+      const masks = Animotion.partVisibilityMasks?.normalizeList?.(part.visibilityMasks) || [];
+      return masks.map((mask) => movedVisibilityMask(part, mask, merged));
+    });
+  }
+
+  function movedVisibilityMask(source, mask, target) {
+    const imagePoints = Animotion.partTransformGeometry?.partLocalPointsToImage?.(source, mask.mask.points, state.parts)
+      || mask.mask.points.map((point) => imagePoint(source.rect, point));
+    const targetPoints = Animotion.partTransformGeometry?.imagePointsToPartLocal?.(target, imagePoints, [...state.parts, target])
+      || imagePoints.map((point) => localFromImagePoint(target.rect, point));
+    return {
+      ...mask,
+      id: uuid(),
+      name: `${source.name || source.id} ${mask.name || "visibility mask"}`,
+      mask: { ...mask.mask, points: targetPoints },
+    };
   }
 
   function armSplitMetadata(part = {}) {

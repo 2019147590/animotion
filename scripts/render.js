@@ -41,8 +41,34 @@
     sourceCtx.fillStyle = "#f7f0df";
     sourceCtx.fillRect(0, 0, w, h);
     sourceCtx.drawImage(image, view.x, view.y, view.w, view.h);
+    drawSourceTransformedParts(view);
     drawSourceOverlays(view);
     sourceCtx.restore();
+  }
+
+  function drawSourceTransformedParts(view) {
+    if (Animotion.panelEditor?.canEditRig() === false) return;
+    sourceCtx.save();
+    sourceCtx.translate(view.x, view.y);
+    sourceCtx.scale(view.scale, view.scale);
+    for (const part of [...state.parts].sort((a, b) => a.order - b.order)) drawSourceTransformedPart(part);
+    sourceCtx.restore();
+  }
+
+  function drawSourceTransformedPart(part) {
+    const matrix = Animotion.partTransformGeometry?.worldMatrix?.(part, state.parts);
+    if (part.hidden || !part.canvas || !matrix || !hasWorldTransform(matrix)) return;
+    sourceCtx.save();
+    sourceCtx.transform(matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f);
+    sourceCtx.globalAlpha = part.alpha ?? 1;
+    drawPartImage(sourceCtx, part, state.currentFrame);
+    sourceCtx.restore();
+  }
+
+  function drawPartImage(ctx, part, frame) {
+    if (Animotion.partVisibilityMaskRender?.drawPartImage) return Animotion.partVisibilityMaskRender.drawPartImage(ctx, part, frame, pathFromShape);
+    ctx.drawImage(part.canvas, part.rect.x, part.rect.y, part.rect.w, part.rect.h);
+    return null;
   }
 
   function drawSourceOverlays(view) {
@@ -50,11 +76,13 @@
     if (Animotion.panelEditor?.canEditRig() !== false) {
       for (const part of state.parts) {
         const selected = part.id === state.selectedPartId;
-        const showHandles = selected && els.selectionTool.value === Animotion.tool.edit;
-        drawShapeOverlay(sourceCtx, view, geometry.absoluteShapeFromPart(part), selected, part.name, false, showHandles);
-        drawPivot(sourceCtx, view, part.rect.x + part.pivot.x, part.rect.y + part.pivot.y, selected, "anchor");
-        drawPivot(sourceCtx, view, part.rect.x + part.joint.x, part.rect.y + part.joint.y, selected, "joint");
-        if (part.handTip) drawPivot(sourceCtx, view, part.rect.x + part.handTip.x, part.rect.y + part.handTip.y, selected, "handTip");
+        const target = Animotion.editTarget?.current?.() || { kind: "part", partId: state.selectedPartId, maskId: null };
+        const showHandles = selected && target.kind === "part" && els.selectionTool.value === Animotion.tool.edit;
+        drawShapeOverlay(sourceCtx, view, sourcePartShape(part), selected, part.name, false, showHandles);
+        if (selected) drawVisibilityMaskOverlays(sourceCtx, view, part, target);
+        drawPartPoint(sourceCtx, view, part, part.pivot, selected, "anchor");
+        drawPartPoint(sourceCtx, view, part, part.joint, selected, "joint");
+        if (part.handTip) drawPartPoint(sourceCtx, view, part, part.handTip, selected, "handTip");
       }
     }
     if (state.selection) {
@@ -68,6 +96,55 @@
     const mask = Animotion.panelEditor.characterMask();
     if (crop) drawShapeOverlay(sourceCtx, view, crop, false, "crop", true, false);
     if (mask) drawShapeOverlay(sourceCtx, view, mask, true, "character", false, false);
+  }
+
+  function hasWorldTransform(matrix) {
+    return Math.abs((matrix.a ?? 1) - 1) > 0.001
+      || Math.abs(matrix.b || 0) > 0.001
+      || Math.abs(matrix.c || 0) > 0.001
+      || Math.abs((matrix.d ?? 1) - 1) > 0.001
+      || Math.abs(matrix.e || 0) > 0.001
+      || Math.abs(matrix.f || 0) > 0.001;
+  }
+
+  function sourcePartShape(part) {
+    return Animotion.partTransformGeometry?.shapeFromPart?.(part, state.parts) || geometry.absoluteShapeFromPart(part);
+  }
+
+  function drawVisibilityMaskOverlays(ctx, view, part, target) {
+    const masks = Animotion.partVisibilityMasks?.normalizeList?.(part.visibilityMasks) || [];
+    for (const mask of masks) {
+      const active = target.kind === "visibilityMask" && target.partId === part.id && target.maskId === mask.id;
+      drawVisibilityMaskOverlay(ctx, view, visibilityMaskShape(part, mask), active, mask.name || "visibility mask");
+    }
+  }
+
+  function visibilityMaskShape(part, mask) {
+    const points = Animotion.partTransformGeometry?.partLocalPointsToImage?.(part, mask.mask.points, state.parts)
+      || mask.mask.points.map((point) => ({ x: part.rect.x + point.x, y: part.rect.y + point.y }));
+    return { kind: mask.mask.kind || Animotion.shapeKind.polygon, closed: true, points };
+  }
+
+  function drawVisibilityMaskOverlay(ctx, view, shape, active, label) {
+    ctx.save();
+    ctx.translate(view.x, view.y);
+    ctx.scale(view.scale, view.scale);
+    ctx.lineWidth = active ? 3 / view.scale : 1.5 / view.scale;
+    ctx.strokeStyle = active ? "#7b3ff2" : "rgba(123, 63, 242, 0.42)";
+    ctx.fillStyle = active ? "rgba(123, 63, 242, 0.15)" : "rgba(123, 63, 242, 0.05)";
+    ctx.setLineDash(active ? [] : [7 / view.scale, 6 / view.scale]);
+    ctx.fill(pathFromShape(shape));
+    ctx.stroke(pathFromShape(shape));
+    ctx.setLineDash([]);
+    if (active) drawShapeHandles(ctx, shape, view);
+    ctx.restore();
+    if (active) drawShapeLabel(ctx, view, shape, true, label);
+  }
+
+  function drawPartPoint(ctx, view, part, localPoint, selected, role) {
+    const point = Animotion.partTransformGeometry?.pointToImage?.(part, localPoint, state.parts)
+      || { x: part.rect.x + localPoint.x, y: part.rect.y + localPoint.y };
+    drawPivot(ctx, view, point.x, point.y, selected, role);
   }
 
   function drawShapeOverlay(ctx, view, shape, selected, label, dashed = false, handles = false) {

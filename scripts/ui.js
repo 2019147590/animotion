@@ -106,7 +106,8 @@
       <span class="layer-pill">${part.order}</span>
     `;
     item.addEventListener("click", () => {
-      state.selectedPartId = part.id;
+      if (Animotion.editTarget?.setPart) Animotion.editTarget.setPart(part);
+      else state.selectedPartId = part.id;
       els.selectionTool.value = Animotion.tool.edit;
       if (els.motionTemplate.value === "keyframes") Animotion.timelineControls.syncSelectedPartPoseToFrame();
       refreshUi();

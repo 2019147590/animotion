@@ -48,6 +48,7 @@
       buttonRow([["createVisibilityMask", "Create from polygon"], ["setVisibilityMaskKeyframe", "Set frame"]]),
       labelWith("Strength", strength),
       buttonRow([["removeVisibilityMask", "Remove mask"]]),
+      maskList(),
       statusLine()
     );
     return bodyElement;
@@ -86,6 +87,14 @@
     return status;
   }
 
+  function maskList() {
+    const list = document.createElement("div");
+    list.id = "visibilityMaskList";
+    list.className = "button-row";
+    els.visibilityMaskList = list;
+    return list;
+  }
+
   function wrapRefreshUi() {
     if (!Animotion.ui?.refreshUi || Animotion.ui.refreshUi.visibilityMaskWrapped) return;
     const original = Animotion.ui.refreshUi;
@@ -102,10 +111,13 @@
     const part = Animotion.parts?.selectedPart?.();
     const shapeReady = readyShape();
     const mask = Animotion.partVisibilityMaskCommands?.selectedMask?.(part);
+    const maskActive = (Animotion.editTarget?.current?.() || {}).kind === "visibilityMask";
     setDisabled(els.createVisibilityMask, !part || !shapeReady || !canEditRig());
-    setDisabled(els.setVisibilityMaskKeyframe, !part || !mask || !canEditRig());
-    setDisabled(els.removeVisibilityMask, !part || !mask || !canEditRig());
-    if (els.visibilityMaskStrength && mask) els.visibilityMaskStrength.value = String(Animotion.partVisibilityMaskCommands.selectedStrength().toFixed(2));
+    setDisabled(els.setVisibilityMaskKeyframe, !part || !mask || !maskActive || !canEditRig());
+    setDisabled(els.removeVisibilityMask, !part || !mask || !maskActive || !canEditRig());
+    setDisabled(els.visibilityMaskStrength, !part || !mask || !maskActive || !canEditRig());
+    renderMaskList(part, mask);
+    if (els.visibilityMaskStrength && maskActive && mask) els.visibilityMaskStrength.value = String(Animotion.partVisibilityMaskCommands.selectedStrength().toFixed(2));
     refreshStrengthLabel();
     if (els.visibilityMaskStatus) els.visibilityMaskStatus.textContent = statusText(part, mask);
   }
@@ -113,8 +125,33 @@
   function statusText(part, mask) {
     if (!part) return "select a part";
     const count = Animotion.partVisibilityMasks?.normalizeList?.(part.visibilityMasks).length || 0;
-    if (!mask) return "draw a polygon and create a visibility mask";
-    return `masks: ${count} / frame ${Animotion.state.currentFrame} strength ${Animotion.partVisibilityMaskCommands.selectedStrength().toFixed(2)}`;
+    const target = Animotion.editTarget?.current?.() || { kind: "part" };
+    if (!mask) return "editing part outline; draw a polygon to create a visibility mask";
+    if (target.kind !== "visibilityMask") return `editing part outline / masks: ${count}`;
+    return `editing mask / masks: ${count} / frame ${Animotion.state.currentFrame} strength ${Animotion.partVisibilityMaskCommands.selectedStrength().toFixed(2)}`;
+  }
+
+  function renderMaskList(part, activeMask) {
+    if (!els.visibilityMaskList) return;
+    const masks = Animotion.partVisibilityMasks?.normalizeList?.(part?.visibilityMasks) || [];
+    const partButton = listButton("Edit part", (Animotion.editTarget?.current?.() || {}).kind !== "visibilityMask", () => {
+      Animotion.editTarget?.setPart?.(part);
+      Animotion.ui?.refreshUi?.();
+    });
+    const items = masks.map((mask, index) => listButton(mask.name || `mask ${index + 1}`, activeMask?.id === mask.id, () => {
+      Animotion.partVisibilityMaskCommands?.selectMask?.(mask.id, part);
+      Animotion.ui?.refreshUi?.();
+    }));
+    els.visibilityMaskList.replaceChildren(partButton, ...items);
+  }
+
+  function listButton(label, active, onClick) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = active ? `* ${label}` : label;
+    button.className = active ? "active" : "";
+    button.addEventListener("click", onClick);
+    return button;
   }
 
   function refreshStrengthLabel() {

@@ -27,6 +27,8 @@ function loadAnimotion() {
     "scripts/human-rig-schema.js",
     "scripts/arm-role-semantics.js",
     "scripts/rig-connection.js",
+    "scripts/part-transform-geometry.js",
+    "scripts/part-visibility-masks.js",
     "scripts/project-model.js",
     "scripts/project-serialization.js",
     "scripts/rigging.js",
@@ -131,4 +133,29 @@ test("merging the part set replaces source parts with one polygon part", () => {
   assert.equal(Animotion.partStructureCommands.mergeSet().length, 0);
   assert.equal(Animotion.commandHistory.undo(), true);
   assert.equal(Animotion.state.parts.length, 3);
+});
+
+test("merging transformed parts preserves visibility masks in merged local space", () => {
+  const Animotion = loadAnimotion();
+  const torso = Animotion.partCommands.createPart("body", { x: 10, y: 10, w: 20, h: 20 }, "torso");
+  const copy = Animotion.partCommands.createPart("prop", { x: 40, y: 10, w: 20, h: 20 }, "copy");
+  Animotion.partCommands.updatePart(copy.id, {
+    pivot: { x: 10, y: 10 },
+    transform: { x: 20, y: 0, rotation: 0, scaleX: -1, scaleY: 1 },
+    visibilityMasks: [{ id: "mask-a", name: "hide edge", mask: { kind: "polygon", points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 20 }, { x: 0, y: 20 }] }, keyframes: [{ frame: 1, strength: 1 }] }],
+  });
+  Animotion.state.selection = polygon([{ x: 8, y: 8 }, { x: 82, y: 8 }, { x: 82, y: 34 }, { x: 8, y: 34 }]);
+  Animotion.state.selectedPartId = torso.id;
+  Animotion.partStructureCommands.addSelectedPartToMergeSet();
+  Animotion.state.selectedPartId = copy.id;
+  Animotion.partStructureCommands.addSelectedPartToMergeSet();
+
+  const response = Animotion.partStructureCommands.mergeSelectionWithShape();
+  const mask = response.part.visibilityMasks[0];
+
+  assert.equal(response.ok, true);
+  assert.equal(response.part.visibilityMasks.length, 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(mask.mask.points)), [
+    { x: 72, y: 2 }, { x: 62, y: 2 }, { x: 62, y: 22 }, { x: 72, y: 22 },
+  ]);
 });

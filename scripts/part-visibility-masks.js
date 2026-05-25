@@ -24,7 +24,8 @@
   function maskFromShape(part, shape, frame, strength = 1) {
     if (!part || !shape?.points?.length) return null;
     const normalized = Animotion.geometry.normalizeShape(shape, Animotion.imageBounds());
-    const local = normalized.points.map((item) => ({ x: item.x - part.rect.x, y: item.y - part.rect.y }));
+    const local = Animotion.partTransformGeometry?.imagePointsToPartLocal?.(part, normalized.points, Animotion.state?.parts)
+      || normalized.points.map((item) => ({ x: item.x - part.rect.x, y: item.y - part.rect.y }));
     return normalizeMask({
       id: cryptoId(),
       name: `mask ${normalizeList(part.visibilityMasks).length + 1}`,

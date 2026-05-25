@@ -102,8 +102,7 @@
     previewCtx.save();
     context.applyMatrix(previewCtx, matrix);
     previewCtx.globalAlpha = part.alpha * context.alpha;
-    previewCtx.drawImage(part.canvas, part.rect.x, part.rect.y, part.rect.w, part.rect.h);
-    const visibilityMaskResult = Animotion.partVisibilityMaskRender?.apply?.(previewCtx, part, frame, context.pathFromShape);
+    const visibilityMaskResult = drawPartImage(part, frame, context);
     context.recordPartDraw(part, "normal-part", context.drawPass, Animotion.renderOrderDebug?.boundsFromMatrix?.(part, matrix), {
       fallbackForSegmentedRender: Boolean(segmented && segmented.ok === false), segmentedRenderReason: segmented?.reason || null,
       fallbackToNormalArm: Boolean(replacement && replacement.ok === false), replacementRenderReason: replacement?.reason || null,
@@ -112,6 +111,12 @@
     drawSupplementalsForPart(part, context, matrix);
     drawSelectedPartOutline(part, matrix, context);
     previewCtx.restore();
+  }
+
+  function drawPartImage(part, frame, context) {
+    if (Animotion.partVisibilityMaskRender?.drawPartImage) return Animotion.partVisibilityMaskRender.drawPartImage(previewCtx, part, frame, context.pathFromShape);
+    previewCtx.drawImage(part.canvas, part.rect.x, part.rect.y, part.rect.w, part.rect.h);
+    return null;
   }
 
   function drawSupplementalsForPart(part, context, activeMatrix) {

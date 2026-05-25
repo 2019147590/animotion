@@ -63,18 +63,37 @@
   }
 
   function beginPartEdit(point, tolerance) {
-    for (const part of [...state.parts].sort((a, b) => b.order - a.order)) {
-      const shape = geometry.absoluteShapeFromPart(part);
-      const hit = hitShape(shape, point, tolerance);
-      if (!hit) continue;
-      state.selectedPartId = part.id;
-      const index = insertPointForEdge(shape.points, hit, point);
-      if (hit.mode === "edge") Animotion.parts.applyShapeToPart(part, shape);
-      state.drag = editPartDrag(part, point, hit, index);
-      Animotion.ui.refreshUi();
-      return true;
-    }
-    return false;
+    const target = Animotion.editTarget?.current?.() || { kind: "part", partId: state.selectedPartId, maskId: null };
+    return target.kind === "visibilityMask"
+      ? beginVisibilityMaskEdit(target, point, tolerance)
+      : beginSelectedPartEdit(target.partId, point, tolerance);
+  }
+
+  function beginSelectedPartEdit(partId, point, tolerance) {
+    const part = findPart(partId);
+    if (!part) return false;
+    const shape = editablePartShape(part);
+    const hit = hitShape(shape, point, tolerance);
+    if (!hit) return false;
+    const index = insertPointForEdge(shape.points, hit, point);
+    if (hit.mode === "edge") applyDisplayedShapeToPart(part, shape);
+    state.drag = editPartDrag(part, point, hit, index, shape);
+    Animotion.ui.refreshUi();
+    return true;
+  }
+
+  function beginVisibilityMaskEdit(target, point, tolerance) {
+    const part = findPart(target.partId);
+    const mask = selectedVisibilityMask(part, target.maskId);
+    if (!part || !mask) return false;
+    const shape = visibilityMaskShape(part, mask);
+    const hit = hitShape(shape, point, tolerance);
+    if (!hit) return false;
+    const index = insertPointForEdge(shape.points, hit, point);
+    if (hit.mode === "edge") applyDisplayedMaskToPart(part, mask.id, shape);
+    state.drag = editVisibilityMaskDrag(part, mask, point, hit, index, shape);
+    Animotion.ui.refreshUi();
+    return true;
   }
 
   function insertPointForEdge(points, hit, point) {
@@ -83,15 +102,30 @@
     return hit.index + 1;
   }
 
-  function editPartDrag(part, point, hit, index) {
+  function editPartDrag(part, point, hit, index, shape = editablePartShape(part)) {
     return {
       kind: dragKind.editPart,
+      targetKind: "part",
       partId: part.id,
       mode: hit.mode === "edge" ? "vertex" : hit.mode,
       index,
       start: point,
-      originalPoints: geometry.clonePoints(geometry.absoluteShapeFromPart(part).points),
+      originalPoints: geometry.clonePoints(shape.points),
       shapeKind: part.mask?.kind || shapeKind.rect,
+    };
+  }
+
+  function editVisibilityMaskDrag(part, mask, point, hit, index, shape) {
+    return {
+      kind: dragKind.editPart,
+      targetKind: "visibilityMask",
+      partId: part.id,
+      maskId: mask.id,
+      mode: hit.mode === "edge" ? "vertex" : hit.mode,
+      index,
+      start: point,
+      originalPoints: geometry.clonePoints(shape.points),
+      shapeKind: mask.mask?.kind || shapeKind.polygon,
     };
   }
 
@@ -104,9 +138,53 @@
     }
     if (state.drag.kind === dragKind.editPart) {
       const part = state.parts.find((candidate) => candidate.id === state.drag.partId);
-      if (part) Animotion.parts.applyShapeToPart(part, { kind: state.drag.shapeKind, closed: true, points });
+      if (part && state.drag.targetKind === "visibilityMask") applyDisplayedMaskToPart(part, state.drag.maskId, { kind: state.drag.shapeKind, closed: true, points });
+      else if (part) applyDisplayedShapeToPart(part, { kind: state.drag.shapeKind, closed: true, points });
     }
     Animotion.ui.refreshUi();
+  }
+
+  function editablePartShape(part) {
+    return Animotion.partTransformGeometry?.shapeFromPart?.(part, state.parts) || geometry.absoluteShapeFromPart(part);
+  }
+
+  function applyDisplayedShapeToPart(part, shape) {
+    const points = untransformedPoints(part, shape.points);
+    return Animotion.parts.applyShapeToPart(part, { ...shape, points });
+  }
+
+  function applyDisplayedMaskToPart(part, maskId, shape) {
+    const points = partLocalPoints(part, shape.points);
+    const masks = Animotion.partVisibilityMasks.normalizeList(part.visibilityMasks).map((mask) =>
+      mask.id === maskId ? { ...mask, mask: { ...mask.mask, kind: shape.kind, points } } : mask
+    );
+    return Animotion.partCommands.updatePart(part, { visibilityMasks: masks });
+  }
+
+  function visibilityMaskShape(part, mask) {
+    const points = Animotion.partTransformGeometry?.partLocalPointsToImage?.(part, mask.mask.points, state.parts)
+      || mask.mask.points.map((point) => ({ x: part.rect.x + point.x, y: part.rect.y + point.y }));
+    return { kind: mask.mask.kind || shapeKind.polygon, closed: true, points };
+  }
+
+  function selectedVisibilityMask(part, maskId) {
+    return (Animotion.partVisibilityMasks?.normalizeList?.(part?.visibilityMasks) || []).find((mask) => mask.id === maskId) || null;
+  }
+
+  function untransformedPoints(part, points) {
+    const helper = Animotion.partTransformGeometry;
+    if (!helper?.inverseMatrix || !helper?.worldMatrix || !helper?.applyMatrix) return points;
+    const inverse = helper.inverseMatrix(helper.worldMatrix(part, state.parts));
+    return points.map((point) => helper.applyMatrix(inverse, point));
+  }
+
+  function partLocalPoints(part, points) {
+    return Animotion.partTransformGeometry?.imagePointsToPartLocal?.(part, points, state.parts)
+      || points.map((point) => ({ x: point.x - part.rect.x, y: point.y - part.rect.y }));
+  }
+
+  function findPart(partId) {
+    return state.parts.find((candidate) => candidate.id === partId) || null;
   }
 
   function editedPoints(point) {
