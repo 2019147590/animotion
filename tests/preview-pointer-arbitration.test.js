@@ -173,6 +173,22 @@ test("beginPointerDown dispatches active mode pickers through the arbiter", () =
   assert.equal(event.stopped, 1);
 });
 
+test("supplemental warp handles are routed as active mode picker targets", () => {
+  let started = 0;
+  const event = eventStub();
+  reset({
+    hiddenCompletionSupplementalWarpEditor: {
+      hitTarget: () => ({ label: "보완 파츠 변형점", pointId: "tl" }),
+      beginDragFromTarget: () => { started += 1; return true; },
+    },
+  });
+  const result = arbitration.beginPointerDown(event);
+  assert.equal(result.target.kind, "active-mode-guide-point");
+  assert.equal(result.target.editorKey, "hiddenCompletionSupplementalWarpEditor");
+  assert.equal(started, 1);
+  assert.equal(event.stopped, 1);
+});
+
 test("active drag target uses the owner pointer capture", () => {
   reset({
     dom: { previewCanvas: { hasPointerCapture: (pointerId) => pointerId === 7 } },

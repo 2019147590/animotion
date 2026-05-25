@@ -102,13 +102,22 @@
     const part = sourcePartFor(asset);
     if (!asset?.guide || !part) return null;
     const vertex = normalizedPointInPart(part, point);
+    const mesh = asset.guide.meshVerticesNormalized || [];
+    const silhouette = asset.guide.silhouetteVerticesNormalized || [];
     const guide = {
       ...asset.guide,
-      meshVerticesNormalized: asset.guide.meshVerticesNormalized.map((candidate, candidateIndex) => (
-        candidateIndex === index ? vertex : candidate
-      )),
+      meshVerticesNormalized: replacedPoint(mesh, index, vertex),
     };
-    return upsertAsset({ ...asset, guide });
+    if (sameOutlineShape(silhouette, mesh)) guide.silhouetteVerticesNormalized = replacedPoint(silhouette, index, vertex);
+    const next = { ...asset, guide };
+    if (sameOutlineShape(asset.maskVerticesNormalized, mesh)) next.maskVerticesNormalized = replacedPoint(asset.maskVerticesNormalized, index, vertex);
+    return upsertAsset(next);
+  }
+  function replacedPoint(points = [], index, point) {
+    return points.map((candidate, candidateIndex) => candidateIndex === index ? point : candidate);
+  }
+  function sameOutlineShape(outline = [], mesh = []) {
+    return Array.isArray(outline) && Array.isArray(mesh) && outline.length === mesh.length;
   }
   function guideAssetId(part) {
     const existing = activePatchAsset();
@@ -118,13 +127,15 @@
   }
   function upsertAsset(asset) {
     const project = ensureProject();
-    const normalized = Animotion.hiddenCompletionAssets.normalizeAsset(asset);
+    const expanded = Animotion.hiddenCompletionCoverageBounds?.withRequiredCoverageBounds?.(asset, sourcePartFor(asset), { imageBounds: Animotion.imageBounds?.() }) || asset;
+    const normalized = Animotion.hiddenCompletionAssets.normalizeAsset(expanded);
     if (!normalized) return null;
     const assets = Array.isArray(project.assets) ? project.assets : [];
     const index = assets.findIndex((candidate) => candidate.id === normalized.id);
     project.assets = index >= 0
       ? assets.map((candidate, candidateIndex) => candidateIndex === index ? normalized : candidate)
       : [...assets, normalized];
+    Animotion.hiddenCompletionSupplementalPart?.syncPartForPatch?.(normalized, Animotion.state);
     return normalized;
   }
   function hitGuideVertex(event) {
@@ -265,9 +276,9 @@
     Animotion.dom.els.playPause.textContent = "\uC7AC\uC0DD";
   }
   function statusText(part, draft, asset) {
-    if (!part) return "Select a part to create a guide patch.";
-    if (!draft) return "A 2.5D draft is required before linking a guide patch.";
-    if (!asset) return `Create a guideOnly patch from ${part.name}.`;
+    if (!part) return "보완 파츠를 만들 파츠를 선택하세요.";
+    if (!draft) return "보완 데이터를 연결하려면 먼저 2.5D 초안이 필요합니다.";
+    if (!asset) return `${part.name}에서 보완 데이터를 만들 수 있습니다.`;
     return `${asset.id} / ${asset.renderMode || "guideOnly"} / vertices ${asset.guide?.meshVerticesNormalized?.length || 0}`;
   }
   function refs() {
@@ -282,8 +293,8 @@
     box.id = "hiddenCompletionGuideTools";
     box.className = "hidden-completion-guide-tools hidden";
     box.innerHTML = `
-      <h2>\uBCF4\uC644 \uAC00\uC774\uB4DC</h2>
-      <button id="createHiddenCompletionGuide" type="button">\uC120\uD0DD \uD30C\uCE20\uB85C \uBCF4\uC644 \uAC00\uC774\uB4DC \uB9CC\uB4E4\uAE30</button>
+      <h2>\uBCF4\uC644 \uB370\uC774\uD130</h2>
+      <button id="createHiddenCompletionGuide" type="button">\uC120\uD0DD \uD30C\uCE20\uB85C \uBCF4\uC644 \uB370\uC774\uD130 \uB9CC\uB4E4\uAE30</button>
       <p id="hiddenCompletionGuideStatus" class="hint"></p>
     `;
     return box;

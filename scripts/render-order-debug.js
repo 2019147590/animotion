@@ -11,7 +11,7 @@
   function record(state, entry = {}) {
     const debug = state?.previewDrawSequenceDebug;
     if (!debug) return null;
-    const normalized = { index: debug.sequence.length, ...entry };
+    const normalized = { index: debug.sequence.length, actualDrawIndex: debug.sequence.length, ...entry };
     debug.sequence.push(normalized);
     return normalized;
   }

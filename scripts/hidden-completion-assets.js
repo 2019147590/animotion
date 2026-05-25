@@ -9,7 +9,7 @@
   function createForPart(part, options = {}) {
     if (!part?.id) return null;
     const id = stringOrDefault(options.id, `hidden-${part.id}-${Date.now()}`);
-    return normalizeAsset({
+    const asset = {
       id,
       type: TYPE,
       name: stringOrDefault(options.name, `${part.name || part.id} hidden completion`),
@@ -25,7 +25,8 @@
       completionMethod: options.completionMethod,
       symmetrySource: options.symmetrySource,
       preview: options.preview,
-    });
+    };
+    return normalizeAsset(Animotion.hiddenCompletionCoverageBounds?.withRequiredCoverageBounds?.(asset, part, { imageBounds: options.imageBounds }) || asset);
   }
 
   function normalizeAsset(asset = {}) {
@@ -178,8 +179,8 @@
 
   function normalizeTranslation(point = {}) {
     return {
-      xNorm: clamp01(point.xNorm ?? point.x ?? point[0]),
-      yNorm: clamp01(point.yNorm ?? point.y ?? point[1]),
+      xNorm: clampSigned(point.xNorm ?? point.x ?? point[0]),
+      yNorm: clampSigned(point.yNorm ?? point.y ?? point[1]),
       coordinateSpace: "part-local-normalized",
     };
   }
@@ -236,6 +237,11 @@
   function clamp01(value) {
     const number = Number(value);
     return Number.isFinite(number) ? Math.min(1, Math.max(0, number)) : 0;
+  }
+
+  function clampSigned(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.min(1, Math.max(-1, number)) : 0;
   }
 
   function numberOrDefault(value, fallback) {

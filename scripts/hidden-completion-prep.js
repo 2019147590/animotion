@@ -6,13 +6,14 @@
     const bounds = imageBounds(sourceImage);
     const cropRect = rectFromNormalized(request?.sourceRectNormalized, bounds);
     const sourceCrop = { image: sourceImage, width: cropRect.w, height: cropRect.h, cropRect };
-    const mask = maskImage || rasterizeMaskDescriptor(request, cropRect);
+    const mask = maskImage || rasterizeMaskDescriptor({ ...request, __imageBounds: bounds }, cropRect);
     assertMatchingDimensions(sourceCrop, mask);
     return { request, sourceImage: sourceCrop, maskImage: mask };
   }
 
   function rasterizeMaskDescriptor(request, cropRect) {
-    const points = maskSourcePoints(request).map((point) => clippedLocalPoint(point, cropRect));
+    const partRect = request?.sourcePartRectNormalized ? rectFromNormalized(request.sourcePartRectNormalized, request.__imageBounds) : cropRect;
+    const points = maskSourcePoints(request).map((point) => clippedLocalPoint(point, cropRect, partRect));
     return {
       width: cropRect.w,
       height: cropRect.h,
@@ -27,10 +28,10 @@
     return request?.guide?.silhouetteVerticesNormalized || [];
   }
 
-  function clippedLocalPoint(point, rect) {
+  function clippedLocalPoint(point, rect, partRect = rect) {
     return {
-      x: clamp(numberOrDefault(point.xNorm, 0) * rect.w, 0, rect.w),
-      y: clamp(numberOrDefault(point.yNorm, 0) * rect.h, 0, rect.h),
+      x: clamp(partRect.x + numberOrDefault(point.xNorm, 0) * partRect.w - rect.x, 0, rect.w),
+      y: clamp(partRect.y + numberOrDefault(point.yNorm, 0) * partRect.h - rect.y, 0, rect.h),
     };
   }
 

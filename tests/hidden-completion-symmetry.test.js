@@ -60,6 +60,39 @@ test("symmetry patch can be created from opposite upperArm", () => {
   assert.equal(result.asset.symmetrySource.confidence >= 0.7, true);
 });
 
+test("upperArm symmetry draft creates a side guide outside the source mask", () => {
+  const Animotion = loadAnimotion();
+  const target = part("rear_upperArm", "upperArm");
+  const counterpart = part("front_upperArm", "upperArm");
+  const result = Animotion.hiddenCompletionSymmetry.createPatchAsset(target, [target, counterpart], { id: "hidden-rear-upper-symmetry" });
+  const points = result.asset.guide.silhouetteVerticesNormalized;
+
+  assert.equal(result.ok, true);
+  assert.equal(points.some((point) => point.xNorm < 0), true);
+  assert.equal(points.some((point) => point.xNorm > 1), true);
+  assert.equal(points.some((point) => point.yNorm < 0), true);
+  assert.equal(points.some((point) => point.yNorm > 1), true);
+});
+
+test("upperArm active guide is preserved exactly", () => {
+  const Animotion = loadAnimotion();
+  const target = part("rear_upperArm", "upperArm");
+  const counterpart = part("front_upperArm", "upperArm");
+  const guide = {
+    kind: "meshGuide",
+    meshVerticesNormalized: [normPoint(-0.2, 0.1), normPoint(1.1, 0.2), normPoint(1, 0.9)],
+    meshFaces: [[0, 1, 2]],
+    silhouetteVerticesNormalized: [normPoint(-0.2, 0.1), normPoint(1.1, 0.2), normPoint(1, 0.9)],
+    guideStrength: 0.7,
+  };
+
+  const result = Animotion.hiddenCompletionSymmetry.createPatchAsset(target, [target, counterpart], { id: "hidden-rear-upper-symmetry", activeAsset: { guide } });
+
+  assert.equal(result.ok, true);
+  assertJsonEqual(result.asset.guide.silhouetteVerticesNormalized, guide.silhouetteVerticesNormalized);
+  assertJsonEqual(result.asset.guide.meshVerticesNormalized, guide.meshVerticesNormalized);
+});
+
 test("symmetry patch can be created for torso side gap", () => {
   const Animotion = loadAnimotion();
   const torso = { ...part("part_torso", "torso", { type: "body", rect: { x: 40, y: 10, w: 80, h: 120 } }) };
@@ -70,6 +103,22 @@ test("symmetry patch can be created for torso side gap", () => {
   assert.equal(result.asset.symmetrySource.targetRegion, "left");
   assert.equal(result.asset.symmetrySource.sourceRegion, "right");
   assertJsonEqual(result.asset.guide.silhouetteVerticesNormalized.map((point) => point.xNorm), [0, 0.5, 0.5, 0]);
+});
+
+test("non upperArm non torso symmetry draft still uses the source mask guide", () => {
+  const Animotion = loadAnimotion();
+  const target = part("front_forearm", "forearm");
+  const counterpart = part("rear_forearm", "forearm");
+
+  const result = Animotion.hiddenCompletionSymmetry.createPatchAsset(target, [target, counterpart], { id: "hidden-front-forearm-symmetry" });
+
+  assert.equal(result.ok, true);
+  assertJsonEqual(result.asset.guide.silhouetteVerticesNormalized.map((point) => [point.xNorm, point.yNorm]), [
+    [2 / 30, 2 / 40],
+    [28 / 30, 2 / 40],
+    [28 / 30, 38 / 40],
+    [2 / 30, 38 / 40],
+  ]);
 });
 
 test("missing counterpart reports warning", () => {
@@ -136,4 +185,8 @@ test("legacy neutral names can match counterparts from edited roles and torso ge
 
 function assertJsonEqual(actual, expected) {
   assert.deepEqual(JSON.parse(JSON.stringify(actual)), expected);
+}
+
+function normPoint(xNorm, yNorm) {
+  return { xNorm, yNorm, coordinateSpace: "part-local-normalized" };
 }

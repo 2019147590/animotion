@@ -18,11 +18,15 @@ function loadAnimotion() {
   for (const path of [
     "scripts/coordinate-spaces.js",
     "scripts/geometry.js",
+    "scripts/hidden-completion-coverage-bounds.js",
     "scripts/hidden-completion-assets.js",
     "scripts/motion-hints.js",
     "scripts/motion-drafts.js",
     "scripts/cutscene-action-selectors.js",
+    "scripts/motion-draft-action-store.js",
     "scripts/motion-draft-editor.js",
+    "scripts/hidden-completion-supplemental-coverage.js",
+    "scripts/hidden-completion-supplemental-part.js",
     "scripts/hidden-completion-guide-editor.js",
   ]) runScript(context, path);
   const Animotion = context.window.Animotion;
@@ -167,7 +171,8 @@ test("hidden completion patch creates and restores a part-local mesh guide", () 
   assert.equal(asset.patchStatus, "guide");
   assert.equal(asset.renderMode, "guideOnly");
   assert.equal(asset.generatedResult.status, "none");
-  assert.equal(asset.sourceRectNormalized.xNorm, 0.1);
+  assert.equal(asset.sourceRectNormalized.xNorm, 0.06);
+  assert.equal(asset.sourceRectNormalized.wNorm, 0.38);
   assert.equal(asset.guide.meshVerticesNormalized.length, 4);
   assert.equal(asset.guide.silhouetteVerticesNormalized[1].xNorm, 0.4);
   assert.equal(asset.guide.silhouetteVerticesNormalized[1].yNorm, 0.5);
@@ -270,6 +275,8 @@ test("hidden completion guide editor creates and edits a selected part patch", (
   Animotion.state.parts = [part];
   Animotion.state.selectedPartId = part.id;
   Animotion.parts = { selectedPart: () => part };
+  let syncedAssetId = null;
+  Animotion.hiddenCompletionSupplementalPart = { syncPartForPatch: (asset) => { syncedAssetId = asset.id; } };
   Animotion.state.motionPlan.motionDraft = Animotion.motionDrafts.compileFromHints({
     source: "correspondence",
     hiddenCompletion: "required",
@@ -286,6 +293,103 @@ test("hidden completion guide editor creates and edits a selected part patch", (
   const updated = Animotion.hiddenCompletionGuideEditor.updateSelectedGuideVertexFromImagePoint(2, { x: 25, y: 50 });
   assert.equal(updated.guide.meshVerticesNormalized[2].xNorm, 0.5);
   assert.equal(updated.guide.meshVerticesNormalized[2].yNorm, 0.75);
+  assert.equal(syncedAssetId, asset.id);
+});
+
+test("hidden completion guide editor preserves vertices outside the source part", () => {
+  const Animotion = loadAnimotion();
+  const part = {
+    id: "upper-a",
+    name: "upper",
+    sourceRect: { x: 10, y: 20, w: 30, h: 40 },
+    rect: { x: 10, y: 20, w: 30, h: 40 },
+    mask: { points: [{ x: 0, y: 0 }, { x: 30, y: 0 }, { x: 30, y: 40 }, { x: 0, y: 40 }] },
+  };
+  Animotion.imageBounds = () => ({ width: 100, height: 100 });
+  Animotion.projectModel = { createEmptyProject: () => ({ assets: [] }) };
+  Animotion.state.project = { assets: [] };
+  Animotion.state.parts = [part];
+  Animotion.state.selectedPartId = part.id;
+  Animotion.parts = { selectedPart: () => part };
+  Animotion.hiddenCompletionSupplementalPart = { syncPartForPatch: () => null };
+  Animotion.state.motionPlan.motionDraft = Animotion.motionDrafts.compileFromHints({
+    source: "manual",
+    hiddenCompletion: "required",
+  }, { partId: part.id });
+
+  const asset = Animotion.hiddenCompletionGuideEditor.createGuideFromSelectedPart();
+  const updated = Animotion.hiddenCompletionGuideEditor.updateSelectedGuideVertexFromImagePoint(2, { x: 55, y: 75 });
+  const saved = Animotion.state.project.assets.find((candidate) => candidate.id === asset.id);
+
+  assert.equal(updated.guide.meshVerticesNormalized[2].xNorm, 1.5);
+  assert.equal(updated.guide.silhouetteVerticesNormalized[2].yNorm, 1.375);
+  assert.equal(saved.maskVerticesNormalized[2].xNorm, 1.5);
+  assert.equal(saved.sourceRectNormalized.wNorm > 0.3, true);
+});
+
+test("loaded patch guide edit commits silhouette and syncs supplemental mask", () => {
+  const Animotion = loadAnimotion();
+  const body = {
+    id: "body",
+    name: "body",
+    type: "body",
+    rect: { x: 40, y: 30, w: 80, h: 100 },
+    sourceRect: { x: 40, y: 30, w: 80, h: 100 },
+    pivot: { x: 40, y: 25 },
+    joint: { x: 40, y: 85 },
+    mask: { points: [{ x: 0, y: 0 }, { x: 80, y: 0 }, { x: 80, y: 100 }, { x: 0, y: 100 }] },
+    customMotion: {},
+    keyframes: [],
+  };
+  const bodyRef = { ...body, id: "body_ref", name: "body_ref", rect: { x: 120, y: 30, w: 80, h: 100 }, canvas: { id: "body-ref-canvas" } };
+  const supplementalCanvas = { id: "loaded-supp-canvas" };
+  const asset = Animotion.hiddenCompletionAssets.normalizeAsset({
+    id: "hidden-body-symmetry",
+    type: "hiddenCompletionPatch",
+    sourcePartId: "body",
+    sourceRectNormalized: { xNorm: 0.2, yNorm: 0.1875, wNorm: 0.4, hNorm: 0.625 },
+    guide: {
+      meshVerticesNormalized: [{ xNorm: 0, yNorm: 0 }, { xNorm: 1, yNorm: 0 }, { xNorm: 1, yNorm: 1 }, { xNorm: 0, yNorm: 1 }],
+      meshFaces: [[0, 1, 2], [0, 2, 3]],
+      silhouetteVerticesNormalized: [{ xNorm: 0, yNorm: 0 }, { xNorm: 1, yNorm: 0 }, { xNorm: 1, yNorm: 1 }, { xNorm: 0, yNorm: 1 }],
+    },
+    completionMethod: "symmetry",
+    symmetrySource: { counterpartPartId: "body_ref", targetPartId: "body" },
+  });
+  const draft = Animotion.motionDrafts.normalize({
+    partId: "body",
+    hiddenCompletion: { needed: true, status: "candidate", assetKind: "hiddenCompletionPatch", assetStatus: "ready", assetId: asset.id },
+  }, { assets: [asset] });
+  Animotion.imageBounds = () => ({ width: 200, height: 160 });
+  Animotion.state = {
+    project: { assets: [asset] },
+    parts: [body, bodyRef, {
+      id: "supp-hidden-body",
+      isSupplementalPart: true,
+      sourcePatchAssetId: asset.id,
+      sourcePartId: "body",
+      rect: { x: 40, y: 30, w: 80, h: 100 },
+      sourceRect: { x: 40, y: 30, w: 80, h: 100 },
+      pivot: { x: 40, y: 25 },
+      joint: { x: 40, y: 85 },
+      mask: { points: [{ x: 0, y: 0 }, { x: 80, y: 0 }, { x: 80, y: 100 }, { x: 0, y: 100 }] },
+      canvas: supplementalCanvas,
+    }],
+    selectedPartId: "body",
+    cutsceneBridge: { jointAction: { hiddenCompletionDrafts: [draft], beats: [{ id: "impact", at: 1, pose: { p: [0, 0] } }] } },
+  };
+  Animotion.parts = { selectedPart: () => body };
+
+  const updated = Animotion.hiddenCompletionGuideEditor.updateSelectedGuideVertexFromImagePoint(2, { x: 100, y: 130 });
+  const saved = Animotion.state.project.assets.find((candidate) => candidate.id === asset.id);
+  const supplemental = Animotion.state.parts.find((part) => part.id === "supp-hidden-body");
+
+  assert.equal(updated.guide.meshVerticesNormalized[2].xNorm, 0.75);
+  assert.equal(saved.guide.silhouetteVerticesNormalized[2].xNorm, 0.75);
+  assert.equal(saved.sourceRectNormalized.xNorm < 0.2, true);
+  assert.equal(saved.sourceRectNormalized.wNorm > 0.4, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(supplemental.mask.points[2])), { x: 64, y: 104 });
+  assert.equal(supplemental.canvas, supplementalCanvas);
 });
 
 test("motion draft editor is loaded after ui refresh hooks are available", () => {

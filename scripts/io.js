@@ -70,14 +70,49 @@
     });
   }
 
-  function deserializeRigPart(part) {
+  function deserializeRigPart(part, options = {}) {
     const geometry = Animotion.geometry;
     const mask = part.mask || geometry.shapeToMask(geometry.rectShape(part.rect), part.rect);
     const customMotion = Animotion.motionModel.normalizeCustomMotion(part.customMotion);
     const joint = part.joint || Animotion.rigging.defaultJointForPart(part.type, part.rect, null);
     const restored = { ...part, mask, customMotion, joint, keyframes: normalizeKeyframes(part) };
-    Animotion.parts.updatePartCanvas(restored);
+    if (!options.deferCanvas) Animotion.parts.updatePartCanvas(restored);
     return restored;
+  }
+
+  function deserializeProjectParts(project) {
+    const parts = Animotion.projectModel.editorPartsFromProject(project)
+      .map((part) => deserializeRigPart(part, { deferCanvas: true }));
+    for (const part of parts) {
+      if (!part.isSupplementalPart) Animotion.parts.updatePartCanvas(part);
+    }
+    for (const part of parts) {
+      if (part.isSupplementalPart) restoreSupplementalCanvas(part, parts, project);
+    }
+    return parts;
+  }
+
+  function restoreSupplementalCanvas(part, parts, project) {
+    const snapshot = Animotion.hiddenCompletionSupplementalProject?.restoreCanvasSnapshot?.(part, {
+      onLoad: () => Animotion.ui?.refreshUi?.(),
+    });
+    if (snapshot?.ok) {
+      part.canvas = snapshot.canvas;
+      part.supplementalCanvasDiagnostics = snapshot.diagnostics;
+      part.supplementalCoverage = Animotion.hiddenCompletionSupplementalPart?.coverageForPart?.(part) || part.supplementalCoverage;
+      return snapshot;
+    }
+    const result = Animotion.hiddenCompletionSupplementalPart?.regenerateCanvasForPart?.(part, parts, {
+      assets: project.assets || [],
+      imageBounds: currentImageBounds(),
+      sourceImage: state.image,
+    });
+    if (result?.ok) {
+      part.supplementalCanvasDiagnostics = Animotion.hiddenCompletionSupplementalProject?.snapshotDiagnostics?.(part, part.canvas, { regeneratedCanvasFromMetadata: true }) || null;
+      return result;
+    }
+    Animotion.parts.updatePartCanvas(part);
+    return result || null;
   }
 
   function normalizeKeyframes(part) {
@@ -142,7 +177,7 @@
     const project = Animotion.projectModel.normalizeProject(payload, { imageBounds: currentImageBounds() });
     Animotion.sessionCommands.restoreProject(
       project,
-      Animotion.projectModel.editorPartsFromProject(project).map(deserializeRigPart),
+      deserializeProjectParts(project),
       currentBridge
     );
   }
@@ -170,5 +205,5 @@
     setTimeout(() => URL.revokeObjectURL(url), 500);
   }
 
-  Animotion.io = { handleImageUpload, handleNextImageUpload, createGuideParts, createRigPayload, saveRig, loadRig, rigPartsFromPayload, downloadUrl };
+  Animotion.io = { handleImageUpload, handleNextImageUpload, createGuideParts, createRigPayload, saveRig, loadRig, rigPartsFromPayload, deserializeProjectParts, downloadUrl };
 }

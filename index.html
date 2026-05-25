@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles/base.css" />
     <link rel="stylesheet" href="styles/layout.css" />
     <link rel="stylesheet" href="styles/components.css" />
+    <link rel="stylesheet" href="styles/hidden-completion.css" />
   </head>
   <body>
     <main class="app-shell">
@@ -196,120 +197,170 @@
           <h2>리깅 속성</h2>
           <div id="emptyInspector" class="empty-state">파츠를 선택하면 피벗, 부모, 레이어를 편집할 수 있습니다.</div>
           <div id="partInspector" class="inspector-form hidden">
-            <label>
-              이름
-              <input id="editName" type="text" />
-            </label>
-            <label>
-              타입
-              <select id="editType">
-                <option value="head">머리</option>
-                <option value="body">몸통</option>
-                <option value="spine">스파인</option>
-                <option value="arm">팔</option>
-                <option value="leg">다리</option>
-                <option value="hair">머리카락</option>
-                <option value="eye">눈</option>
-                <option value="mouth">입</option>
-                <option value="prop">소품</option>
-              </select>
-            </label>
-            <label>
-              Human role
-              <select id="editHumanRole">
-                <option value="">none / auto</option>
-                <option value="torso">torso</option>
-                <option value="pelvis">pelvis</option>
-                <option value="head">head</option>
-                <option value="upperArm">upperArm</option>
-                <option value="forearm">forearm</option>
-                <option value="hand">hand</option>
-                <option value="thigh">thigh</option>
-                <option value="shin">shin</option>
-                <option value="foot">foot</option>
-              </select>
-            </label>
-            <label>
-              부모 파츠
-              <select id="editParent"></select>
-            </label>
-            <label>
-              미리보기 클릭 대상
-              <select id="pivotEditTarget">
-                <option value="anchor">회전 중심</option>
-                <option value="joint">관절점</option>
-                <option value="handTip">손끝점</option>
-              </select>
-            </label>
-            <button id="autoPlaceArmHandles" type="button">Auto place arm handles</button>
-            <p id="autoPlaceArmHandlesStatus" class="hint">upperArm/forearm/hand 체인의 연결점을 명시적으로 초기화합니다.</p>
-            <label>
-              <span id="pivotXLabel">회전 중심 X</span>
-              <input id="pivotX" type="range" min="0" max="1" step="0.01" />
-            </label>
-            <label>
-              <span id="pivotYLabel">회전 중심 Y</span>
-              <input id="pivotY" type="range" min="0" max="1" step="0.01" />
-            </label>
-            <label>
-              <span id="jointXLabel">관절점 X</span>
-              <input id="jointX" type="range" min="0" max="1" step="0.01" />
-            </label>
-            <label>
-              <span id="jointYLabel">관절점 Y</span>
-              <input id="jointY" type="range" min="0" max="1" step="0.01" />
-            </label>
-            <label>
-              <span id="handTipXLabel">손끝점 X</span>
-              <input id="handTipX" type="range" min="0" max="1" step="0.01" />
-            </label>
-            <label>
-              <span id="handTipYLabel">손끝점 Y</span>
-              <input id="handTipY" type="range" min="0" max="1" step="0.01" />
-            </label>
-            <label>
-              레이어
-              <input id="editOrder" type="number" step="1" />
-            </label>
-            <label>
-              불투명도
-              <input id="editAlpha" type="range" min="0" max="1" step="0.05" />
-            </label>
-            <label class="check-row">
-              <input id="editHidden" type="checkbox" />
-              숨기기
-            </label>
-            <h2>직접 만든 모션</h2>
-            <label>
-              좌우 이동
-              <input id="motionX" type="range" min="-40" max="40" step="1" />
-            </label>
-            <label>
-              상하 이동
-              <input id="motionY" type="range" min="-40" max="40" step="1" />
-            </label>
-            <label>
-              회전
-              <input id="motionRotate" type="range" min="-30" max="30" step="0.5" />
-            </label>
-            <label>
-              세로 스케일
-              <input id="motionScaleY" type="range" min="-0.4" max="0.4" step="0.01" />
-            </label>
-            <label>
-              관절 이동 X
-              <input id="motionJointX" type="range" min="-80" max="80" step="1" />
-            </label>
-            <label>
-              관절 이동 Y
-              <input id="motionJointY" type="range" min="-80" max="80" step="1" />
-            </label>
-            <label>
-              타이밍
-              <input id="motionPhase" type="range" min="0" max="1" step="0.01" />
-            </label>
-            <button id="resetPartMotion" type="button">선택 파츠 모션 초기화</button>
-            <button id="deletePart" class="danger">선택 파츠 삭제</button>
+            <details class="inspector-section" open>
+              <summary><span>기본</span></summary>
+              <div class="inspector-section-body">
+                <label>
+                  이름
+                  <input id="editName" type="text" />
+                </label>
+                <label>
+                  타입
+                  <select id="editType">
+                    <option value="head">머리</option>
+                    <option value="body">몸통</option>
+                    <option value="spine">스파인</option>
+                    <option value="arm">팔</option>
+                    <option value="leg">다리</option>
+                    <option value="hair">머리카락</option>
+                    <option value="eye">눈</option>
+                    <option value="mouth">입</option>
+                    <option value="prop">소품</option>
+                  </select>
+                </label>
+                <label>
+                  Human role
+                  <select id="editHumanRole">
+                    <option value="">none / auto</option>
+                    <option value="torso">torso</option>
+                    <option value="pelvis">pelvis</option>
+                    <option value="head">head</option>
+                    <option value="upperArm">upperArm</option>
+                    <option value="forearm">forearm</option>
+                    <option value="hand">hand</option>
+                    <option value="thigh">thigh</option>
+                    <option value="shin">shin</option>
+                    <option value="foot">foot</option>
+                  </select>
+                </label>
+                <label>
+                  부모 파츠
+                  <select id="editParent"></select>
+                </label>
+                <label>
+                  레이어
+                  <input id="editOrder" type="number" step="1" />
+                </label>
+                <label>
+                  불투명도
+                  <input id="editAlpha" type="range" min="0" max="1" step="0.05" />
+                </label>
+                <label class="check-row">
+                  <input id="editHidden" type="checkbox" />
+                  숨기기
+                </label>
+              </div>
+            </details>
+
+            <details class="inspector-section">
+              <summary><span>리깅 포인트</span></summary>
+              <div class="inspector-section-body">
+                <label>
+                  미리보기 클릭 대상
+                  <select id="pivotEditTarget">
+                    <option value="anchor">회전 중심</option>
+                    <option value="joint">관절점</option>
+                    <option value="handTip">손끝점</option>
+                  </select>
+                </label>
+                <button id="autoPlaceArmHandles" type="button">Auto place arm handles</button>
+                <p id="autoPlaceArmHandlesStatus" class="hint">upperArm/forearm/hand 체인의 연결점을 명시적으로 초기화합니다.</p>
+                <label>
+                  <span id="pivotXLabel">회전 중심 X</span>
+                  <input id="pivotX" type="range" min="0" max="1" step="0.01" />
+                </label>
+                <label>
+                  <span id="pivotYLabel">회전 중심 Y</span>
+                  <input id="pivotY" type="range" min="0" max="1" step="0.01" />
+                </label>
+                <label>
+                  <span id="jointXLabel">관절점 X</span>
+                  <input id="jointX" type="range" min="0" max="1" step="0.01" />
+                </label>
+                <label>
+                  <span id="jointYLabel">관절점 Y</span>
+                  <input id="jointY" type="range" min="0" max="1" step="0.01" />
+                </label>
+                <label>
+                  <span id="handTipXLabel">손끝점 X</span>
+                  <input id="handTipX" type="range" min="0" max="1" step="0.01" />
+                </label>
+                <label>
+                  <span id="handTipYLabel">손끝점 Y</span>
+                  <input id="handTipY" type="range" min="0" max="1" step="0.01" />
+                </label>
+              </div>
+            </details>
+
+            <details id="supplementalPartEditor" class="inspector-section">
+              <summary><span>보완 파츠</span></summary>
+              <div class="inspector-section-body">
+                <div class="compact-grid">
+                  <label>
+                    X
+                    <input id="supplementalPartX" type="number" step="1" />
+                  </label>
+                  <label>
+                    Y
+                    <input id="supplementalPartY" type="number" step="1" />
+                  </label>
+                  <label>
+                    W
+                    <input id="supplementalPartW" type="number" min="1" step="1" />
+                  </label>
+                  <label>
+                    H
+                    <input id="supplementalPartH" type="number" min="1" step="1" />
+                  </label>
+                </div>
+                <label>
+                  마스크 스케일
+                  <input id="supplementalMaskScale" type="range" min="0.5" max="1.5" step="0.01" />
+                </label>
+              </div>
+            </details>
+
+            <details class="inspector-section">
+              <summary><span>직접 만든 모션</span></summary>
+              <div class="inspector-section-body">
+                <label>
+                  좌우 이동
+                  <input id="motionX" type="range" min="-40" max="40" step="1" />
+                </label>
+                <label>
+                  상하 이동
+                  <input id="motionY" type="range" min="-40" max="40" step="1" />
+                </label>
+                <label>
+                  회전
+                  <input id="motionRotate" type="range" min="-30" max="30" step="0.5" />
+                </label>
+                <label>
+                  세로 스케일
+                  <input id="motionScaleY" type="range" min="-0.4" max="0.4" step="0.01" />
+                </label>
+                <label>
+                  관절 이동 X
+                  <input id="motionJointX" type="range" min="-80" max="80" step="1" />
+                </label>
+                <label>
+                  관절 이동 Y
+                  <input id="motionJointY" type="range" min="-80" max="80" step="1" />
+                </label>
+                <label>
+                  타이밍
+                  <input id="motionPhase" type="range" min="0" max="1" step="0.01" />
+                </label>
+                <button id="resetPartMotion" type="button">선택 파츠 모션 초기화</button>
+              </div>
+            </details>
+
+            <details class="inspector-section">
+              <summary><span>위험 작업</span></summary>
+              <div class="inspector-section-body">
+                <button id="deletePart" class="danger">선택 파츠 삭제</button>
+              </div>
+            </details>
           </div>
         </section>
 

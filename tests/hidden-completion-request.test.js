@@ -16,8 +16,11 @@ function loadAnimotion() {
   const context = { window: { Animotion: {} } };
   vm.createContext(context);
   for (const path of [
+    "scripts/coordinate-spaces.js",
+    "scripts/hidden-completion-coverage-bounds.js",
     "scripts/hidden-completion-assets.js",
     "scripts/hidden-completion-request.js",
+    "scripts/hidden-completion-prep.js",
   ]) runScript(context, path);
   return context.window.Animotion;
 }
@@ -57,6 +60,34 @@ test("hidden completion request preserves guide coordinates outside the part", (
   const request = buildRequest({ assets: [patchAsset()] });
   assert.equal(request.guide.meshVerticesNormalized[2].yNorm, 1.05);
   assert.equal(request.guide.silhouetteVerticesNormalized[1].yNorm, 1.02);
+});
+
+test("large guide expands request source rect while mask remains source-part local", () => {
+  const Animotion = loadAnimotion();
+  const project = {
+    canvas: { width: 200, height: 160 },
+    parts: [{ id: "part-leg", sourceRect: { x: 40, y: 30, w: 80, h: 100 }, rect: { x: 40, y: 30, w: 80, h: 100 } }],
+    assets: [{
+      ...patchAsset(),
+      sourceRectNormalized: { xNorm: 0.2, yNorm: 0.1875, wNorm: 0.21, hNorm: 0.275 },
+      maskVerticesNormalized: [{ xNorm: 0, yNorm: 0 }, { xNorm: 1, yNorm: 1 }],
+      guide: {
+        meshVerticesNormalized: [{ xNorm: 0, yNorm: 0 }, { xNorm: 1, yNorm: 0 }, { xNorm: 1, yNorm: 1 }],
+        meshFaces: [[0, 1, 2]],
+        silhouetteVerticesNormalized: [{ xNorm: 0, yNorm: 0 }, { xNorm: 1, yNorm: 1 }],
+      },
+    }],
+  };
+
+  const request = Animotion.hiddenCompletionRequest.buildHiddenCompletionRequest(project, "hidden-leg");
+  const prepared = Animotion.hiddenCompletionPrep.prepareHiddenCompletionImages({ request, sourceImage: { width: 200, height: 160 } });
+
+  assertJsonEqual(request.sourceRectNormalized, { xNorm: 0.18, yNorm: 0.1625, wNorm: 0.44, hNorm: 0.675, coordinateSpace: "normalized-image" });
+  assertJsonEqual(request.sourcePartRectNormalized, { xNorm: 0.2, yNorm: 0.1875, wNorm: 0.4, hNorm: 0.625, coordinateSpace: "normalized-image" });
+  assert.equal(prepared.sourceImage.width, 88);
+  assert.equal(prepared.sourceImage.height, 108);
+  assert.deepEqual(JSON.parse(JSON.stringify(prepared.maskImage.polygonPoints[0])), { x: 4, y: 4 });
+  assert.deepEqual(JSON.parse(JSON.stringify(prepared.maskImage.polygonPoints[1])), { x: 84, y: 104 });
 });
 
 test("hidden completion request rejects provider specific builder options", () => {

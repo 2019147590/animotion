@@ -49,6 +49,7 @@ function loadRenderAnimotion() {
   const context = { window: { Animotion: {} } };
   vm.createContext(context);
   for (const path of [
+    "scripts/hidden-completion-coverage-bounds.js",
     "scripts/hidden-completion-assets.js",
     "scripts/cutscene-action-selectors.js",
     "scripts/motion-draft-action-store.js",
@@ -97,6 +98,49 @@ function readyDraft(Animotion, partId, assetId) {
       assetId,
     },
   });
+}
+
+function recordingContext() {
+  const ops = [];
+  const record = (name, ...args) => ops.push({ name, args });
+  return {
+    __ops: ops,
+    save: () => record("save"),
+    restore: () => record("restore"),
+    beginPath: () => record("beginPath"),
+    moveTo: (...args) => record("moveTo", ...args),
+    lineTo: (...args) => record("lineTo", ...args),
+    closePath: () => record("closePath"),
+    clip: () => record("clip"),
+    transform: (...args) => record("transform", ...args),
+    translate: (...args) => record("translate", ...args),
+    rotate: (...args) => record("rotate", ...args),
+    scale: (...args) => record("scale", ...args),
+    drawImage: (...args) => record("drawImage", ...args),
+  };
+}
+
+function readyRenderState(target, counterpart, asset, patch = {}) {
+  return {
+    parts: [target, counterpart],
+    project: { assets: [asset] },
+    cutsceneBridge: {
+      jointAction: {
+        hiddenCompletionDrafts: [{ partId: target.id, hiddenCompletion: { assetStatus: "ready", assetId: asset.id } }],
+      },
+    },
+    ...patch,
+  };
+}
+
+function renderContext(state) {
+  return {
+    state,
+    parts: state.parts,
+    t: 0,
+    matrixCache: new Map(),
+    worldMatrix: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
+  };
 }
 
 test("motion draft editor keeps hidden completion drafts per action part", () => {
@@ -173,6 +217,103 @@ test("hidden completion render uses the draft linked to each part", () => {
 
   assert.equal(Animotion.hiddenCompletionRender.linkedSymmetryAsset({ id: "body" }, { state }).id, "hidden-body");
   assert.equal(Animotion.hiddenCompletionRender.linkedSymmetryAsset({ id: "upper" }, { state }).id, "hidden-upper");
+});
+
+test("hidden completion render hides a patch when its supplemental part is visible", () => {
+  const Animotion = loadRenderAnimotion();
+  const asset = Animotion.hiddenCompletionAssets.normalizeAsset({
+    id: "hidden-body",
+    type: "hiddenCompletionPatch",
+    sourcePartId: "body",
+    completionMethod: "symmetry",
+    symmetrySource: { counterpartPartId: "body-ref" },
+  });
+  const state = {
+    parts: [{ id: "body" }, { id: "supp-hidden-body", isSupplementalPart: true, sourcePatchAssetId: asset.id, hidden: false }],
+    project: { assets: [asset] },
+    cutsceneBridge: {
+      jointAction: {
+        hiddenCompletionDrafts: [{ partId: "body", hiddenCompletion: { assetStatus: "ready", assetId: asset.id } }],
+      },
+    },
+  };
+  Animotion.hiddenCompletionSupplementalPart = {
+    hasVisiblePartForPatch: (parts, assetId) => parts.some((part) => part.isSupplementalPart && part.sourcePatchAssetId === assetId && !part.hidden),
+  };
+
+  assert.equal(Animotion.hiddenCompletionRender.linkedSymmetryAsset({ id: "body" }, { state }), null);
+  state.parts[1].hidden = true;
+  assert.equal(Animotion.hiddenCompletionRender.linkedSymmetryAsset({ id: "body" }, { state }).id, asset.id);
+});
+
+test("direct body patch render matches supplemental counterpart-canvas sampling", () => {
+  const Animotion = loadRenderAnimotion();
+  const target = { id: "body", rect: { x: 40, y: 30, w: 80, h: 100 } };
+  const counterpart = { id: "body_ref", rect: { x: 110, y: 30, w: 80, h: 100 }, canvas: { id: "body-ref-canvas" } };
+  const asset = Animotion.hiddenCompletionAssets.normalizeAsset({
+    id: "hidden-body-symmetry",
+    type: "hiddenCompletionPatch",
+    sourcePartId: target.id,
+    guide: {
+      silhouetteVerticesNormalized: [
+        { xNorm: 0, yNorm: 0 },
+        { xNorm: 0.5, yNorm: 0 },
+        { xNorm: 0.5, yNorm: 1 },
+        { xNorm: 0, yNorm: 1 },
+      ],
+    },
+    completionMethod: "symmetry",
+    symmetrySource: { counterpartPartId: counterpart.id, targetPartId: target.id },
+  });
+  const ctx = recordingContext();
+  const state = readyRenderState(target, counterpart, asset, { image: { id: "source-image", naturalWidth: 200, naturalHeight: 160 } });
+
+  const result = Animotion.hiddenCompletionRender.drawForPart(ctx, target, renderContext(state));
+
+  const draw = ctx.__ops.find((op) => op.name === "drawImage");
+  assert.equal(result.ok, true);
+  assert.equal(draw.args[0].id, "body-ref-canvas");
+  assert.equal(draw.args[3], 88);
+  assert.equal(draw.args[4], 108);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.drawnBounds)), { x: 36, y: 26, w: 88, h: 108 });
+});
+
+test("expanded upperArm patch render matches supplemental source-image sampling", () => {
+  const Animotion = loadRenderAnimotion();
+  const target = { id: "rearupperarm", rect: { x: 30, y: 42, w: 28, h: 36 } };
+  const counterpart = { id: "frontupperarm", rect: { x: 122, y: 42, w: 28, h: 36 }, canvas: { id: "front-canvas" } };
+  const asset = Animotion.hiddenCompletionAssets.normalizeAsset({
+    id: "hidden-rearupperarm-symmetry",
+    type: "hiddenCompletionPatch",
+    sourcePartId: target.id,
+    guide: {
+      silhouetteVerticesNormalized: [
+        { xNorm: -0.25, yNorm: 0 },
+        { xNorm: 1.25, yNorm: 0 },
+        { xNorm: 1.25, yNorm: 1 },
+        { xNorm: -0.25, yNorm: 1 },
+      ],
+    },
+    completionMethod: "symmetry",
+    symmetrySource: { counterpartPartId: counterpart.id, targetPartId: target.id },
+  });
+  const ctx = recordingContext();
+  const state = readyRenderState(target, counterpart, asset, { image: { id: "source-image", naturalWidth: 200, naturalHeight: 160 } });
+
+  const result = Animotion.hiddenCompletionRender.drawForPart(ctx, target, renderContext(state));
+
+  const draw = ctx.__ops.find((op) => op.name === "drawImage");
+  assert.equal(result.ok, true);
+  assert.equal(draw.args[0].id, "source-image");
+  assert.equal(draw.args[1], 111);
+  assert.equal(draw.args[2], 38);
+  assert.equal(draw.args[3], 50);
+  assert.equal(draw.args[4], 44);
+  assert.equal(draw.args[5], -37.5);
+  assert.equal(draw.args[6], -22);
+  assert.equal(draw.args[7], 75);
+  assert.equal(draw.args[8], 44);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.drawnBounds)), { x: 19, y: 38, w: 50, h: 44 });
 });
 
 test("cutscene bridge normalization preserves per-part hidden completion drafts", () => {

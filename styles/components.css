@@ -100,7 +100,67 @@
 }
 
 .inspector-form {
+  display: grid;
   gap: 10px;
+}
+
+.inspector-section {
+  border: 2px solid var(--line);
+  border-radius: 7px;
+  background: #fffdf5;
+  overflow: hidden;
+}
+
+.inspector-section[open] {
+  background: #fff;
+}
+
+.inspector-section summary {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  min-height: 38px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 900;
+  list-style: none;
+}
+
+.inspector-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.inspector-section summary::after {
+  content: "+";
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--line);
+  border-radius: 50%;
+  background: var(--accent-3);
+  line-height: 1;
+}
+
+.inspector-section[open] summary {
+  border-bottom: 2px solid var(--line);
+}
+
+.inspector-section[open] summary::after {
+  content: "-";
+}
+
+.inspector-section-body {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.compact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .check-row {

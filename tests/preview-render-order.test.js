@@ -18,6 +18,7 @@ function loadPreview() {
   vm.createContext(context);
   const Animotion = context.window.Animotion;
   Animotion.dom = { previewCanvas: { width: 200, height: 160 }, previewCtx: ctx, els: elements() };
+  Animotion.previewCtxOps = ctx.__ops;
   Animotion.state = stateFixture();
   Animotion.config = { timelineFps: 24, timelineFrames: 120 };
   Animotion.view = { resizeCanvas() {} };
@@ -29,7 +30,7 @@ function loadPreview() {
   Animotion.parts = { selectedPart: () => Animotion.state.parts.find((part) => part.id === Animotion.state.selectedPartId) };
   Animotion.previewRigPoints = { localPoint: (part, spec) => spec.localPoint || part.pivot, imagePoint: (part, spec) => ({ x: part.rect.x + (spec.localPoint || part.pivot).x, y: part.rect.y + (spec.localPoint || part.pivot).y }) };
   Animotion.previewTransform.imagePointToScreen = (point) => point;
-  for (const path of ["scripts/hidden-completion-assets.js", "scripts/motion-model.js", "scripts/timeline.js", "scripts/cutscene-action-selectors.js", "scripts/rig-connection.js", "scripts/arm-chain-resolver.js", "scripts/render-layer-utils.js", "scripts/render-order-debug.js", "scripts/arm-extension-controls.js", "scripts/arm-extension.js", "scripts/arm-extension-render.js", "scripts/motion-replacement-layer.js", "scripts/motion-replacement-render.js", "scripts/cutscene-depth.js", "scripts/hidden-completion-render.js"]) runScript(context, path);
+  for (const path of ["scripts/hidden-completion-coverage-bounds.js", "scripts/hidden-completion-assets.js", "scripts/motion-model.js", "scripts/timeline.js", "scripts/cutscene-action-selectors.js", "scripts/rig-connection.js", "scripts/arm-chain-resolver.js", "scripts/render-layer-utils.js", "scripts/render-order-debug.js", "scripts/arm-extension-controls.js", "scripts/arm-extension.js", "scripts/arm-extension-render.js", "scripts/motion-replacement-layer.js", "scripts/motion-replacement-render.js", "scripts/cutscene-depth.js", "scripts/hidden-completion-render.js", "scripts/hidden-completion-supplemental-coverage.js", "scripts/hidden-completion-supplemental-part.js", "scripts/hidden-completion-supplemental-warp.js", "scripts/hidden-completion-fill-scheduler.js"]) runScript(context, path);
   Animotion.motion = { motionFor: (part) => Animotion.motionModel.poseToTransform(Animotion.timeline.evaluatePartAtFrame(part, Animotion.state.currentFrame)) };
   runScript(context, "scripts/preview.js");
   return Animotion;
@@ -62,6 +63,49 @@ function part(id, type, order, rect, humanRole = type) {
   return { id, name: id, type, humanRole, order, rect, pivot: { x: rect.w / 2, y: rect.h * 0.2 }, joint: { x: rect.w / 2, y: rect.h * 0.8 }, alpha: 1, keyframes: [], customMotion: {}, canvas: { id } };
 }
 
+function installUpperArmScenario(Animotion) {
+  const upper = { ...part("rearupperarm_01", "arm", 2, { x: 70, y: 38, w: 24, h: 44 }), humanRole: "upperArm" };
+  const fore = { ...part("rearforearm_01", "arm", 3, { x: 82, y: 58, w: 24, h: 42 }), humanRole: "forearm", parentId: upper.id };
+  const hand = { ...part("rearhand_01", "hand", 4, { x: 88, y: 92, w: 20, h: 16 }), humanRole: "hand", parentId: fore.id };
+  const counterpart = { ...part("frontupperarm_01", "arm", 5, { x: 102, y: 38, w: 24, h: 44 }), humanRole: "upperArm" };
+  Animotion.state.parts = [Animotion.state.parts[0], upper, fore, hand, counterpart, ...Animotion.state.parts.slice(2)];
+  Animotion.state.selectedPartId = upper.id;
+  Animotion.state.cutsceneBridge = {
+    ...Animotion.state.cutsceneBridge,
+    primaryPartId: upper.id,
+    jointAction: {
+      ...Animotion.state.cutsceneBridge.jointAction,
+      targetDebug: { primaryPartId: upper.id, punchStyle: "rear-cross" },
+    },
+  };
+  return { upper, fore, hand, counterpart };
+}
+
+function symmetryAsset(id, sourcePartId, counterpartPartId) {
+  return {
+    id,
+    type: "hiddenCompletionPatch",
+    sourcePartId,
+    sourceRectNormalized: { xNorm: 0, yNorm: 0, wNorm: 1, hNorm: 1 },
+    guide: {
+      meshVerticesNormalized: [{ xNorm: 0, yNorm: 0 }, { xNorm: 1, yNorm: 0 }, { xNorm: 1, yNorm: 1 }, { xNorm: 0, yNorm: 1 }],
+      meshFaces: [[0, 1, 2], [0, 2, 3]],
+      silhouetteVerticesNormalized: [{ xNorm: 0, yNorm: 0 }, { xNorm: 1, yNorm: 0 }, { xNorm: 1, yNorm: 1 }, { xNorm: 0, yNorm: 1 }],
+    },
+    patchStatus: "draft",
+    renderMode: "manualOverride",
+    completionMethod: "symmetry",
+    symmetrySource: { counterpartPartId, targetPartId: sourcePartId, confidence: 0.9 },
+  };
+}
+
+function readyDraft(partId, assetId) {
+  return {
+    partId,
+    hiddenCompletion: { needed: true, status: "candidate", assetKind: "hiddenCompletionPatch", assetStatus: "ready", assetId },
+  };
+}
+
 function bridge() {
   return { primaryPartId: "arm_01", impactFrame: 24, durationFrames: 36, sourceMotionEnabled: false, ghostEnabled: false, jointAction: { actionTimeline: { template: "punch" }, targetDebug: { primaryPartId: "arm_01", punchStyle: "rear-cross" }, beats: [{ id: "guard", at: 1 }, { id: "drive", at: 10 }, { id: "impact", at: 24 }, { id: "recover", at: 36 }] } };
 }
@@ -77,8 +121,27 @@ function rectShape(rect) {
 function point(value) { return { x: Math.round(Number(value.x)), y: Math.round(Number(value.y)) }; }
 
 function canvasContext() {
-  const noop = () => {};
-  return { save: noop, restore: noop, scale: noop, clearRect: noop, fillRect: noop, fill: noop, translate: noop, transform: noop, drawImage: noop, stroke: noop, beginPath: noop, moveTo: noop, lineTo: noop, closePath: noop, clip: noop, rotate: noop };
+  const ops = [];
+  const record = (name, ...args) => ops.push({ name, args });
+  return {
+    __ops: ops,
+    save: () => record("save"),
+    restore: () => record("restore"),
+    scale: (...args) => record("scale", ...args),
+    clearRect: (...args) => record("clearRect", ...args),
+    fillRect: (...args) => record("fillRect", ...args),
+    fill: (...args) => record("fill", ...args),
+    translate: (...args) => record("translate", ...args),
+    transform: (...args) => record("transform", ...args),
+    drawImage: (...args) => record("drawImage", ...args),
+    stroke: (...args) => record("stroke", ...args),
+    beginPath: (...args) => record("beginPath", ...args),
+    moveTo: (...args) => record("moveTo", ...args),
+    lineTo: (...args) => record("lineTo", ...args),
+    closePath: (...args) => record("closePath", ...args),
+    clip: (...args) => record("clip", ...args),
+    rotate: (...args) => record("rotate", ...args),
+  };
 }
 
 class Matrix {
@@ -147,7 +210,7 @@ test("cutscene preview erases runtime rigged character from source panel before 
   assert.equal(Animotion.state.separateCharacter, savedSeparateCharacter);
 });
 
-test("symmetry hidden completion patch composites after source erase before occluding parts", () => {
+test("symmetry hidden completion patch composites before foreground occluders", () => {
   const Animotion = loadPreview();
   Animotion.dom.els.backgroundOpacity.value = "1";
   Animotion.state.parts.splice(2, 0, { ...part("arm_02", "arm", 3, { x: 86, y: 34, w: 34, h: 38 }), humanRole: "forearm", handTip: { x: 30, y: 34 } });
@@ -183,10 +246,312 @@ test("symmetry hidden completion patch composites after source erase before occl
   assert.equal(patch.hiddenCompletionPatchId, "hidden-arm-symmetry");
   assert.equal(patch.counterpartPartId, "arm_02");
   assert.equal(patch.index > sourcePanel.index, true);
-  assert.equal(patch.index < arm.index, true);
+  assert.ok(arm);
   assert.equal(patch.index < face.index, true);
   assert.equal(sequence.some((entry) => entry.drawPath === "hidden-completion-symmetry-failed"), false);
 });
+
+test("body direct ready patch renders once before foreground occluders", () => {
+  const Animotion = loadPreview();
+  const body = Animotion.state.parts.find((item) => item.id === "body");
+  const counterpart = { ...part("body_ref", "body", 2, { x: 92, y: 45, w: 28, h: 70 }), humanRole: "body" };
+  Animotion.state.parts.splice(1, 0, counterpart);
+  Animotion.state.project.assets = [symmetryAsset("hidden-body-direct", body.id, counterpart.id)];
+  Animotion.state.cutsceneBridge.jointAction.motionDraft = readyDraft(body.id, "hidden-body-direct");
+
+  Animotion.preview.drawPreview(0, () => {}, () => {});
+
+  const sequence = Animotion.state.previewDrawSequenceDebug.sequence;
+  const patches = sequence.filter((entry) => entry.drawPath === "hidden-completion-symmetry" && entry.hiddenCompletionPatchId === "hidden-body-direct");
+  const face = sequence.find((entry) => entry.partId === "face_layer" && entry.pass === "main-part");
+  const hair = sequence.find((entry) => entry.partId === "hair_front" && entry.pass === "main-part");
+  assert.equal(patches.length, 1);
+  assert.equal(patches[0].partId, body.id);
+  assert.equal(patches[0].index < face.index, true);
+  assert.equal(patches[0].index < hair.index, true);
+});
+
+test("supplemental parts render inside their source part group instead of their own layer order", () => {
+  const Animotion = loadPreview();
+  Animotion.state.parts.push({
+    ...part("supp-body-fill", "body", 9000, { x: 48, y: 40, w: 44, h: 82 }),
+    isSupplementalPart: true,
+    sourcePartId: "body",
+    sourcePatchAssetId: "hidden-body-fill",
+    mask: { kind: "polygon", points: [{ x: 10, y: 15 }, { x: 34, y: 15 }, { x: 34, y: 62 }, { x: 10, y: 62 }] },
+    canvas: { id: "supp-body-fill" },
+  });
+
+  Animotion.preview.drawPreview(0, () => {}, () => {});
+
+  const sequence = Animotion.state.previewDrawSequenceDebug.sequence;
+  const body = sequence.find((entry) => entry.partId === "body" && entry.drawPath === "normal-part" && entry.pass === "main-part");
+  const supplemental = sequence.find((entry) => entry.partId === "supp-body-fill" && entry.drawPath === "supplemental-part" && entry.pass === "main-part");
+  const face = sequence.find((entry) => entry.partId === "face_layer" && entry.pass === "main-part");
+  assert.ok(body);
+  assert.ok(supplemental);
+  assert.ok(face);
+  assert.equal(supplemental.renderGroupPartId, "body");
+  assert.equal(supplemental.supplementalCoverage.warnings.length, 0);
+  assert.deepEqual(JSON.parse(JSON.stringify(supplemental.supplementalCoverage.maskBounds)), { x: 10, y: 15, w: 24, h: 47 });
+  assert.equal(supplemental.index > body.index, true);
+  assert.equal(supplemental.index < face.index, true);
+  assert.equal(sequence.some((entry) => entry.partId === "supp-body-fill" && entry.drawPath === "normal-part"), false);
+  const drawIndex = Animotion.previewCtxOps.findIndex((op) => op.name === "drawImage" && op.args[0]?.id === "supp-body-fill");
+  const clipIndex = lastOpIndexBefore(Animotion.previewCtxOps, drawIndex, "clip");
+  assert.equal(clipIndex > -1, true);
+  assert.deepEqual(Animotion.previewCtxOps.slice(clipIndex - 6, clipIndex).map((op) => [op.name, ...op.args]), [
+    ["beginPath"],
+    ["moveTo", 58, 55],
+    ["lineTo", 82, 55],
+    ["lineTo", 82, 102],
+    ["lineTo", 58, 102],
+    ["closePath"],
+  ]);
+});
+
+test("upperArm supplemental fill stays behind its forearm and hand when the source part is depth-lifted", () => {
+  const Animotion = loadPreview();
+  const upper = { ...part("rearupperarm_01", "arm", 2, { x: 70, y: 38, w: 24, h: 44 }), humanRole: "upperArm" };
+  const fore = { ...part("rearforearm_01", "arm", 3, { x: 82, y: 58, w: 24, h: 42 }), humanRole: "forearm", parentId: upper.id };
+  const hand = { ...part("rearhand_01", "hand", 4, { x: 88, y: 92, w: 20, h: 16 }), humanRole: "hand", parentId: fore.id };
+  const supplemental = {
+    ...part("supp-rearupperarm-fill", "arm", 9000, { x: 66, y: 42, w: 46, h: 66 }),
+    isSupplementalPart: true,
+    sourcePartId: upper.id,
+    sourcePatchAssetId: "hidden-rearupperarm-fill",
+    mask: { kind: "polygon", points: [{ x: 0, y: 0 }, { x: 46, y: 0 }, { x: 46, y: 66 }, { x: 0, y: 66 }] },
+    canvas: { id: "supp-rearupperarm-fill" },
+  };
+  Animotion.state.parts = [Animotion.state.parts[0], upper, fore, hand, ...Animotion.state.parts.slice(2), supplemental];
+  Animotion.state.selectedPartId = upper.id;
+  Animotion.state.cutsceneBridge = {
+    ...Animotion.state.cutsceneBridge,
+    primaryPartId: upper.id,
+    jointAction: {
+      ...Animotion.state.cutsceneBridge.jointAction,
+      targetDebug: { primaryPartId: upper.id, punchStyle: "rear-cross" },
+    },
+  };
+
+  Animotion.preview.drawPreview(0, () => {}, () => {});
+
+  const sequence = Animotion.state.previewDrawSequenceDebug.sequence;
+  const foreDraw = sequence.find((entry) => entry.partId === fore.id && entry.pass === "main-part");
+  const handDraw = sequence.find((entry) => entry.partId === hand.id && entry.pass === "main-part");
+  const supplementalDraws = sequence.filter((entry) => entry.partId === supplemental.id && entry.drawPath === "supplemental-part");
+  assert.ok(foreDraw);
+  assert.ok(handDraw);
+  assert.equal(supplementalDraws.length, 1);
+  assert.equal(supplementalDraws[0].renderGroupPartId, upper.id);
+  assert.equal(supplementalDraws[0].index < foreDraw.index, true);
+  assert.equal(supplementalDraws[0].index < handDraw.index, true);
+  assert.equal(supplementalDraws.some((entry) => entry.pass === "depth-top-up"), false);
+});
+
+test("rear upperArm supplemental fill draws before earlier same-chain forearm and hand", () => {
+  const Animotion = loadPreview();
+  const { upper, fore, hand } = installUpperArmScenario(Animotion);
+  upper.order = 8;
+  fore.order = 6;
+  hand.order = 7;
+  Animotion.state.parts.push({
+    ...part("supp-hidden-upper-fill", "arm", 9000, { x: 66, y: 42, w: 46, h: 66 }),
+    humanRole: "upperArm",
+    isSupplementalPart: true,
+    supplementalKind: "hiddenCompletionSymmetry",
+    completionMethod: "symmetry",
+    sourcePartId: upper.id,
+    counterpartPartId: "frontupperarm_01",
+    sourcePatchAssetId: "hidden-upper-fill",
+    mask: { kind: "polygon", points: [{ x: 0, y: 0 }, { x: 46, y: 0 }, { x: 46, y: 66 }, { x: 0, y: 66 }] },
+    canvas: { id: "supp-hidden-upper-fill" },
+  });
+
+  Animotion.preview.drawPreview(0, () => {}, () => {});
+
+  const sequence = Animotion.state.previewDrawSequenceDebug.sequence;
+  const supplemental = sequence.find((entry) => entry.partId === "supp-hidden-upper-fill" && entry.drawPath === "supplemental-part");
+  const foreDraw = sequence.find((entry) => entry.partId === fore.id && entry.pass === "main-part");
+  const handDraw = sequence.find((entry) => entry.partId === hand.id && entry.pass === "main-part");
+  assert.ok(supplemental);
+  assert.equal(supplemental.visiblePath, "supplemental-part");
+  assert.equal(supplemental.foregroundOccluderIds.includes(fore.id), true);
+  assert.equal(supplemental.foregroundOccluderIds.includes(hand.id), true);
+  assert.equal(supplemental.index < foreDraw.index, true);
+  assert.equal(supplemental.index < handDraw.index, true);
+  assert.equal(supplemental.unexpectedForegroundBeforeFill, false);
+  assert.equal(sequence.some((entry) => entry.partId === "supp-hidden-upper-fill" && entry.pass === "depth-top-up"), false);
+});
+
+test("upperArm direct ready patch renders once before foreground occluders", () => {
+  const Animotion = loadPreview();
+  const { upper, fore, hand, counterpart } = installUpperArmScenario(Animotion);
+  Animotion.state.project.assets = [symmetryAsset("hidden-upper-direct", upper.id, counterpart.id)];
+  Animotion.state.cutsceneBridge.jointAction.motionDraft = readyDraft(upper.id, "hidden-upper-direct");
+
+  Animotion.preview.drawPreview(0, () => {}, () => {});
+
+  const sequence = Animotion.state.previewDrawSequenceDebug.sequence;
+  const patches = sequence.filter((entry) => entry.drawPath === "hidden-completion-symmetry" && entry.hiddenCompletionPatchId === "hidden-upper-direct");
+  const foreDraw = sequence.find((entry) => entry.partId === fore.id && entry.pass === "main-part");
+  const handDraw = sequence.find((entry) => entry.partId === hand.id && entry.pass === "main-part");
+  const face = sequence.find((entry) => entry.partId === "face_layer" && entry.pass === "main-part");
+  const hair = sequence.find((entry) => entry.partId === "hair_front" && entry.pass === "main-part");
+  assert.equal(patches.length, 1);
+  for (const occluder of [foreDraw, handDraw, face, hair]) assert.equal(patches[0].index < occluder.index, true);
+  assert.equal(sequence.some((entry) => entry.pass === "depth-top-up" && entry.drawPath === "hidden-completion-symmetry"), false);
+});
+
+test("rear upperArm direct ready patch draws before earlier same-chain forearm and hand", () => {
+  const Animotion = loadPreview();
+  const { upper, fore, hand, counterpart } = installUpperArmScenario(Animotion);
+  upper.order = 8;
+  fore.order = 6;
+  hand.order = 7;
+  Animotion.state.project.assets = [symmetryAsset("hidden-upper-direct", upper.id, counterpart.id)];
+  Animotion.state.cutsceneBridge.jointAction.motionDraft = readyDraft(upper.id, "hidden-upper-direct");
+
+  Animotion.preview.drawPreview(0, () => {}, () => {});
+
+  const sequence = Animotion.state.previewDrawSequenceDebug.sequence;
+  const patch = sequence.find((entry) => entry.drawPath === "hidden-completion-symmetry" && entry.hiddenCompletionPatchId === "hidden-upper-direct");
+  const foreDraw = sequence.find((entry) => entry.partId === fore.id && entry.pass === "main-part");
+  const handDraw = sequence.find((entry) => entry.partId === hand.id && entry.pass === "main-part");
+  assert.ok(patch);
+  assert.equal(patch.visiblePath, "direct-ready-patch");
+  assert.equal(patch.foregroundOccluderIds.includes(fore.id), true);
+  assert.equal(patch.foregroundOccluderIds.includes(hand.id), true);
+  assert.equal(patch.index < foreDraw.index, true);
+  assert.equal(patch.index < handDraw.index, true);
+  assert.equal(patch.unexpectedForegroundBeforeFill, false);
+  assert.equal(sequence.filter((entry) => entry.drawPath === "hidden-completion-symmetry" && entry.hiddenCompletionPatchId === "hidden-upper-direct").length, 1);
+  assert.equal(sequence.some((entry) => entry.pass === "depth-top-up" && entry.drawPath === "hidden-completion-symmetry"), false);
+});
+
+test("visible supplemental part suppresses the direct ready patch", () => {
+  const Animotion = loadPreview();
+  const { upper, fore, hand, counterpart } = installUpperArmScenario(Animotion);
+  Animotion.state.project.assets = [symmetryAsset("hidden-upper-direct", upper.id, counterpart.id)];
+  Animotion.state.cutsceneBridge.jointAction.motionDraft = readyDraft(upper.id, "hidden-upper-direct");
+  Animotion.state.parts.push({
+    ...part("supp-hidden-upper-direct", "arm", 9000, { x: 66, y: 42, w: 46, h: 66 }),
+    isSupplementalPart: true,
+    sourcePartId: upper.id,
+    sourcePatchAssetId: "hidden-upper-direct",
+    mask: { kind: "polygon", points: [{ x: 0, y: 0 }, { x: 46, y: 0 }, { x: 46, y: 66 }, { x: 0, y: 66 }] },
+    canvas: { id: "supp-hidden-upper-direct" },
+  });
+
+  Animotion.preview.drawPreview(0, () => {}, () => {});
+
+  const sequence = Animotion.state.previewDrawSequenceDebug.sequence;
+  const supplemental = sequence.find((entry) => entry.partId === "supp-hidden-upper-direct" && entry.drawPath === "supplemental-part");
+  const foreDraw = sequence.find((entry) => entry.partId === fore.id && entry.pass === "main-part");
+  const handDraw = sequence.find((entry) => entry.partId === hand.id && entry.pass === "main-part");
+  assert.ok(supplemental);
+  assert.equal(supplemental.index < foreDraw.index, true);
+  assert.equal(supplemental.index < handDraw.index, true);
+  assert.equal(sequence.some((entry) => entry.drawPath === "hidden-completion-symmetry" && entry.hiddenCompletionPatchId === "hidden-upper-direct"), false);
+});
+
+test("body hidden-completion supplemental fill draws behind overlapping foreground occluders", () => {
+  const Animotion = loadPreview();
+  const body = Animotion.state.parts.find((item) => item.id === "body");
+  body.order = 8;
+  const arm = { ...part("body_cover_arm", "arm", 4, { x: 60, y: 58, w: 34, h: 42 }), humanRole: "forearm" };
+  Animotion.state.parts.splice(1, 0, arm);
+  Animotion.state.parts.push({
+    ...part("supp-hidden-body-fill", "body", 9000, { x: 48, y: 40, w: 44, h: 82 }),
+    isSupplementalPart: true,
+    supplementalKind: "hiddenCompletionSymmetry",
+    completionMethod: "symmetry",
+    sourcePartId: body.id,
+    sourcePatchAssetId: "hidden-body-fill",
+    mask: { kind: "polygon", points: [{ x: 10, y: 15 }, { x: 34, y: 15 }, { x: 34, y: 62 }, { x: 10, y: 62 }] },
+    canvas: { id: "supp-hidden-body-fill" },
+  });
+
+  Animotion.preview.drawPreview(0, () => {}, () => {});
+
+  const sequence = Animotion.state.previewDrawSequenceDebug.sequence;
+  const supplemental = sequence.find((entry) => entry.partId === "supp-hidden-body-fill" && entry.drawPath === "supplemental-part");
+  const armDraw = sequence.find((entry) => entry.partId === arm.id && entry.pass === "main-part");
+  const face = sequence.find((entry) => entry.partId === "face_layer" && entry.pass === "main-part");
+  const hair = sequence.find((entry) => entry.partId === "hair_front" && entry.pass === "main-part");
+  assert.ok(supplemental);
+  assert.equal(supplemental.index < armDraw.index, true);
+  assert.equal(supplemental.index < face.index, true);
+  assert.equal(supplemental.index < hair.index, true);
+  assert.equal(supplemental.foregroundOccluderIds.includes(arm.id), true);
+  assert.equal(supplemental.unexpectedForegroundBeforeFill, false);
+});
+
+test("non-overlapping supplemental fill does not pull unrelated parts forward or backward", () => {
+  const Animotion = loadPreview();
+  const body = Animotion.state.parts.find((item) => item.id === "body");
+  const unrelated = { ...part("unrelated_prop", "prop", 0, { x: 150, y: 120, w: 18, h: 18 }), humanRole: "prop" };
+  Animotion.state.parts.splice(1, 0, unrelated);
+  Animotion.state.parts.push({
+    ...part("supp-hidden-body-corner", "body", 9000, { x: 48, y: 40, w: 44, h: 82 }),
+    isSupplementalPart: true,
+    supplementalKind: "hiddenCompletionSymmetry",
+    completionMethod: "symmetry",
+    sourcePartId: body.id,
+    sourcePatchAssetId: "hidden-body-corner",
+    mask: { kind: "polygon", points: [{ x: 10, y: 15 }, { x: 34, y: 15 }, { x: 34, y: 62 }, { x: 10, y: 62 }] },
+    canvas: { id: "supp-hidden-body-corner" },
+  });
+
+  Animotion.preview.drawPreview(0, () => {}, () => {});
+
+  const sequence = Animotion.state.previewDrawSequenceDebug.sequence;
+  const supplemental = sequence.find((entry) => entry.partId === "supp-hidden-body-corner" && entry.drawPath === "supplemental-part");
+  const unrelatedDraw = sequence.find((entry) => entry.partId === unrelated.id && entry.pass === "main-part");
+  assert.ok(supplemental);
+  assert.ok(unrelatedDraw);
+  assert.equal(supplemental.foregroundOccluderIds.includes(unrelated.id), false);
+  assert.equal(unrelatedDraw.index < supplemental.index, true);
+});
+
+test("restored supplemental canvas with saved warp renders through occlusion fill scheduler", () => {
+  const Animotion = loadPreview();
+  const { upper, fore, hand } = installUpperArmScenario(Animotion);
+  upper.order = 8;
+  fore.order = 6;
+  hand.order = 7;
+  Animotion.state.parts.push({
+    ...part("supp-restored-upper-fill", "arm", 9000, { x: 66, y: 42, w: 46, h: 66 }),
+    humanRole: "upperArm",
+    isSupplementalPart: true,
+    supplementalKind: "hiddenCompletionSymmetry",
+    completionMethod: "symmetry",
+    sourcePartId: upper.id,
+    sourcePatchAssetId: "hidden-restored-upper-fill",
+    mask: { kind: "polygon", points: [{ x: 0, y: 0 }, { x: 46, y: 0 }, { x: 46, y: 66 }, { x: 0, y: 66 }] },
+    canvas: { id: "restored-snapshot-canvas", width: 46, height: 66 },
+    supplementalWarp: {
+      points: [{ id: "tl", x: -2, y: 0 }, { id: "tr", x: 48, y: 4 }, { id: "br", x: 46, y: 68 }, { id: "bl", x: 0, y: 66 }],
+    },
+  });
+
+  Animotion.preview.drawPreview(0, () => {}, () => {});
+
+  const sequence = Animotion.state.previewDrawSequenceDebug.sequence;
+  const supplemental = sequence.find((entry) => entry.partId === "supp-restored-upper-fill" && entry.drawPath === "supplemental-part");
+  const foreDraw = sequence.find((entry) => entry.partId === fore.id && entry.pass === "main-part");
+  const handDraw = sequence.find((entry) => entry.partId === hand.id && entry.pass === "main-part");
+  assert.ok(supplemental);
+  assert.equal(supplemental.supplementalWarpApplied, true);
+  assert.equal(supplemental.index < foreDraw.index, true);
+  assert.equal(supplemental.index < handDraw.index, true);
+  assert.equal(supplemental.unexpectedForegroundBeforeFill, false);
+});
+
+function lastOpIndexBefore(ops, beforeIndex, name) {
+  for (let index = beforeIndex - 1; index >= 0; index -= 1) if (ops[index]?.name === name) return index;
+  return -1;
+}
 
 test("replacement render failure falls back to normal arm draw", () => {
   const Animotion = loadPreview();

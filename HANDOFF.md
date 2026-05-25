@@ -41,6 +41,223 @@ The hardcoded demo genga cut remains available, but it should be treated as the 
 
 ## Current Implemented State
 
+### Latest 2026-05-25 Hidden Completion Render Order and Canvas Snapshot Handoff
+
+This section supersedes the earlier assumption that supplemental hidden-completion parts are safely rendered immediately after their source part. The latest real-project QA with `animotion-project (10).json` and `animotion-project (11).json` proved two separate failure layers and fixes:
+
+1. Rear upperArm hidden-completion was visually covering foreground forearm/hand because both direct ready patches and generated supplemental parts were drawn too late.
+2. Body supplemental warp edits were preserved, but old projects could look different after reload because supplemental canvas pixels were not persisted and were regenerated from current logic.
+
+Render-policy fix:
+
+- Added `scripts/hidden-completion-fill-scheduler.js`.
+- Direct ready patch and generated supplemental part paths are now normalized into hidden-completion fill requests.
+- Preview collects hidden-completion fill requests before normal part drawing and schedules them before detected foreground occluders.
+- The scheduler uses role/name/type/overlap and same-limb-chain heuristics, not body-specific or rearUpperArm-specific IDs.
+- For limb chains, upperArm fill draws before same-chain forearm/hand when those parts would otherwise occlude the fill.
+- For body/torso fills, overlapping arm/hand/face/hair/clothing-style foreground parts are detected as occluders.
+- The fill still follows the source part transform/pose.
+- Hidden-completion fill is not redrawn during depth-top-up or late overlay passes.
+- `state.parts` order and saved JSON order are unchanged.
+
+Render diagnostics now include:
+
+- `visiblePath`: `direct-ready-patch` or `supplemental-part`.
+- `scheduledBeforePartIds`.
+- `foregroundOccluderIds`.
+- `actualDrawIndex`.
+- `foregroundDrawnBeforeFill`.
+- `unexpectedForegroundBeforeFill`.
+- `wasDepthTopUpSkipped`.
+
+Real failing project evidence after the render-policy fix:
+
+- In `animotion-project (11).json`, the rear upperArm supplemental part `supp-hidden-344d68b5-da9a-4a05-ae0c-aef075518a3d-symmetry` now draws at index `8`.
+- The related hand draws at index `10`, forearm at index `11`, and source upperArm at index `12`.
+- The supplemental fill reports `visiblePath: "supplemental-part"` and `unexpectedForegroundBeforeFill: false`.
+- This confirms the previously repeated symptom was render order / foreground occlusion, not stale supplemental data, counterpart resolution, sampling coverage, or warp placement.
+
+Canvas snapshot persistence fix:
+
+- Added optional supplemental canvas snapshot persistence for generated/user-edited hidden-completion supplemental parts.
+- New saved supplemental parts can include:
+  - `supplementalCanvasDataUrl`
+  - `supplementalCanvasWidth`
+  - `supplementalCanvasHeight`
+  - `supplementalCanvasVersion`
+- `scripts/project-serialization.js` asks `hiddenCompletionSupplementalProject.snapshotFieldsForPart(part)` for those fields during save.
+- `scripts/io.js` now restores a saved supplemental canvas snapshot before trying metadata regeneration.
+- If a snapshot exists, load uses the saved PNG/dataURL canvas and applies the saved `supplementalWarp` to that restored canvas.
+- If no snapshot exists, legacy JSON still falls back to `regenerateCanvasForPart()` exactly as before.
+
+Snapshot diagnostics now include:
+
+- `hasSavedSupplementalCanvas`.
+- `restoredCanvasFromSnapshot`.
+- `regeneratedCanvasFromMetadata`.
+- `supplementalCanvasWidth`.
+- `supplementalCanvasHeight`.
+- `sourcePatchAssetId`.
+- `sourcePartId`.
+
+Important compatibility note:
+
+- Existing files such as `animotion-project (10).json` do not contain canvas snapshots, so their old exact supplemental canvas pixels cannot be reconstructed from the file alone.
+- In `(10).json`, the body supplemental `supplementalWarp` was confirmed to be preserved exactly across current load normalization. The visible change came from applying that preserved warp to a regenerated canvas.
+- New saves after this change preserve the actual generated supplemental canvas and should be WYSIWYG-stable across save/load.
+
+Files most relevant to the latest state:
+
+- `scripts/hidden-completion-fill-scheduler.js`
+- `scripts/preview.js`
+- `scripts/render-order-debug.js`
+- `scripts/project-serialization.js`
+- `scripts/io.js`
+- `scripts/hidden-completion-supplemental-project.js`
+- `scripts/hidden-completion-supplemental-part.js`
+- `scripts/hidden-completion-supplemental-coverage.js`
+- `scripts/hidden-completion-supplemental-warp.js`
+- `tests/preview-render-order.test.js`
+- `tests/hidden-completion-supplemental-load.test.js`
+- `tests/hidden-completion-supplemental-part.test.js`
+- `tests/hidden-completion-supplemental-sync.test.js`
+- `tests/hidden-completion-supplemental-warp.test.js`
+
+Verification already run before this handoff update:
+
+- `node tests\preview-render-order.test.js`
+- `node tests\hidden-completion-action-drafts.test.js`
+- `node tests\hidden-completion-supplemental-part.test.js`
+- `node tests\hidden-completion-supplemental-sync.test.js`
+- `node tests\hidden-completion-supplemental-warp.test.js`
+- `node tests\hidden-completion-supplemental-load.test.js`
+- `Get-ChildItem tests -Filter *.test.js | ForEach-Object { node $_.FullName }`
+
+Result: all listed tests passed locally.
+
+### Latest 2026-05-24 Supplemental Part Render/Coverage Stabilization Handoff
+
+This section supersedes the earlier note that supplemental completion parts render as ordinary ordered parts. The current model is:
+
+- `hiddenCompletionPatch` is the internal/source patch asset. It stores the editable completion guide, silhouette, and mask data.
+- A supplemental completion part is the user-facing editable inserted part. It keeps generated canvas/texture data plus metadata: `isSupplementalPart: true`, `supplementalKind: "hiddenCompletionSymmetry"`, `completionMethod: "symmetry"`, `sourcePatchAssetId`, `sourcePartId`, `createdForActionId` or `createdFromJointActionId`, and local `mask`.
+
+Implemented behavior:
+
+- Existing JSON compatibility was fixed so guide/silhouette/mask edits commit back into `project.assets` for the linked `hiddenCompletionPatch`.
+- Patch asset updates call the supplemental sync path by `sourcePatchAssetId`, preserving the generated canvas/texture while updating display/edit metadata such as rect/sourceRect/mask.
+- Per-part hidden completion drafts now take priority over legacy single `motionDraft`, so selecting `body` returns the body patch and selecting `upperArm` returns the upperArm patch when both exist.
+- Multiple supplemental parts can coexist in one action, e.g. body and upperArm supplemental parts. Different `sourcePatchAssetId` values do not hit duplicate prevention.
+- Direct patch preview is hidden when a visible supplemental part for that patch/action exists, preventing patch + supplemental double rendering.
+- Supplemental parts render inside their `sourcePartId` group, immediately after the source part. Their own high `order` no longer lets them escape the source group.
+- Preview clipping uses the supplemental part's local mask. The mask is offset by the part rect before draw, so the visible region is limited to the patch-derived area.
+
+Coverage fix/status:
+
+- Added `scripts/hidden-completion-supplemental-coverage.js`.
+- New supplemental generation no longer pre-clips the generated canvas to the mask. It draws the mirrored/counterpart texture into the supplemental rect, then preview clipping applies the mask at render time.
+- If a patch mask extends beyond the source rect, supplemental `rect`/`sourceRect` expand to include the patch mask bounds, and mask points are converted to supplemental-local coordinates.
+- Sync still does not regenerate canvas/texture. If an existing saved supplemental canvas is already too small or pre-clipped, it stays intact and reports a coverage warning instead of silently passing.
+- Coverage debug reports mask bounds, rect bounds, sourceRect bounds, canvas/source bounds, canvas opaque bounds, rendered clipped bounds, approximate coverage ratio, and warnings: `mask-outside-supplemental-rect`, `source-rect-too-small`, `canvas-opaque-bounds-too-small`, `mask-coordinate-mismatch`.
+- Inspector/status now exposes supplemental coverage percentage and warning reasons for the selected supplemental part.
+
+Important caveat discussed:
+
+- If two supplemental parts overlap, overlap alone does not create a gap. Each supplemental part is still clipped by its own patch mask and rendered in its own source part group.
+- Gaps visible in one still frame usually indicate coverage/mask/canvas/sourceRect mismatch.
+- Gaps that appear only during playback are more likely frame-by-frame relative motion between source groups, e.g. body and upperArm moving apart or occluding differently.
+- The current work did not add visible frame range logic, bake/merge supplemental parts into originals, or rewrite the whole preview render order.
+
+Files most relevant to this state:
+
+- `scripts/hidden-completion-guide-editor.js`
+- `scripts/hidden-completion-supplemental-part.js`
+- `scripts/hidden-completion-supplemental-coverage.js`
+- `scripts/hidden-completion-supplemental-project.js`
+- `scripts/hidden-completion-supplemental-part-ui.js`
+- `scripts/hidden-completion-render.js`
+- `scripts/preview.js`
+- `scripts/part-commands.js`
+- `tests/hidden-completion-supplemental-part.test.js`
+- `tests/hidden-completion-supplemental-part-ui.test.js`
+- `tests/preview-render-order.test.js`
+- `tests/part-commands.test.js`
+- `tests/ui-inspector.test.js`
+
+Verification already run before this handoff update:
+
+- `node tests\hidden-completion-supplemental-part.test.js`
+- `node tests\hidden-completion-supplemental-part-ui.test.js`
+- `node tests\motion-draft-editor.test.js`
+- `node tests\preview-render-order.test.js`
+- `node tests\ui-inspector.test.js`
+- `node tests\part-commands.test.js`
+- `Get-ChildItem tests -Filter *.test.js | ForEach-Object { node $_.FullName }`
+- `git diff --check`
+
+Result: tests passed. `git diff --check` reported only CRLF whitespace warnings. No commit has been made.
+
+### Latest 2026-05-24 Supplemental Hidden Completion Part Upload
+
+This upload makes ready symmetry hidden-completion patches usable as editable rig parts without removing or replacing the existing patch-asset workflow.
+
+Supplemental part conversion:
+
+- Added `scripts/hidden-completion-supplemental-part.js` as the conversion and insertion module for ready `hiddenCompletionPatch` assets with `completionMethod: "symmetry"`.
+- The converter creates a normal editor part payload from the patch source data, guide/silhouette metadata, source/counterpart geometry, and available canvas/texture references.
+- Generated parts carry persistent metadata: `isSupplementalPart: true`, `supplementalKind: "hiddenCompletionSymmetry"`, `completionMethod: "symmetry"`, `sourcePatchAssetId`, `sourcePartId`, `counterpartPartId`, `targetRegion`, `sourceRegion`, `createdForActionId`, `createdFromJointActionId`, and `originalPatchAssetType: "hiddenCompletionPatch"`.
+- The original `project.assets` patch asset remains intact. The generated supplemental part is a separate editable part.
+- Duplicate insertion is guarded by `sourcePatchAssetId`; if a supplemental part already exists for the same patch, the existing part is selected instead of creating another one.
+- Initial parent/layer/pivot/joint values are derived from the source/target part when available. Missing defaults return warnings/status instead of failing silently.
+
+UI and editing behavior:
+
+- Added `scripts/hidden-completion-supplemental-part-ui.js` and loaded it through `scripts/bootstrap.js`.
+- The selected-part hidden-completion panel now shows `보완 파츠로 삽입` when the selected part has a linked ready symmetry patch.
+- Pressing the button inserts the supplemental part, selects it immediately, and leaves the existing `선택 패치 연결` behavior unchanged.
+- The selected part inspector/status distinguishes supplemental parts with `보완 파츠`, `symmetry에서 생성됨`, source patch id, source part id, and counterpart part id.
+- Supplemental parts render as normal parts. No final preview/playback badge or guide overlay was added.
+
+Persistence and command behavior:
+
+- Supplemental part insertion uses the existing part command-history snapshot path so it can be undone/redone as one user action when command history is loaded.
+- Project normalization now preserves supplemental metadata through save/load/save round trips.
+- Metadata, parent/layer/order, pivot/joint, and mask vertices survive round trip tests.
+- Old JSON load does not auto-create or migrate supplemental parts. Users must explicitly press the insert button.
+- Existing `motionDraft.hiddenCompletion` and `jointAction.hiddenCompletionDrafts` links are preserved and not repointed to the supplemental part.
+
+Scope intentionally not changed:
+
+- Provider contracts, Stability/Local SD, `HiddenCompletionRequestPayload`, AI server calls, B impact snap timing, punch/kick timing, frame-by-frame z-order editing, visible frame ranges, automatic hole detection, and motion replacement layering were not changed.
+
+Verification for this upload:
+
+- Added `tests/hidden-completion-supplemental-part.test.js`.
+- Added `tests/hidden-completion-supplemental-part-ui.test.js`.
+- Verified ready symmetry patch payload creation, metadata preservation, button insertion/selection, duplicate prevention, save/load/save round trip, patch asset preservation, motion-draft link preservation, and old JSON non-migration.
+- Verified related regressions with `node tests\hidden-completion-symmetry.test.js`, `node tests\hidden-completion-part-panel.test.js`, `node tests\hidden-completion-roundtrip.test.js`, and `node tests\part-commands.test.js`.
+- Full JavaScript suite passed locally via `Get-ChildItem tests -Filter *.test.js | ForEach-Object { node $_.FullName }`.
+- `git diff --check` passed with only CRLF conversion warnings.
+- Commit/push has not been performed.
+
+### Latest 2026-05-24 Hidden Completion Action Summary UI Upload
+
+This upload exposes action-level hidden-completion links in the UI so multiple per-part drafts are visible even when the currently selected part only shows one linked patch.
+
+Action-level visibility:
+
+- Added `scripts/hidden-completion-action-summary.js` and loaded it through `scripts/bootstrap.js`.
+- Added `styles/hidden-completion.css` for the compact hidden-completion summary/status styling.
+- The panel now lists linked hidden-completion drafts for the active action, including part name/id, patch asset id, and ready/missing status.
+- The summary is informational and does not replace the selected-part patch link controls.
+- This makes it visible that body and forearm/arm completion patches can coexist on the same action through different per-part drafts.
+
+Verification for this upload:
+
+- Added `tests/hidden-completion-action-summary.test.js`.
+- Verified the action summary reports multiple linked hidden-completion drafts at the same time.
+- Verified the summary remains separate from final preview/playback overlays.
+
 ### Latest 2026-05-24 Per-Part Hidden Completion Draft Upload
 
 This upload fixes the hidden-completion draft ownership gap found during manual QA: creating an upperArm completion patch could make a previously linked body completion patch disappear from the selected-part UI/preview path.

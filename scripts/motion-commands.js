@@ -54,11 +54,47 @@
   }
 
   function regenerateForRigChange(partId, change = {}, options = {}) {
-    if (options.regenerateMotion === false || !rigGeometryChanged(change)) return null;
+    const geometryChanged = rigGeometryChanged(change);
+    if (options.regenerateMotion === false || !geometryChanged) {
+      if (options.recordHistory !== false) {
+        recordRegenerationDebug({
+          attempted: false,
+          generated: false,
+          partId,
+          changedKeys: Object.keys(change.after || {}),
+          geometryChanged,
+          reason: options.regenerateMotion === false ? "disabled" : "non-rig-geometry-change",
+        });
+      }
+      return null;
+    }
     const bridge = Animotion.cutsceneModel?.normalizeBridge?.(state.cutsceneBridge, { assets: projectAssets() });
-    if (!regenerablePunchBridge(bridge, partId)) return null;
+    if (!regenerablePunchBridge(bridge, partId)) {
+      recordRegenerationDebug({
+        attempted: true,
+        generated: false,
+        partId,
+        changedKeys: Object.keys(change.after || {}),
+        geometryChanged,
+        bridgePrimaryPartId: bridge?.primaryPartId || null,
+        actionSource: bridge?.jointAction?.source || null,
+        reason: "not-regenerable-punch-bridge",
+      });
+      return null;
+    }
     const plan = { ...currentMotionPlan(), template: "punch", selectedPartId: partId };
     const result = Animotion.motionPlanner?.createPlan?.(state.parts, partId, bridge, plan);
+    recordRegenerationDebug({
+      attempted: true,
+      generated: Boolean(result),
+      partId,
+      changedKeys: Object.keys(change.after || {}),
+      geometryChanged,
+      bridgePrimaryPartId: bridge?.primaryPartId || null,
+      actionSource: bridge?.jointAction?.source || null,
+      resultTrackCount: result?.partTracks?.length || 0,
+      reason: result ? "generated" : "planner-returned-empty",
+    });
     return result ? applyMotionPlanResult(bridge, plan, result) : null;
   }
 
@@ -173,6 +209,14 @@
 
   function projectAssets() {
     return state.project?.assets || null;
+  }
+
+  function recordRegenerationDebug(entry) {
+    state.motionRegenerationDebug = {
+      atFrame: state.currentFrame || null,
+      ...entry,
+    };
+    return state.motionRegenerationDebug;
   }
 
   Animotion.motionCommands = {

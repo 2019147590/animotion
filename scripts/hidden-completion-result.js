@@ -22,8 +22,10 @@
     const patch = patchAsset(project, patchAssetId);
     const normalized = normalizeProviderResult(result, options);
     const generatedAsset = generatedAssetFromResult(patch, normalized, options);
+    const readyPatch = readyPatchAsset(patch, generatedAsset.id, normalized, options);
     project.assets = upsertAsset(project.assets, generatedAsset);
-    project.assets = upsertAsset(project.assets, readyPatchAsset(patch, generatedAsset.id, normalized, options));
+    project.assets = upsertAsset(project.assets, readyPatch);
+    if (Animotion.state?.project === project) Animotion.hiddenCompletionSupplementalPart?.syncPartForPatch?.(readyPatch, Animotion.state);
     return { project, patchAssetId: patch.id, generatedAssetId: generatedAsset.id, result: normalized };
   }
 

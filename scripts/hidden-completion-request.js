@@ -9,6 +9,9 @@
     validateOptions(options);
     const asset = validatedPatchAsset(project, patchAssetId);
     const rawAsset = findRawAsset(project, patchAssetId);
+    const sourcePart = sourcePartFor(project, asset.sourcePartId);
+    const imageBounds = project?.canvas || null;
+    const coverageAsset = Animotion.hiddenCompletionCoverageBounds?.withRequiredCoverageBounds?.(asset, sourcePart, { imageBounds }) || asset;
     const warnings = guideWarnings(rawAsset);
     if (options.strictMode && warnings.length) throw new Error(warnings[0]);
     return {
@@ -17,10 +20,11 @@
       promptVersion: stringOrNull(options.promptVersion),
       patchAssetId: asset.id,
       sourcePartId: asset.sourcePartId,
-      sourceRectNormalized: asset.sourceRectNormalized,
-      maskVerticesNormalized: asset.maskVerticesNormalized,
-      guide: requestGuide(asset, rawAsset),
-      patchTransform: asset.patchTransform,
+      sourceRectNormalized: coverageAsset.sourceRectNormalized,
+      sourcePartRectNormalized: Animotion.hiddenCompletionCoverageBounds?.sourcePartRectNormalized?.(sourcePart, { imageBounds }) || null,
+      maskVerticesNormalized: coverageAsset.maskVerticesNormalized,
+      guide: requestGuide(coverageAsset, rawAsset),
+      patchTransform: coverageAsset.patchTransform,
       intent: requestIntent(),
       provenance: requestProvenance(),
       warnings: options.includeWarnings === false ? [] : warnings,
@@ -49,6 +53,11 @@
     const id = stringOrNull(patchAssetId);
     if (!id || !Array.isArray(project?.assets)) return null;
     return project.assets.find((asset) => asset?.id === id) || null;
+  }
+
+  function sourcePartFor(project, sourcePartId) {
+    if (!sourcePartId || !Array.isArray(project?.parts)) return null;
+    return project.parts.find((part) => part?.id === sourcePartId) || null;
   }
 
   function requestGuide(asset, rawAsset) {

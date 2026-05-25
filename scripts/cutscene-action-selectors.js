@@ -81,6 +81,7 @@
       previewDrag: null,
       previewDrawSequenceDebug: null,
       motionEvaluationDebug: null,
+      motionRegenerationDebug: null,
       renderedPointDebug: [],
       armHandleAutoPlaceStatus: null,
       motionPlan: defaultMotionPlan(),

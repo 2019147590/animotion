@@ -11,6 +11,8 @@ function loadAnimotion() {
   const context = { window: { Animotion: {} }, Blob, FormData, Uint8Array, Buffer };
   vm.createContext(context);
   for (const path of [
+    "scripts/coordinate-spaces.js",
+    "scripts/hidden-completion-coverage-bounds.js",
     "scripts/hidden-completion-assets.js",
     "scripts/hidden-completion-request.js",
     "scripts/hidden-completion-prompt.js",

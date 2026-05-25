@@ -34,6 +34,7 @@ function loadAnimotion() {
     "scripts/impact-exaggeration-layer.js",
     "scripts/render-layer-utils.js",
     "scripts/render-order-debug.js",
+    "scripts/hidden-completion-diagnostics.js",
     "scripts/arm-chain-resolver.js",
     "scripts/cutscene-depth.js",
     "scripts/timeline.js",
@@ -202,6 +203,165 @@ test("cutscene status separates replacement render and source erase failures", (
   assert.equal(Animotion.cutsceneMotionStatus.debugText(status).includes("sourceEraseWithoutReplacement=yes"), true);
 });
 
+test("diagnostic layers classify generated punch evidence without mutating loaded action", () => {
+  const Animotion = loadAnimotion();
+  const punchParts = rearArmOnlyParts();
+  const bridge = Animotion.cutsceneModel.normalizeBridge({ primaryPartId: "arm_01", impactFrame: 24, durationFrames: 36, effectDirection: { x: 1, y: 0 } });
+  const plan = Animotion.motionPlanner.createPlan(punchParts, "arm_01", bridge, { template: "punch", target: { x: 160, y: 30 } });
+  for (const track of plan.partTracks) punchParts.find((part) => part.id === track.partId).keyframes = track.keyframes;
+  const loaded = { ...bridge, jointAction: plan.jointAction };
+  const saved = JSON.stringify(loaded);
+  const previewDrawSequence = {
+    sequence: [
+      { index: 0, kind: "panel", pass: "source-panel", sourcePanelMode: "runtime-part-erased", erasedPartIds: ["arm_01"] },
+      { index: 1, kind: "part", pass: "main-part", partId: "head", drawPath: "normal-part", likelyCoveringLayer: true, bounds: { x: 38, y: 4, w: 24, h: 20 } },
+      { index: 2, kind: "part", pass: "main-part", partId: "arm_01", drawPath: "motion-replacement", replacementRenderOk: true, skippedNormalArmDraw: true, bounds: { x: 16, y: 28, w: 36, h: 36 } },
+    ],
+  };
+
+  const status = Animotion.cutsceneMotionStatus.statusForBridge(loaded, {
+    parts: punchParts,
+    currentFrame: 24,
+    selectedPartId: "arm_01",
+    motionTemplate: "cutscene",
+    previewDrawSequence,
+    regenerationDebug: { attempted: true, generated: true, partId: "arm_01", reason: "generated" },
+  });
+  const layers = Object.fromEntries(status.runtime.diagnosticLayers.map((entry) => [entry.name, entry]));
+
+  assert.equal(layers["saved state / loaded JSON"].status, "pass");
+  assert.equal(layers["regeneration command"].status, "pass");
+  assert.equal(layers["planner / role classification"].status, "pass");
+  assert.equal(layers["keyframe generation"].status, "pass");
+  assert.equal(layers["preview evaluation"].status, "pass");
+  assert.equal(layers["render order"].status, "pass");
+  assert.equal(layers["canvas/source erase/compositing"].status, "pass");
+  assert.equal(layers.hiddenCompletion.status, "unknown");
+  assert.equal(layers["UI/debug display"].status, "pass");
+  assert.equal(Animotion.cutsceneMotionStatus.debugText(status).includes("layers=saved state / loaded JSON:pass"), true);
+  assert.equal(JSON.stringify(loaded), saved);
+});
+
+test("hidden-completion diagnostic records draw identity and does not treat draw presence as coverage success", () => {
+  const Animotion = loadAnimotion();
+  const punchParts = hiddenCompletionParts();
+  const bridge = hiddenCompletionBridge();
+  const asset = hiddenCompletionAsset();
+  const previewDrawSequence = {
+    sequence: [
+      { index: 0, kind: "panel", pass: "source-panel", sourcePanelMode: "runtime-part-erased", erasedPartIds: ["rear_forearm"] },
+      { index: 1, kind: "part", pass: "hidden-completion-patch", partId: "rear_forearm", drawPath: "hidden-completion-symmetry", hiddenCompletionPatchId: "hidden-rear-forearm", completionMethod: "symmetry", counterpartPartId: "front_forearm", bounds: { x: 20, y: 30, w: 30, h: 40 } },
+      { index: 2, kind: "part", pass: "main-part", partId: "rear_forearm", drawPath: "normal-part", bounds: { x: 20, y: 30, w: 30, h: 40 } },
+      { index: 3, kind: "part", pass: "main-part", partId: "front_forearm", drawPath: "normal-part", bounds: { x: 72, y: 30, w: 30, h: 40 } },
+    ],
+  };
+
+  const status = Animotion.cutsceneMotionStatus.statusForBridge(bridge, { parts: punchParts, assets: [asset], imageBounds: { width: 160, height: 120 }, currentFrame: 24, selectedPartId: "rear_glove", motionTemplate: "cutscene", previewDrawSequence });
+  const hidden = status.runtime.hiddenCompletion;
+  const item = hidden.items[0];
+
+  assert.equal(hidden.status, "warning");
+  assert.equal(item.assetId, "hidden-rear-forearm");
+  assert.equal(item.sourcePartId, "rear_forearm");
+  assert.equal(item.counterpartPartId, "front_forearm");
+  assert.equal(item.drawPath, "hidden-completion-symmetry");
+  assert.equal(item.drawIndex, 1);
+  assert.equal(item.warnings.includes("effective-visible-pixels-unknown"), true);
+  assert.equal(item.status, "warning");
+  assert.equal(status.runtime.diagnosticLayers.find((layer) => layer.name === "hiddenCompletion").status, "warning");
+});
+
+test("hidden-completion diagnostic warns when mask exceeds asset source rect or visible pixels are too small", () => {
+  const Animotion = loadAnimotion();
+  const punchParts = hiddenCompletionParts();
+  punchParts.find((part) => part.id === "front_forearm").canvas = { width: 100, height: 100, __opaqueBounds: { x: 46, y: 46, w: 8, h: 8 } };
+  const bridge = hiddenCompletionBridge();
+  const asset = {
+    ...hiddenCompletionAsset(),
+    sourceRectNormalized: { xNorm: 0.15, yNorm: 0.25, wNorm: 0.05, hNorm: 0.05 },
+    maskVerticesNormalized: [
+      { xNorm: -0.1, yNorm: 0.1 },
+      { xNorm: 1.1, yNorm: 0.1 },
+      { xNorm: 1.1, yNorm: 0.9 },
+      { xNorm: -0.1, yNorm: 0.9 },
+    ],
+  };
+  const previewDrawSequence = {
+    sequence: [
+      { index: 0, kind: "panel", pass: "source-panel", sourcePanelMode: "runtime-part-erased", erasedPartIds: ["rear_forearm"] },
+      { index: 1, kind: "part", pass: "hidden-completion-patch", partId: "rear_forearm", drawPath: "hidden-completion-symmetry", hiddenCompletionPatchId: "hidden-rear-forearm", completionMethod: "symmetry", counterpartPartId: "front_forearm", bounds: { x: 20, y: 30, w: 30, h: 40 } },
+    ],
+  };
+
+  const status = Animotion.cutsceneMotionStatus.statusForBridge(bridge, { parts: punchParts, assets: [asset], imageBounds: { width: 160, height: 120 }, currentFrame: 24, selectedPartId: "rear_glove", motionTemplate: "cutscene", previewDrawSequence });
+  const item = status.runtime.hiddenCompletion.items[0];
+
+  assert.equal(status.runtime.hiddenCompletion.status, "warning");
+  assert.equal(item.maskBoundsExceedAssetOrSourceRect, true);
+  assert.equal(item.assetCanvasClippedOrTooSmall, true);
+  assert.equal(item.warnings.includes("mask-bounds-exceed-asset-or-source-rect"), true);
+  assert.equal(item.warnings.includes("asset-canvas-clipped-or-too-small"), true);
+});
+
+test("hidden-completion diagnostic reports post-hidden source occlusion separately from coverage", () => {
+  const Animotion = loadAnimotion();
+  const punchParts = hiddenCompletionParts();
+  punchParts.find((part) => part.id === "front_forearm").canvas = { width: 100, height: 100, __opaqueBounds: { x: 0, y: 0, w: 100, h: 100 } };
+  const previewDrawSequence = {
+    sequence: [
+      { index: 0, kind: "panel", pass: "source-panel", sourcePanelMode: "runtime-part-erased", erasedPartIds: ["rear_forearm"] },
+      { index: 1, kind: "part", pass: "main-part", partId: "front_forearm", drawPath: "normal-part", bounds: { x: 72, y: 30, w: 30, h: 40 } },
+      { index: 2, kind: "part", pass: "hidden-completion-patch", partId: "rear_forearm", drawPath: "hidden-completion-symmetry", hiddenCompletionPatchId: "hidden-rear-forearm", completionMethod: "symmetry", counterpartPartId: "front_forearm", bounds: { x: 20, y: 30, w: 30, h: 40 } },
+      { index: 3, kind: "part", pass: "main-part", partId: "rear_forearm", drawPath: "normal-part", bounds: { x: 20, y: 30, w: 30, h: 40 } },
+    ],
+  };
+
+  const status = Animotion.cutsceneMotionStatus.statusForBridge(hiddenCompletionBridge(), { parts: punchParts, assets: [hiddenCompletionAsset()], imageBounds: { width: 160, height: 120 }, currentFrame: 24, selectedPartId: "rear_glove", motionTemplate: "cutscene", previewDrawSequence });
+  const item = status.runtime.hiddenCompletion.items[0];
+
+  assert.equal(item.maskBoundsExceedAssetOrSourceRect, false);
+  assert.equal(item.assetCanvasClippedOrTooSmall, false);
+  assert.equal(item.postHiddenOcclusion.coverageAfterSourceDraw, "likely-occluded-by-source-bounds");
+  assert.equal(item.postHiddenOcclusion.sourceDrawIndex, 3);
+  assert.equal(item.postHiddenOcclusion.sourceOverlapRatio > 0.9, true);
+  assert.equal(item.warnings.includes("hidden-completion-coverage-may-be-occluded-by-source-part"), true);
+});
+
+test("hidden-completion diagnostic does not report source occlusion when completion draws after source", () => {
+  const Animotion = loadAnimotion();
+  const punchParts = hiddenCompletionParts();
+  punchParts.find((part) => part.id === "front_forearm").canvas = { width: 100, height: 100, __opaqueBounds: { x: 0, y: 0, w: 100, h: 100 } };
+  const previewDrawSequence = {
+    sequence: [
+      { index: 0, kind: "panel", pass: "source-panel", sourcePanelMode: "runtime-part-erased", erasedPartIds: ["rear_forearm"] },
+      { index: 1, kind: "part", pass: "main-part", partId: "rear_forearm", drawPath: "normal-part", bounds: { x: 20, y: 30, w: 30, h: 40 } },
+      { index: 2, kind: "part", pass: "main-part", partId: "front_forearm", drawPath: "normal-part", bounds: { x: 72, y: 30, w: 30, h: 40 } },
+      { index: 3, kind: "part", pass: "hidden-completion-patch", partId: "rear_forearm", drawPath: "hidden-completion-symmetry", hiddenCompletionPatchId: "hidden-rear-forearm", completionMethod: "symmetry", counterpartPartId: "front_forearm", bounds: { x: 20, y: 30, w: 30, h: 40 } },
+    ],
+  };
+
+  const status = Animotion.cutsceneMotionStatus.statusForBridge(hiddenCompletionBridge(), { parts: punchParts, assets: [hiddenCompletionAsset()], imageBounds: { width: 160, height: 120 }, currentFrame: 24, selectedPartId: "rear_glove", motionTemplate: "cutscene", previewDrawSequence });
+  const item = status.runtime.hiddenCompletion.items[0];
+
+  assert.equal(item.postHiddenOcclusion.sourceOverlapRatio, 0);
+  assert.equal(item.postHiddenOcclusion.coverageAfterSourceDraw, "not-occluded-by-source-bounds");
+  assert.equal(item.warnings.includes("hidden-completion-coverage-may-be-occluded-by-source-part"), false);
+});
+
+test("non-hidden-completion actions remain unaffected by hidden diagnostic layer", () => {
+  const Animotion = loadAnimotion();
+  const status = Animotion.cutsceneMotionStatus.statusForBridge({ jointAction: { beats: [{ id: "arrive", at: 12, pose: { chest: [1, 2] } }] } }, { previewDrawSequence: { sequence: [{ index: 0, kind: "part", partId: "body", drawPath: "normal-part" }] } });
+  assert.equal(status.active, false);
+  assert.equal(status.runtime, undefined);
+});
+
+test("hidden-completion diagnostics are not persisted into project serialization", () => {
+  const serialization = fs.readFileSync("scripts/project-serialization.js", "utf8");
+  assert.equal(serialization.includes("hiddenCompletionDiagnostics"), false);
+  assert.equal(serialization.includes("diagnosticLayers"), false);
+  assert.equal(serialization.includes("hiddenCompletionCoverage"), false);
+});
+
 test("generated rear-cross target evidence shows the fixed target outside head face bounds", () => {
   const Animotion = loadAnimotion();
   const punchParts = videoLikeRearCrossParts();
@@ -343,6 +503,7 @@ test("cutscene status is inactive for non punch kick actions", () => {
   const Animotion = loadAnimotion();
   const status = Animotion.cutsceneMotionStatus.statusForBridge({ jointAction: { beats: [{ id: "arrive", at: 12, pose: { chest: [1, 2] } }] } });
   assert.equal(status.active, false);
+  assert.equal(status.runtime, undefined);
 });
 
 test("cutscene status is inactive for a new image session without a bridge", () => {
@@ -362,6 +523,7 @@ test("app shell exposes punch kick motion status in the motion UI", () => {
   assert.equal(html.includes('id="cutsceneMotionStatus"'), true);
   assert.equal(config.includes("cutsceneMotionStatus"), true);
   assert.equal(ui.includes("renderCutsceneMotionStatus"), true);
+  assert.equal(bootstrap.indexOf('"hidden-completion-diagnostics"') < bootstrap.indexOf('"cutscene-motion-status"'), true);
   assert.equal(bootstrap.indexOf('"cutscene-motion-status"') < bootstrap.indexOf('"ui"'), true);
 });
 
@@ -372,4 +534,58 @@ function parts() {
     { id: "arm", type: "arm", humanRole: "forearm", rect: { x: 64, y: 28, w: 18, h: 32 }, pivot: { x: 2, y: 6 }, joint: { x: 16, y: 24 } },
     { id: "leg", type: "leg", humanRole: "shin", rect: { x: 67, y: 60, w: 18, h: 45 }, pivot: { x: 2, y: 6 }, joint: { x: 16, y: 40 } },
   ];
+}
+
+function hiddenCompletionParts() {
+  return [
+    { id: "body", type: "body", humanRole: "torso", order: 1, rect: { x: 55, y: 20, w: 30, h: 70 }, pivot: { x: 15, y: 18 }, joint: { x: 15, y: 56 } },
+    { id: "rear_forearm", type: "arm", humanRole: "forearm", parentId: "body", order: 2, rect: { x: 20, y: 30, w: 30, h: 40 }, pivot: { x: 24, y: 6 }, joint: { x: 8, y: 26 } },
+    { id: "rear_glove", type: "glove", humanRole: "hand", parentId: "rear_forearm", order: 3, rect: { x: 40, y: 44, w: 16, h: 16 }, pivot: { x: 8, y: 8 }, joint: { x: 8, y: 8 } },
+    { id: "front_forearm", type: "arm", humanRole: "forearm", parentId: "body", order: 4, rect: { x: 72, y: 30, w: 30, h: 40 }, pivot: { x: 6, y: 6 }, joint: { x: 22, y: 26 } },
+  ];
+}
+
+function hiddenCompletionBridge() {
+  return {
+    primaryPartId: "rear_glove",
+    impactFrame: 24,
+    durationFrames: 36,
+    jointAction: {
+      source: "motion-planner-punch-anchors-v1",
+      focusKey: "lHand",
+      actionTimeline: { template: "punch" },
+      targetDebug: {
+        punchStyle: "rear-cross",
+        selectedPartId: "rear_forearm",
+        terminalPunchPartId: "rear_glove",
+        hiddenCompletionCandidate: true,
+      },
+      beats: [{ id: "drive", at: 8 }, { id: "impact", at: 24, pose: { lHand: [120, 45] } }],
+    },
+  };
+}
+
+function hiddenCompletionAsset() {
+  return {
+    id: "hidden-rear-forearm",
+    type: "hiddenCompletionPatch",
+    sourcePartId: "rear_forearm",
+    completionMethod: "symmetry",
+    sourceRectNormalized: { xNorm: 0.125, yNorm: 0.25, wNorm: 0.1875, hNorm: 0.333333 },
+    maskVerticesNormalized: [
+      { xNorm: 0.1, yNorm: 0.1 },
+      { xNorm: 0.9, yNorm: 0.1 },
+      { xNorm: 0.9, yNorm: 0.9 },
+      { xNorm: 0.1, yNorm: 0.9 },
+    ],
+    guide: {
+      silhouetteVerticesNormalized: [
+        { xNorm: 0.1, yNorm: 0.1 },
+        { xNorm: 0.9, yNorm: 0.1 },
+        { xNorm: 0.9, yNorm: 0.9 },
+        { xNorm: 0.1, yNorm: 0.9 },
+      ],
+    },
+    symmetrySource: { method: "symmetry", counterpartPartId: "front_forearm", targetPartId: "rear_forearm", confidence: 0.8 },
+  };
 }

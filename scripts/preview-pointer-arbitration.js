@@ -73,6 +73,7 @@
   function activeModeTargets(event) {
     return [
       activeTarget("hiddenCompletionGuideEditor", "hidden completion guide", event),
+      activeTarget("hiddenCompletionSupplementalWarpEditor", "supplemental warp point", event),
       activeTarget("correspondenceEditor", "B cut reference picker", event),
       activeTarget("motionAnchorPicker", "motion anchor picker", event),
       activeTarget("motionPlanner", "motion target picker", event),

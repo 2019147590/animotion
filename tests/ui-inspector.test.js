@@ -63,6 +63,7 @@ function fakeElements() {
     "handTipX", "handTipY", "editOrder", "editAlpha", "editHidden", "motionX", "motionY", "motionRotate", "motionScaleY", "motionJointX",
     "motionJointY", "motionPhase", "editParent", "motionTemplate", "selectionTool", "sourcePanelX", "sourcePanelY",
     "sourcePanelScale", "impactPanelX", "impactPanelY", "impactPanelScale", "impactReferenceOpacity",
+    "supplementalPartEditor", "supplementalPartX", "supplementalPartY", "supplementalPartW", "supplementalPartH", "supplementalMaskScale",
   ];
   return Object.fromEntries(keys.map((key) => [key, key === "editParent" ? fakeSelect() : fakeElement(key)]));
 }
@@ -180,6 +181,23 @@ test("inspector exposes auto-place arm handles for selected separate chain", () 
 
   assert.equal(Animotion.dom.els.autoPlaceArmHandles.disabled, false);
   assert.match(Animotion.dom.els.autoPlaceArmHandlesStatus.textContent, /Auto place arm handles/);
+});
+
+test("inspector shows supplemental part transform controls only for supplemental parts", () => {
+  const Animotion = loadAnimotion();
+  const head = Animotion.state.parts.find((item) => item.id === "head");
+  Object.assign(head, { isSupplementalPart: true, supplementalMaskScale: 1.12 });
+
+  Animotion.ui.refreshUi();
+
+  assert.equal(Animotion.dom.els.supplementalPartEditor.classList.lastToggle.force, false);
+  assert.equal(Animotion.dom.els.supplementalPartX.value, 0);
+  assert.equal(Animotion.dom.els.supplementalPartW.value, 20);
+  assert.equal(Animotion.dom.els.supplementalMaskScale.value, 1.12);
+
+  delete head.isSupplementalPart;
+  Animotion.ui.refreshUi();
+  assert.equal(Animotion.dom.els.supplementalPartEditor.classList.lastToggle.force, true);
 });
 
 test("inspector parent options exclude descendants through parentPartId fallback", () => {

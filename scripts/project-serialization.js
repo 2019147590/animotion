@@ -26,13 +26,17 @@
   }
 
   function editorPartForSave(part) {
-    const next = { ...part };
+    const next = { ...part, ...supplementalCanvasSnapshot(part) };
     delete next.sourceRectNormalized;
     delete next.pivotNormalized;
     delete next.jointNormalized;
     delete next.handTipNormalized;
     delete next.maskVerticesNormalized;
     return next;
+  }
+
+  function supplementalCanvasSnapshot(part) {
+    return Animotion.hiddenCompletionSupplementalProject?.snapshotFieldsForPart?.(part) || {};
   }
 
   function canvasFromState(state, options) {

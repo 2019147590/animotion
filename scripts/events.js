@@ -266,6 +266,7 @@
     els.editOrder.addEventListener("input", () => update({ order: Number(els.editOrder.value) }));
     els.editAlpha.addEventListener("input", () => update({ alpha: Number(els.editAlpha.value) }));
     els.editHidden.addEventListener("change", () => update({ hidden: els.editHidden.checked }));
+    bindSupplementalPartEvents();
     els.motionX.addEventListener("input", () => updateMotion("x", els.motionX.value));
     els.motionY.addEventListener("input", () => updateMotion("y", els.motionY.value));
     els.motionRotate.addEventListener("input", () => updateMotion("rotate", els.motionRotate.value));
@@ -277,8 +278,25 @@
     els.deletePart.addEventListener("click", deleteSelectedPart);
   }
 
+  function bindSupplementalPartEvents() {
+    const fields = [
+      [els.supplementalPartX, "x"],
+      [els.supplementalPartY, "y"],
+      [els.supplementalPartW, "w"],
+      [els.supplementalPartH, "h"],
+      [els.supplementalMaskScale, "maskScale"],
+    ];
+    for (const [element, key] of fields) element?.addEventListener("input", () => updateSupplementalPart(key, element.value));
+  }
+
   function updateSelectedPart(patch) {
     if (Animotion.partCommands.updateSelectedPart(patch)) Animotion.ui.refreshUi();
+  }
+
+  function updateSupplementalPart(key, value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return;
+    if (Animotion.partCommands.transformSelectedSupplementalPart({ [key]: number })) Animotion.ui.refreshUi();
   }
 
   function updatePoint(pointKey, axis, ratio) {

@@ -70,6 +70,7 @@ Allowed request builder options:
 ## Coordinate Spaces
 
 - `sourceRectNormalized`: source image normalized rect. `xNorm/yNorm/wNorm/hNorm` are relative to the full source image.
+- `sourcePartRectNormalized`: source image normalized rect for the original source part. This lets adapters map source-part-local mask and guide coordinates into an expanded source crop.
 - `maskVerticesNormalized`: source part local normalized vertices. `xNorm: 0` is the source part left edge, `xNorm: 1` is the right edge, `yNorm: 0` is the top edge, and `yNorm: 1` is the bottom edge.
 - `guide.meshVerticesNormalized`: source part local normalized vertices. Values outside `0..1` are valid and must not be clamped.
 - `guide.silhouetteVerticesNormalized`: source part local normalized vertices. Values outside `0..1` are valid and must not be clamped.

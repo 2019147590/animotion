@@ -177,7 +177,7 @@
     if (symmetryWarning) return symmetryWarning;
     if (!asset) return helpers.isTorsoPart(part)
       ? `${part.name || part.id} 몸통의 왼쪽/오른쪽 보완 영역을 고른 뒤 대칭 초안을 만듭니다.`
-      : `${part.name || part.id} 기준 guide/mask 패치를 만들거나 기존 패치를 연결합니다.`;
+      : `${part.name || part.id} 기준 보완 데이터를 만들거나 기존 데이터를 연결합니다.`;
     return `${asset.name || asset.id} 연결됨 · ${asset.renderMode || "guideOnly"}`;
   }
 
@@ -213,11 +213,11 @@
       </label>
       <button id="createHiddenCompletionSymmetryDraft" type="button">대칭 보완 초안 만들기</button>
       <label>
-        기존 보완 패치
+        기존 보완 데이터
         <select id="hiddenCompletionPatchSelect"></select>
       </label>
       <div class="button-row">
-        <button id="linkHiddenCompletionPatch" type="button">선택 패치 연결</button>
+        <button id="linkHiddenCompletionPatch" type="button">선택 데이터 연결</button>
         <button id="unlinkHiddenCompletionPatch" type="button">연결 해제</button>
       </div>
       <p id="hiddenCompletionPartStatus" class="hint"></p>
@@ -264,7 +264,7 @@
   function emptyOption(count) {
     const option = document.createElement("option");
     option.value = "";
-    option.textContent = count ? "패치를 선택하세요" : "이 파츠의 보완 패치 없음";
+    option.textContent = count ? "보완 데이터를 선택하세요" : "이 파츠의 보완 데이터 없음";
     return option;
   }
   function optionForAsset(asset) {
@@ -282,6 +282,7 @@
     const assets = Array.isArray(project.assets) ? project.assets : [];
     const index = assets.findIndex((candidate) => candidate.id === asset.id);
     project.assets = index >= 0 ? assets.map((candidate, i) => i === index ? asset : candidate) : [...assets, asset];
+    Animotion.hiddenCompletionSupplementalPart?.syncPartForPatch?.(asset, Animotion.state);
   }
   function uniqueAssetId(base) {
     const ids = new Set((Animotion.state.project?.assets || []).map((asset) => asset.id));

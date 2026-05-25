@@ -13,6 +13,8 @@ import type {
  *
  * Coordinate contract:
  * - sourceRectNormalized is normalized against the full source image.
+ * - sourcePartRectNormalized is the original source part rect, used to map
+ *   source-part-local coordinates into an expanded sourceRectNormalized crop.
  * - maskVerticesNormalized, guide.meshVerticesNormalized,
  *   guide.silhouetteVerticesNormalized, and patchTransform.translationNormalized
  *   are source-part-local normalized coordinates.
@@ -26,6 +28,7 @@ export type HiddenCompletionRequestPayload = {
   patchAssetId: string;
   sourcePartId: string;
   sourceRectNormalized: NormalizedImageRect | null;
+  sourcePartRectNormalized: NormalizedImageRect | null;
   maskVerticesNormalized: NormalizedLocalPoint[];
   guide: Pick<HiddenCompletionMeshGuide, "meshVerticesNormalized" | "meshFaces" | "silhouetteVerticesNormalized">;
   patchTransform: HiddenCompletionPatchTransform;

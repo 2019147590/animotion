@@ -55,8 +55,17 @@
 
   function guideForTarget(part, candidate, options) {
     if (options.activeAsset?.guide) return clone(options.activeAsset.guide);
-    if (partRole(part) !== "torso") return Animotion.hiddenCompletionAssets?.defaultGuideForPart?.(part);
-    return halfGuide(candidate.targetRegion);
+    return guideForSymmetryTargetPart(part, candidate);
+  }
+
+  function guideForSymmetryTargetPart(part, candidate) {
+    const role = partRole(part);
+    if (role === "torso") return halfGuide(candidate.targetRegion);
+    const fallback = Animotion.hiddenCompletionAssets?.defaultGuideForPart?.(part);
+    if (role === "upperArm" && candidate?.targetRegion && maskGuideIsConstrained(fallback)) {
+      return upperArmSideGuide(candidate.targetRegion);
+    }
+    return fallback;
   }
 
   function halfGuide(region) {
@@ -70,6 +79,29 @@
       guideStrength: 1,
       coordinateSpace: "part-local-normalized",
     };
+  }
+
+  function upperArmSideGuide(region) {
+    const front = region === "front" || region === "right";
+    const left = front ? -0.05 : -0.35;
+    const right = front ? 1.35 : 1.05;
+    return {
+      kind: "meshGuide",
+      meshVerticesNormalized: [point(left, -0.12), point(right, -0.12), point(right, 1.12), point(left, 1.12)],
+      meshFaces: [[0, 1, 2], [0, 2, 3]],
+      silhouetteVerticesNormalized: [point(left, -0.12), point(right, -0.12), point(right, 1.12), point(left, 1.12)],
+      guideStrength: 1,
+      coordinateSpace: "part-local-normalized",
+    };
+  }
+
+  function maskGuideIsConstrained(guide) {
+    const points = guide?.silhouetteVerticesNormalized || [];
+    return points.length > 0 && points.every((candidate) => {
+      const x = Number(candidate.xNorm ?? candidate.x ?? 0);
+      const y = Number(candidate.yNorm ?? candidate.y ?? 0);
+      return x >= 0 && x <= 1 && y >= 0 && y <= 1;
+    });
   }
 
   function regionFromGuide(guide) {

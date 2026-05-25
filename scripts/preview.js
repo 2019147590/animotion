@@ -44,6 +44,8 @@
     recordDraw({ kind: "overlay", pass: "motion-planner-overlay" });
     Animotion.hiddenCompletionGuideEditor?.drawOverlay?.(previewCtx, view);
     recordDraw({ kind: "overlay", pass: "hidden-completion-overlay" });
+    Animotion.hiddenCompletionSupplementalWarpEditor?.drawOverlay?.(previewCtx, view);
+    recordDraw({ kind: "overlay", pass: "hidden-completion-warp-overlay" });
     previewCtx.restore();
   }
   function drawBackground(view, w, h, cutscene) {
@@ -125,24 +127,26 @@
     const t = state.running ? (now - state.startTime) / 1000 : state.pausedTime;
     syncTimelineFrame(t);
     const matrixCache = new Map();
+    const drawnSupplementalIds = new Set();
+    const drawnHiddenCompletionAssetIds = new Set();
+    const ordered = orderedPartsForFrame(t, cutscene);
+    const hiddenFillRequests = hiddenCompletionFillRequests(cutscene);
     previewCtx.save();
     Animotion.previewTransform.applySourceFrame(previewCtx, view, state.previewSourceFrame, state.previewSourceTransform);
-    drawHiddenCompletionPatches(t, matrixCache);
-    for (const part of orderedPartsForFrame(t, cutscene)) {
-      if (!part.hidden) drawPart(part, t, matrixCache, view, 1, cutscene);
+    for (const part of ordered) {
+      drawDueHiddenCompletionFillsBefore(part, t, matrixCache, view, 1, cutscene, "main-part", hiddenFillRequests, drawnHiddenCompletionAssetIds, drawnSupplementalIds);
+      if (part.hidden || isSupplementalPart(part)) continue;
+      drawDueSupplementalsBefore(part, t, matrixCache, view, 1, cutscene, "main-part", drawnSupplementalIds, hiddenFillRequests);
+      drawPart(part, t, matrixCache, view, 1, cutscene, null, { drawnSupplementalIds, hiddenFillRequests });
     }
+    drawRemainingHiddenCompletionFills(t, matrixCache, view, 1, cutscene, "main-part", hiddenFillRequests, drawnHiddenCompletionAssetIds, drawnSupplementalIds);
     previewCtx.restore();
     state.motionEvaluationDebug = cutscene?.active
       ? Animotion.characterRootMotion?.evaluationDebug?.(state.parts, state.currentFrame, cutscene.bridge)
       : null;
     return matrixCache;
   }
-  function drawHiddenCompletionPatches(t, matrixCache) {
-    for (const part of state.parts) {
-      if (!part.hidden) drawHiddenCompletionPatch(part, t, matrixCache);
-    }
-  }
-  function drawHiddenCompletionPatch(part, t, matrixCache) {
+  function drawHiddenCompletionPatch(part, t, matrixCache, request = null) {
     const result = Animotion.hiddenCompletionRender?.drawForPart?.(previewCtx, part, { state, parts: state.parts, t, matrixCache, worldMatrix });
     if (!result) return;
     recordPartDraw(part, result.ok ? "hidden-completion-symmetry" : "hidden-completion-symmetry-failed", "hidden-completion-patch", result.drawnBounds, {
@@ -151,7 +155,9 @@
       counterpartPartId: result.counterpartPartId || null,
       hiddenCompletionRenderFailure: result.ok === false,
       hiddenCompletionRenderReason: result.reason || null,
+      ...hiddenFillDebug(request),
     });
+    return result;
   }
   function drawGhostParts(view, now, cutscene) {
     if (!state.running) return;
@@ -165,7 +171,7 @@
     if (t < 0) return;
     const matrixCache = new Map();
     for (const part of orderedPartsForFrame(t, cutscene)) {
-      if (!part.hidden) drawPart(part, t, matrixCache, state.previewView, alpha, cutscene);
+      if (!part.hidden && !isSupplementalPart(part)) drawPart(part, t, matrixCache, state.previewView, alpha, cutscene);
     }
   }
   function syncTimelineFrame(t) {
@@ -174,8 +180,9 @@
     els.currentFrame.value = String(state.currentFrame);
     els.frameLabel.textContent = String(state.currentFrame);
   }
-  function drawPart(part, t, matrixCache, view, alpha = 1, cutscene = null, pass = null) {
+  function drawPart(part, t, matrixCache, view, alpha = 1, cutscene = null, pass = null, options = {}) {
     const drawPass = pass || (alpha === 1 ? "main-part" : "ghost-part");
+    const drawSupplementals = options.drawSupplementals !== false;
     const frame = state.running ? currentMotionFrame(t) : state.currentFrame;
     const context = { parts: state.parts, bridge: cutscene?.bridge, frame, selectedPartId: state.selectedPartId };
     const replacementPlan = Animotion.motionReplacementLayer?.planForPart?.(part, context);
@@ -191,6 +198,7 @@
         skippedNormalArmDraw: true,
         replacementRenderResult: compactReplacementResult(replacement),
       });
+      if (drawSupplementals) drawSupplementalPartsForSource(part, t, matrixCache, view, alpha, cutscene, drawPass, null, options.drawnSupplementalIds, options.hiddenFillRequests);
       return;
     }
     if (replacement && replacement.ok === false) {
@@ -208,6 +216,7 @@
     if (segmented?.ok) {
       const drawPath = segmented.renderMode === "action-pose-patch" ? "action-pose-patch" : "segmented-arm";
       recordPartDraw(part, drawPath, drawPass, segmented.drawnBounds || Animotion.renderOrderDebug?.boundsFromControls?.(hint.controls), { handTipSource: hint.handTipSource, punchStyleSource: hint.punchStyleSource, legacyDepthCompat: hint.legacyDepthCompat, segmentedRenderResult: compactSegmentedResult(segmented) });
+      if (drawSupplementals) drawSupplementalPartsForSource(part, t, matrixCache, view, alpha, cutscene, drawPass, null, options.drawnSupplementalIds, options.hiddenFillRequests);
       return;
     }
     if (segmented && segmented.ok === false) recordPartDraw(part, "segmented-arm-failed", drawPass, segmented.drawnBounds || Animotion.renderOrderDebug?.boundsFromControls?.(hint.controls), { handTipSource: hint.handTipSource, punchStyleSource: hint.punchStyleSource, legacyDepthCompat: hint.legacyDepthCompat, segmentedRenderFailure: true, segmentedRenderReason: segmented.reason, segmentedRenderResult: compactSegmentedResult(segmented) });
@@ -217,6 +226,7 @@
     previewCtx.globalAlpha = part.alpha * alpha;
     previewCtx.drawImage(part.canvas, part.rect.x, part.rect.y, part.rect.w, part.rect.h);
     recordPartDraw(part, "normal-part", drawPass, Animotion.renderOrderDebug?.boundsFromMatrix?.(part, matrix), { fallbackForSegmentedRender: Boolean(segmented && segmented.ok === false), segmentedRenderReason: segmented?.reason || null, fallbackToNormalArm: Boolean(replacement && replacement.ok === false), replacementRenderReason: replacement?.reason || null });
+    if (drawSupplementals) drawSupplementalPartsForSource(part, t, matrixCache, view, alpha, cutscene, drawPass, matrix, options.drawnSupplementalIds, options.hiddenFillRequests);
     if (drawPass === "main-part" && alpha === 1 && editingLayerVisible() && part.id === state.selectedPartId) {
       previewCtx.lineWidth = 2 / sourceScale(view);
       previewCtx.strokeStyle = "#e1462e";
@@ -224,6 +234,209 @@
       recordPartDraw(part, "selection-overlay", "selection-overlay", Animotion.renderOrderDebug?.boundsFromMatrix?.(part, matrix));
     }
     previewCtx.restore();
+  }
+  function drawDueHiddenCompletionFillsBefore(part, t, matrixCache, view, alpha, cutscene, drawPass, requests, drawnAssetIds, drawnSupplementalIds) {
+    for (const request of requests) {
+      if (!request.schedule.scheduledBeforePartIds.includes(part.id)) continue;
+      drawHiddenCompletionFill(request, t, matrixCache, view, alpha, cutscene, drawPass, drawnAssetIds, drawnSupplementalIds);
+    }
+  }
+  function drawRemainingHiddenCompletionFills(t, matrixCache, view, alpha, cutscene, drawPass, requests, drawnAssetIds, drawnSupplementalIds) {
+    for (const request of requests) drawHiddenCompletionFill(request, t, matrixCache, view, alpha, cutscene, drawPass, drawnAssetIds, drawnSupplementalIds);
+  }
+  function drawHiddenCompletionFill(request, t, matrixCache, view, alpha, cutscene, drawPass, drawnAssetIds, drawnSupplementalIds) {
+    if (request.visiblePath === "direct-ready-patch") {
+      if (drawnAssetIds.has(request.asset.id)) return;
+      const result = drawHiddenCompletionPatch(request.source, t, matrixCache, request);
+      if (result?.assetId) drawnAssetIds.add(result.assetId);
+      return;
+    }
+    if (drawnSupplementalIds.has(request.part.id)) return;
+    const matrix = worldMatrix(request.source, t, matrixCache);
+    previewCtx.save();
+    applyMatrix(previewCtx, matrix);
+    drawSupplementalPart(request.part, request.source, matrix, view, alpha, drawPass, request);
+    drawnSupplementalIds.add(request.part.id);
+    previewCtx.restore();
+  }
+  function drawDueSupplementalsBefore(part, t, matrixCache, view, alpha, cutscene, drawPass, drawnSupplementalIds, hiddenFillRequests = []) {
+    const currentOrder = baseOrder(part);
+    for (const source of supplementalSourcesBefore(currentOrder, cutscene, drawnSupplementalIds)) {
+      drawSupplementalPartsForSource(source, t, matrixCache, view, alpha, cutscene, drawPass, null, drawnSupplementalIds, hiddenFillRequests);
+    }
+  }
+  function supplementalSourcesBefore(order, cutscene, drawnSupplementalIds) {
+    const sources = new Map();
+    for (const supplemental of state.parts) {
+      if (!isSupplementalPart(supplemental) || drawnSupplementalIds.has(supplemental.id)) continue;
+      const source = state.parts.find((part) => part.id === supplemental.sourcePartId);
+      if (!source || source.hidden || isSupplementalPart(source) || baseOrder(source) >= order) continue;
+      if (shouldDrawSupplementalPart(supplemental, source, cutscene)) sources.set(source.id, source);
+    }
+    return [...sources.values()].sort((a, b) => baseOrder(a) - baseOrder(b));
+  }
+  function drawSupplementalPartsForSource(source, t, matrixCache, view, alpha, cutscene, drawPass, activeMatrix = null, drawnSupplementalIds = null, hiddenFillRequests = []) {
+    const items = state.parts.filter((part) => shouldDrawSupplementalPart(part, source, cutscene));
+    if (!items.length) return;
+    const matrix = activeMatrix || worldMatrix(source, t, matrixCache);
+    let restore = false;
+    if (!activeMatrix) {
+      previewCtx.save();
+      applyMatrix(previewCtx, matrix);
+      restore = true;
+    }
+    for (const part of items) {
+      if (drawnSupplementalIds?.has(part.id)) continue;
+      drawSupplementalPart(part, source, matrix, view, alpha, drawPass, requestForSupplemental(part, hiddenFillRequests));
+      drawnSupplementalIds?.add(part.id);
+    }
+    if (restore) previewCtx.restore();
+  }
+  function drawSupplementalPart(part, source, matrix, view, alpha, drawPass, request = null) {
+    const coverage = Animotion.hiddenCompletionSupplementalPart?.coverageForPart?.(part) || null;
+    if (coverage) part.supplementalCoverage = coverage;
+    previewCtx.save();
+    clipSupplementalPart(previewCtx, part);
+    previewCtx.globalAlpha = (part.alpha ?? 1) * alpha;
+    const warped = Animotion.hiddenCompletionSupplementalWarp?.drawImage?.(previewCtx, part);
+    if (warped === undefined) previewCtx.drawImage(part.canvas, part.rect.x, part.rect.y, part.rect.w, part.rect.h);
+    previewCtx.restore();
+    recordPartDraw(part, "supplemental-part", drawPass, Animotion.renderOrderDebug?.boundsFromMatrix?.(part, matrix), {
+      renderGroupPartId: source.id,
+      sourcePatchAssetId: part.sourcePatchAssetId || null,
+      supplementalCoverage: coverage,
+      supplementalWarpApplied: Boolean(warped),
+      finalSortKey: Animotion.renderLayerUtils?.baseOrder?.(source) ?? Number(source.order || 0),
+      ...hiddenFillDebug(request),
+    });
+    if (drawPass === "main-part" && alpha === 1 && editingLayerVisible() && part.id === state.selectedPartId) {
+      previewCtx.lineWidth = 2 / sourceScale(view);
+      previewCtx.strokeStyle = "#e1462e";
+      previewCtx.stroke(pathFromShape(geometry.absoluteShapeFromPart(part)));
+      recordPartDraw(part, "selection-overlay", "selection-overlay", Animotion.renderOrderDebug?.boundsFromMatrix?.(part, matrix), { renderGroupPartId: source.id });
+    }
+  }
+  function clipSupplementalPart(ctx, part) {
+    const points = part.mask?.points?.length ? part.mask.points : [
+      { x: 0, y: 0 },
+      { x: part.rect.w, y: 0 },
+      { x: part.rect.w, y: part.rect.h },
+      { x: 0, y: part.rect.h },
+    ];
+    ctx.beginPath();
+    points.forEach((point, index) => {
+      const x = part.rect.x + Number(point.x || 0);
+      const y = part.rect.y + Number(point.y || 0);
+      if (index) ctx.lineTo(x, y);
+      else ctx.moveTo(x, y);
+    });
+    ctx.closePath();
+    ctx.clip();
+  }
+  function hiddenCompletionFillRequests(cutscene) {
+    const requests = [];
+    for (const source of state.parts) {
+      if (!source || source.hidden || isSupplementalPart(source)) continue;
+      const direct = directFillRequest(source);
+      if (direct) requests.push(direct);
+      for (const supplemental of state.parts) {
+        if (shouldDrawSupplementalPart(supplemental, source, cutscene)) requests.push(supplementalFillRequest(supplemental, source));
+      }
+    }
+    return requests.filter(Boolean).map((request) => ({
+      ...request,
+      schedule: Animotion.hiddenCompletionFillScheduler?.schedule?.(request, state.parts) || emptyFillSchedule(request),
+    }));
+  }
+  function directFillRequest(source) {
+    const asset = Animotion.hiddenCompletionRender?.linkedSymmetryAsset?.(source, { state, parts: state.parts });
+    if (!asset) return null;
+    return {
+      visiblePath: "direct-ready-patch",
+      requestId: asset.id,
+      sourcePartId: source.id,
+      counterpartPartId: asset.symmetrySource?.counterpartPartId || null,
+      source,
+      asset,
+      bounds: directFillBounds(asset, source),
+    };
+  }
+  function supplementalFillRequest(part, source) {
+    return {
+      visiblePath: "supplemental-part",
+      requestId: part.id,
+      sourcePartId: source.id,
+      counterpartPartId: part.counterpartPartId || null,
+      source,
+      part,
+      bounds: supplementalFillBounds(part),
+    };
+  }
+  function directFillBounds(asset, source) {
+    const rect = source.rect || {};
+    const points = asset?.guide?.silhouetteVerticesNormalized || asset?.maskVerticesNormalized || asset?.guide?.meshVerticesNormalized || [];
+    return boundsFromPoints(points.map((point) => ({
+      x: Number(rect.x || 0) + Number(point.xNorm ?? point.x ?? 0) * Number(rect.w || 0),
+      y: Number(rect.y || 0) + Number(point.yNorm ?? point.y ?? 0) * Number(rect.h || 0),
+    }))) || rectBounds(rect);
+  }
+  function supplementalFillBounds(part) {
+    const rect = part.rect || {};
+    return boundsFromPoints((part.mask?.points || []).map((point) => ({
+      x: Number(rect.x || 0) + Number(point.x || 0),
+      y: Number(rect.y || 0) + Number(point.y || 0),
+    }))) || rectBounds(rect);
+  }
+  function boundsFromPoints(points = []) {
+    if (!points.length) return null;
+    const xs = points.map((point) => Number(point.x) || 0), ys = points.map((point) => Number(point.y) || 0);
+    const x = Math.min(...xs), y = Math.min(...ys);
+    return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
+  }
+  function rectBounds(rect = {}) {
+    return { x: Number(rect.x) || 0, y: Number(rect.y) || 0, w: Number(rect.w) || 0, h: Number(rect.h) || 0 };
+  }
+  function requestForSupplemental(part, requests = []) {
+    return requests.find((request) => request.visiblePath === "supplemental-part" && request.part?.id === part.id) || null;
+  }
+  function hiddenFillDebug(request) {
+    if (!request) return {};
+    const foregroundBefore = drawnForegroundBefore(request);
+    return {
+      hiddenCompletionFillScheduler: true,
+      visiblePath: request.visiblePath,
+      scheduledBeforePartIds: request.schedule.scheduledBeforePartIds,
+      foregroundOccluderIds: request.schedule.foregroundOccluderIds,
+      foregroundDrawnBeforeFill: foregroundBefore,
+      unexpectedForegroundBeforeFill: foregroundBefore.length > 0,
+      wasDepthTopUpSkipped: true,
+    };
+  }
+  function drawnForegroundBefore(request) {
+    const occluders = new Set(request.schedule?.foregroundOccluderIds || []);
+    const sequence = state.previewDrawSequenceDebug?.sequence || [];
+    return sequence.filter((entry) => entry.kind === "part" && occluders.has(entry.partId) && entry.pass === "main-part").map((entry) => entry.partId);
+  }
+  function emptyFillSchedule(request) {
+    return {
+      visiblePath: request.visiblePath || null,
+      sourcePartId: request.sourcePartId || null,
+      requestId: request.requestId || null,
+      foregroundOccluderIds: [],
+      scheduledBeforePartIds: [],
+    };
+  }
+  function shouldDrawSupplementalPart(part, source, cutscene) {
+    if (!isSupplementalPart(part) || part.hidden || part.sourcePartId !== source.id || !part.canvas) return false;
+    const actionId = currentActionId(cutscene);
+    return !part.createdForActionId || !actionId || part.createdForActionId === actionId;
+  }
+  function isSupplementalPart(part) {
+    return part?.isSupplementalPart === true;
+  }
+  function currentActionId(cutscene) {
+    const action = cutscene?.bridge?.jointAction;
+    return action?.id || action?.actionId || action?.source || null;
   }
   function drawSelectedRigPoints(view, now, matrixCache, drawPivot) {
     const part = Animotion.parts.selectedPart();
@@ -276,7 +489,7 @@
     const t = state.running ? (now - state.startTime) / 1000 : state.pausedTime;
     previewCtx.save();
     Animotion.previewTransform.applySourceFrame(previewCtx, view, state.previewSourceFrame, state.previewSourceTransform);
-    drawPart(part, t, new Map(), view, 1, cutscene, "depth-top-up");
+    drawPart(part, t, new Map(), view, 1, cutscene, "depth-top-up", { drawSupplementals: false });
     previewCtx.restore();
   }
 
@@ -298,6 +511,7 @@
   }
   function timelineLikeMode() { return els.motionTemplate.value === "keyframes" || els.motionTemplate.value === "cutscene"; }
   function orderedPartsForFrame(t, cutscene) { const frame = state.running ? currentMotionFrame(t) : state.currentFrame; return Animotion.cutsceneDepth?.orderedParts?.(state.parts, { bridge: cutscene?.bridge, frame, parts: state.parts, selectedPartId: state.selectedPartId }) || [...state.parts].sort((a, b) => a.order - b.order); }
+  function baseOrder(part) { return Animotion.renderLayerUtils?.baseOrder?.(part) ?? Number(part?.order || 0); }
   function drawRigPoint(part, spec, matrix, view, drawPivot) {
     const local = Animotion.previewRigPoints.localPoint(part, spec, { timelineLike: timelineLikeMode() });
     const image = Animotion.previewRigPoints.imagePoint(part, spec, matrix, { timelineLike: timelineLikeMode() });

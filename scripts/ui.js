@@ -78,7 +78,7 @@
 
   function renderCutsceneMotionStatus() {
     if (!els.cutsceneMotionStatus) return;
-    const status = Animotion.cutsceneMotionStatus?.statusForBridge?.(state.cutsceneBridge, { parts: state.parts, currentFrame: state.currentFrame, selectedPartId: state.selectedPartId, motionTemplate: els.motionTemplate.value, previewDrawSequence: state.previewDrawSequenceDebug, actionFrame: Animotion.actionFrameEditor?.selectionStatus?.() });
+    const status = Animotion.cutsceneMotionStatus?.statusForBridge?.(state.cutsceneBridge, { parts: state.parts, assets: state.project?.assets || [], imageBounds: Animotion.imageBounds?.(), currentFrame: state.currentFrame, selectedPartId: state.selectedPartId, motionTemplate: els.motionTemplate.value, previewDrawSequence: state.previewDrawSequenceDebug, actionFrame: Animotion.actionFrameEditor?.selectionStatus?.(), regenerationDebug: state.motionRegenerationDebug });
     els.cutsceneMotionStatus.textContent = Animotion.cutsceneMotionStatus?.statusText?.(status) || "Punch/kick motion status: unavailable";
   }
 
@@ -134,6 +134,7 @@
     els.editOrder.value = part.order;
     els.editAlpha.value = part.alpha;
     els.editHidden.checked = part.hidden;
+    renderSupplementalPartControls(part);
     renderMotionControls(part);
     renderParentOptions(part);
   }
@@ -176,6 +177,18 @@
     els.motionJointX.value = motion.jointX;
     els.motionJointY.value = motion.jointY;
     els.motionPhase.value = motion.phase;
+  }
+
+  function renderSupplementalPartControls(part) {
+    if (!els.supplementalPartEditor) return;
+    const visible = part.isSupplementalPart === true;
+    els.supplementalPartEditor.classList.toggle("hidden", !visible);
+    if (!visible) return;
+    els.supplementalPartX.value = part.rect.x;
+    els.supplementalPartY.value = part.rect.y;
+    els.supplementalPartW.value = part.rect.w;
+    els.supplementalPartH.value = part.rect.h;
+    els.supplementalMaskScale.value = part.supplementalMaskScale || 1;
   }
 
   function renderParentOptions(part) {

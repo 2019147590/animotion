@@ -134,6 +134,10 @@ test("editing an invalid elbow handTip regenerates punch motion from the correct
 
   Animotion.partCommands.updatePart(arm.id, { handTip: { x: 4, y: 31 } });
 
+  assert.equal(Animotion.state.motionRegenerationDebug.attempted, true);
+  assert.equal(Animotion.state.motionRegenerationDebug.generated, true);
+  assert.equal(Animotion.state.motionRegenerationDebug.reason, "generated");
+  assert.equal(Animotion.state.motionRegenerationDebug.changedKeys.includes("handTip"), true);
   const impact = Animotion.state.cutsceneBridge.jointAction.beats.find((beat) => beat.id === "impact");
   const pose = keyframePose(arm, impact.at);
   const baseHand = absolutePoint(arm, arm.handTip);
@@ -147,4 +151,20 @@ test("editing an invalid elbow handTip regenerates punch motion from the correct
   assert.equal(pose.jointY, 0);
   assert.equal(pointDistance(baseHand, impactHand) > pointDistance(baseElbow, impactElbow), true);
   assert.equal(pointDistance(baseElbow, impactElbow) > pointDistance(baseShoulder, impactShoulder), true);
+});
+
+test("editing non-rig metadata does not regenerate punch motion", () => {
+  const Animotion = loadAnimotion();
+  const arm = Animotion.state.parts.find((candidate) => candidate.id === "arm_01");
+  const beforeKeyframes = JSON.stringify(arm.keyframes);
+  const beforeAction = JSON.stringify(Animotion.state.cutsceneBridge.jointAction);
+
+  Animotion.partCommands.updatePart(arm.id, { name: "renamed_arm" });
+
+  assert.equal(Animotion.state.motionRegenerationDebug.attempted, false);
+  assert.equal(Animotion.state.motionRegenerationDebug.generated, false);
+  assert.equal(Animotion.state.motionRegenerationDebug.reason, "non-rig-geometry-change");
+  assert.equal(Animotion.state.motionRegenerationDebug.changedKeys.includes("name"), true);
+  assert.equal(JSON.stringify(arm.keyframes), beforeKeyframes);
+  assert.equal(JSON.stringify(Animotion.state.cutsceneBridge.jointAction), beforeAction);
 });

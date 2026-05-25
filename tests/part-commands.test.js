@@ -235,6 +235,30 @@ test("part update command normalizes optional humanRole without changing type", 
   assert.equal(part.humanRole, null);
 });
 
+test("supplemental part transform preserves generated canvas and scales mask", () => {
+  const Animotion = loadAnimotion();
+  const part = Animotion.partCommands.createPart("body", { x: 10, y: 12, w: 20, h: 30 });
+  const canvas = part.canvas;
+  Object.assign(part, {
+    isSupplementalPart: true,
+    supplementalMaskScale: 1,
+    mask: { kind: "polygon", points: [{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 30 }, { x: 0, y: 30 }] },
+  });
+  Animotion.commandHistory.clear();
+
+  Animotion.partCommands.transformSupplementalPart(part.id, { x: 14, y: 16, w: 40, h: 60, maskScale: 0.75 });
+
+  assert.equal(part.canvas, canvas);
+  assert.deepEqual(JSON.parse(JSON.stringify(part.rect)), { x: 14, y: 16, w: 40, h: 60 });
+  assert.deepEqual(JSON.parse(JSON.stringify(part.sourceRect)), JSON.parse(JSON.stringify(part.rect)));
+  assert.equal(part.supplementalMaskScale, 0.75);
+  assert.deepEqual(JSON.parse(JSON.stringify(part.mask.points[0])), { x: 5, y: 7.5 });
+  assert.deepEqual(JSON.parse(JSON.stringify(part.mask.points[2])), { x: 35, y: 52.5 });
+  assert.equal(Animotion.commandHistory.undo(), true);
+  assert.equal(part.rect.x, 10);
+  assert.equal(part.canvas, canvas);
+});
+
 test("part command auto-places separate arm handles as one undoable user action", () => {
   const Animotion = loadAnimotion();
   const torso = Animotion.partCommands.createPart("body", { x: 40, y: 10, w: 30, h: 80 }, "torso");
