@@ -44,7 +44,8 @@ function previewScripts() {
     "scripts/arm-extension-render.js", "scripts/motion-replacement-layer.js", "scripts/motion-replacement-render.js",
     "scripts/cutscene-depth.js", "scripts/hidden-completion-render.js", "scripts/hidden-completion-supplemental-coverage.js",
     "scripts/hidden-completion-supplemental-part.js", "scripts/hidden-completion-supplemental-warp.js",
-    "scripts/hidden-completion-fill-scheduler.js", "scripts/preview-static-transform.js", "scripts/preview-scene.js",
+    "scripts/hidden-completion-fill-scheduler.js", "scripts/part-visibility-masks.js", "scripts/part-visibility-mask-render.js",
+    "scripts/preview-static-transform.js", "scripts/preview-scene.js",
     "scripts/preview-hidden-fill.js", "scripts/preview-supplemental-renderer.js", "scripts/preview-part-renderer.js",
     "scripts/preview-rig-overlay.js",
   ];

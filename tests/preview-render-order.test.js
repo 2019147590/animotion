@@ -55,6 +55,20 @@ test("cutscene preview erases runtime rigged character from source panel before 
   assert.equal(Animotion.state.separateCharacter, savedSeparateCharacter);
 });
 
+test("normal part render passes current frame to visibility mask hook", () => {
+  const Animotion = loadPreview();
+  const frames = [];
+  Animotion.partVisibilityMaskRender.apply = (_ctx, _part, frame) => {
+    frames.push(frame);
+    return null;
+  };
+
+  Animotion.preview.drawPreview(0, () => {}, () => {});
+
+  assert.equal(frames.length > 0, true);
+  assert.equal(frames.every((frame) => frame === Animotion.state.currentFrame), true);
+});
+
 test("symmetry hidden completion patch composites before foreground occluders", () => {
   const Animotion = loadPreview();
   Animotion.dom.els.backgroundOpacity.value = "1";

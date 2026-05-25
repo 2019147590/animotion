@@ -41,6 +41,74 @@ The hardcoded demo genga cut remains available, but it should be treated as the 
 
 ## Current Implemented State
 
+### Latest 2026-05-26 Polygon Structure, Visibility Masks, and Render Hook Fix Handoff
+
+This handoff captures the latest part-structure UI, animated visibility-mask feature, `index.html` size refactor, and the follow-up crash fix from real QA video review.
+
+Part structure editing:
+
+- Added polygon-based part structure commands in `scripts/part-structure-commands.js`.
+- Users can extract a drawn polygon region into a new manual split part.
+- Users can merge selected/source parts into one polygon part.
+- Added `scripts/part-structure-controls.js` to expose the structure tools in the inspector without placing them in the destructive/danger section.
+- Structure edits use the existing part command/history path and do not change the persisted base part schema beyond normal part fields.
+
+Animated visibility masks:
+
+- Added `scripts/part-visibility-masks.js` for normalizing polygon masks, frame keyframes, and evaluated mask strength.
+- Added `scripts/part-visibility-mask-commands.js` for creating a mask from the current selection and setting per-frame strength.
+- Added `scripts/part-visibility-mask-controls.js` for the UI.
+- Added `scripts/part-visibility-mask-render.js` and wired it into `scripts/preview-part-renderer.js`.
+- The visibility mask hook intentionally runs immediately after the normal part `drawImage()` call, using `destination-out` to hide the active mask region at the evaluated frame strength.
+- Normal parts with no visibility masks still render normally; `activeMasks()` returns an empty list and the render hook is a no-op.
+- Visibility masks persist on `part.visibilityMasks` through project save/load normalization.
+
+Visibility mask crash fix:
+
+- A QA recording showed the preview could break after the visibility-mask update.
+- Root cause: `scripts/preview-part-renderer.js` called `Animotion.partVisibilityMaskRender.apply(..., frame, ...)` inside `drawNormalPart()`, but `frame` was scoped only inside `drawPart()`.
+- Fix: `drawPart()` now passes the evaluated current frame explicitly into `drawNormalPart(part, replacement, segmented, frame, context)`.
+- The hook remains after part drawing and still receives the actual current frame.
+- Persisted schema, hidden-completion rendering, supplemental part behavior, punch/kick planner behavior, and render-order policy were not intentionally changed.
+- Added a regression in `tests/preview-render-order.test.js` that stubs the visibility-mask hook and verifies normal preview rendering passes `state.currentFrame` into it. This would fail on the prior `ReferenceError: frame is not defined`.
+- Updated `tests/preview-render-order-fixture.js` to load the visibility mask modules so preview tests exercise the real hook.
+
+`index.html` and file-size status:
+
+- `index.html` was refactored from 366 lines to 151 lines while preserving the existing DOM ids used by the scripts/tests.
+- Current checked changed/added implementation files remain under the 300-line target:
+  - `index.html`: 151 lines.
+  - `scripts/bootstrap.js`: 154 lines.
+  - `scripts/part-commands.js`: 249 lines.
+  - `scripts/project-model.js`: 275 lines.
+  - `scripts/preview-part-renderer.js`: 158 lines.
+  - New structure/visibility modules and their tests are all under 300 lines.
+
+Real QA/video findings:
+
+- Uploaded recording `화면 녹화 중 2026-05-26 004301.mp4` was inspected by extracting representative frames.
+- The JSON was not empty: `animotion-project (10).json` restored 11 parts and the original source image at `1023 x 1537`.
+- The diagonal lines visible in the lower preview were cutscene speed-line effects, not part polygon outlines.
+- Existing `animotion-project (10).json` and `(11).json` contain supplemental hidden-completion parts without `supplementalCanvasDataUrl`, so old supplemental pixels can still regenerate differently from the original save. This is separate from the visibility-mask crash.
+- The immediate post-update preview break was traced to the visibility-mask hook `frame` scope bug and fixed as above.
+
+Verification already run before this handoff update:
+
+- `node tests\part-visibility-masks.test.js`
+- `node tests\preview-render-order.test.js`
+- `node tests\preview-render-order-supplemental-fill.test.js`
+- `node tests\hidden-completion-action-drafts.test.js`
+- `node tests\hidden-completion-supplemental-part.test.js`
+- `Get-ChildItem tests -Filter *.test.js | ForEach-Object { node $_.FullName }`
+- `git diff --check`
+
+Result: all focused tests and the full JS test suite passed locally. `git diff --check` reported only CRLF conversion warnings.
+
+Important untracked local files:
+
+- `_analysis_frames/` was generated locally from the uploaded QA video for diagnosis and should not be committed.
+- `animotion-project (10).json`, `animotion-project (11).json`, uploaded/QA `lookism/*.png` files, and screenshot/video artifacts remain local user/QA files and should not be committed unless explicitly requested.
+
 ### Latest 2026-05-25 Rig Part Transform Controls and 300-Line Legacy Refactor Handoff
 
 This handoff captures the latest rig-part transform feature work and the first incremental 300-line legacy refactor passes.

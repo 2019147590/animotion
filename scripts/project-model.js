@@ -91,6 +91,7 @@
       jointNormalized: normalizedLocalPoint(joint, rect),
       mask: normalizeMask(part.mask, part.maskVerticesNormalized, rect, storedRect),
       maskVerticesNormalized: normalizedMaskVertices(part.mask, rect),
+      visibilityMasks: Animotion.partVisibilityMasks?.normalizeList?.(part.visibilityMasks) || [],
       transform: normalizeTransform(part.transform),
       sourceRect: rect,
       motionSettings: normalizeCustomMotion(part.customMotion || part.motionSettings),

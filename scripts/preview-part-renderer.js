@@ -58,7 +58,7 @@
     const segmented = hint?.active ? Animotion.armExtension.drawSegmentedPart(previewCtx, part, hint, context.alpha) : null;
     if (segmented?.ok) return drawSegmented(part, hint, segmented, fullContext);
     if (segmented?.ok === false) recordSegmentedFailure(part, hint, segmented, fullContext);
-    drawNormalPart(part, replacement, segmented, fullContext);
+    drawNormalPart(part, replacement, segmented, frame, fullContext);
   }
 
   function replacementFor(part, replacementPlan, alpha) {
@@ -97,15 +97,17 @@
     });
   }
 
-  function drawNormalPart(part, replacement, segmented, context) {
+  function drawNormalPart(part, replacement, segmented, frame, context) {
     const matrix = context.worldMatrix(part, context.t, context.matrixCache);
     previewCtx.save();
     context.applyMatrix(previewCtx, matrix);
     previewCtx.globalAlpha = part.alpha * context.alpha;
     previewCtx.drawImage(part.canvas, part.rect.x, part.rect.y, part.rect.w, part.rect.h);
+    const visibilityMaskResult = Animotion.partVisibilityMaskRender?.apply?.(previewCtx, part, frame, context.pathFromShape);
     context.recordPartDraw(part, "normal-part", context.drawPass, Animotion.renderOrderDebug?.boundsFromMatrix?.(part, matrix), {
       fallbackForSegmentedRender: Boolean(segmented && segmented.ok === false), segmentedRenderReason: segmented?.reason || null,
       fallbackToNormalArm: Boolean(replacement && replacement.ok === false), replacementRenderReason: replacement?.reason || null,
+      visibilityMaskResult,
     });
     drawSupplementalsForPart(part, context, matrix);
     drawSelectedPartOutline(part, matrix, context);
