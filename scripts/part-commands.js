@@ -50,12 +50,14 @@
     const oldPivot = absolutePoint(part.rect, part.pivot);
     const oldJoint = absolutePoint(part.rect, part.joint);
     const oldHandTip = part.handTip ? absolutePoint(part.rect, part.handTip) : null;
+    const visibilityMasks = rebaseVisibilityMasks(part.visibilityMasks, part.rect, rect);
     part.rect = rect;
     part.sourceRect = rect;
     part.mask = geometry.shapeToMask(normalized, rect);
     part.pivot = localPointFromAbsolute(oldPivot, rect);
     part.joint = localPointFromAbsolute(oldJoint, rect);
     if (oldHandTip) part.handTip = localPointFromAbsolute(oldHandTip, rect);
+    if (visibilityMasks) part.visibilityMasks = visibilityMasks;
     Animotion.parts.updatePartCanvas(part);
     syncProjectParts();
     return part;
@@ -258,6 +260,20 @@
       x: point.x - rect.x,
       y: point.y - rect.y,
     };
+  }
+
+  function rebaseVisibilityMasks(masks, fromRect, toRect) {
+    const normalized = Animotion.partVisibilityMasks?.normalizeList?.(masks) || [];
+    if (!normalized.length) return null;
+    return normalized.map((mask) => ({
+      ...mask,
+      mask: {
+        ...mask.mask,
+        points: mask.mask.points.map((point) =>
+          localPointFromAbsolute(absolutePoint(fromRect, point), toRect)
+        ),
+      },
+    }));
   }
 
   function syncProjectParts() {

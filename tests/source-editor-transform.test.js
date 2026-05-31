@@ -112,20 +112,23 @@ test("part edit target ignores visibility mask polygon handles", () => {
   assert.deepEqual(JSON.parse(JSON.stringify(part.visibilityMasks[0].mask.points[0])), { x: 18, y: 18 });
 });
 
-test("part edit target changes the part outline without changing visibility masks", () => {
+test("part outline edit preserves visibility mask image-space placement", () => {
   const Animotion = loadAnimotion();
   const part = partFromPolygon(Animotion, "body", [{ x: 20, y: 20 }, { x: 75, y: 20 }, { x: 75, y: 80 }, { x: 20, y: 80 }]);
   part.visibilityMasks = [visibilityMask("mask-a", [{ x: 18, y: 18 }, { x: 30, y: 18 }, { x: 30, y: 30 }, { x: 18, y: 30 }])];
   Animotion.editTarget.setPart(part);
-  const beforeMask = JSON.stringify(part.visibilityMasks[0].mask.points);
+  const beforeMaskImagePoints = maskImagePoints(part);
+  const beforeKeyframes = JSON.stringify(part.visibilityMasks[0].keyframes);
 
-  const started = Animotion.editor.beginShapeEdit({ x: 75, y: 20 });
-  Animotion.editor.applyDragEdit({ x: 80, y: 22 });
+  const started = Animotion.editor.beginShapeEdit({ x: 20, y: 20 });
+  Animotion.editor.applyDragEdit({ x: 10, y: 15 });
 
   assert.equal(started, true);
   assert.equal(Animotion.state.drag.targetKind, "part");
-  assert.equal(JSON.stringify(part.visibilityMasks[0].mask.points), beforeMask);
-  assert.deepEqual(JSON.parse(JSON.stringify(part.mask.points[1])), { x: 60, y: 2 });
+  assert.deepEqual(JSON.parse(JSON.stringify(maskImagePoints(part))), beforeMaskImagePoints);
+  assert.deepEqual(JSON.parse(JSON.stringify(part.visibilityMasks[0].mask.points[0])), { x: 28, y: 23 });
+  assert.equal(JSON.stringify(part.visibilityMasks[0].keyframes), beforeKeyframes);
+  assert.deepEqual(JSON.parse(JSON.stringify(part.mask.points[1])), { x: 65, y: 5 });
 });
 
 test("visibility mask edit target changes only the selected mask in transformed source coordinates", () => {
@@ -160,6 +163,13 @@ function partFromPolygon(Animotion, type, points) {
 
 function visibilityMask(id, points) {
   return { id, mask: { kind: "polygon", points }, keyframes: [{ frame: 1, strength: 1 }] };
+}
+
+function maskImagePoints(part) {
+  return part.visibilityMasks[0].mask.points.map((point) => ({
+    x: part.rect.x + point.x,
+    y: part.rect.y + point.y,
+  }));
 }
 
 function assertPointClose(actual, expected) {

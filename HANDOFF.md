@@ -41,6 +41,57 @@ The hardcoded demo genga cut remains available, but it should be treated as the 
 
 ## Current Implemented State
 
+### Latest 2026-06-01 Visibility Mask Outline-Rebase Handoff
+
+This handoff captures the current local tracked change that preserves visibility-mask placement when a part outline is edited.
+
+Problem 1-pager:
+
+- Context: the 2026-05-26 edit-target model made visibility masks editable as child targets of a parent part, but part-outline edits still needed a stable rule for existing mask geometry.
+- Problem: when a parent part outline changes, mask points are stored in part-local coordinates, so leaving them untouched can shift the mask's image-space placement.
+- Goal: preserve each existing visibility mask's image-space polygon while rebasing its local points into the new part rect.
+- Non-goals: no schema change, no visibility-mask transform animation change, no hidden-completion provider change, and no QA artifact upload.
+- Constraints: keep the runtime command path small, preserve undo/redo snapshot behavior, and keep static flip/rotation transforms from rewriting mask geometry.
+
+Options considered:
+
+- Leave mask local points unchanged. Pro: smallest code change. Con/risk: part outline edits can visually move existing masks to the wrong image region.
+- Rebase mask local points through image-space coordinates during `applyShapeToPart()`. Pro: keeps user-authored mask placement stable through outline edits. Con/risk: depends on the existing part rect and should not run for static transform-only commands. Chosen as the simpler user-facing behavior.
+
+Implemented behavior:
+
+- `scripts/part-commands.js` now rebases `part.visibilityMasks[].mask.points` when `applyShapeToPart()` changes a part rect.
+- Pivot, joint, and handTip still preserve their image-space positions through the same outline-edit path.
+- Visibility-mask keyframes, ids, enabled state, and strength values are preserved.
+- Static selected-part transform commands, including horizontal flip and rotation, do not rewrite existing visibility-mask geometry.
+
+Impact note:
+
+- `applyShapeToPart()` is reached from source edit dragging, the Apply Outline button, `Animotion.parts.applyShapeToPart()`, and the command-history wrapper.
+- The change affects only outline/shape application for parts with existing visibility masks; normal part creation, copy, flip, rotate, mask-target editing, and project schema are not intentionally changed.
+
+Regression tests added or updated:
+
+- `tests/source-editor-transform.test.js` now verifies that part-outline edits preserve visibility-mask image-space placement and keyframes while rebasing local mask points.
+- `tests/part-transform-commands.test.js` now verifies that flip/rotation keep existing visibility-mask geometry unchanged.
+
+Verification for this upload:
+
+- `node tests\source-editor-transform.test.js`
+- `node tests\part-transform-commands.test.js`
+- `node tests\part-visibility-masks.test.js`
+- `node tests\part-commands.test.js`
+- `node tests\preview-render-order.test.js`
+- `git diff --check`
+
+Result: all listed focused tests passed locally. `git diff --check` reported only CRLF conversion warnings.
+
+Upload scope:
+
+- Include `scripts/part-commands.js`, `tests/source-editor-transform.test.js`, `tests/part-transform-commands.test.js`, and this `handoff.md` update.
+- Exclude local QA/user artifacts: `_analysis_frames/`, `animotion-project (10).json`, `animotion-project (11).json`, `lookism/*.png`, screenshot/video artifacts.
+- Leave untracked planning scratch files out of this upload unless explicitly requested.
+
 ### Latest 2026-05-26 Visibility Mask Edit Target and Transformed Source Editing Handoff
 
 This handoff captures the completed visibility-mask edit-target model, transformed source/original-cut editing fixes, and regression coverage.
@@ -1151,6 +1202,13 @@ Continue stabilizing creator-controlled rigging and motion authoring before addi
 Smallest next scope:
 
 ```text
+visibility-mask outline browser QA
+-> load a project with a parent part and at least one animated visibility mask
+-> edit the parent part outline from the source/original-cut editor
+-> confirm the mask stays over the same image-space region and keyframed strengths remain unchanged
+-> save/load/save and confirm mask-local points, ids, and keyframes remain stable
+-> then continue hidden-completion symmetry browser QA
+
 hidden-completion symmetry browser QA
 -> load or create an existing-style JSON with torso/body, neutral arm names, and edited humanRole values
 -> create arm/forearm/hand symmetry drafts and verify the selected part is the fill target
@@ -1186,21 +1244,24 @@ master
 Latest known implementation baseline:
 
 ```text
-current upload builds on manual hidden-completion symmetry drafts with legacy JSON counterpart fallback, explicit torso left/right target selection, editable guide regions, and save/load stability
+current upload builds on the 2026-05-26 visibility-mask edit-target work by stabilizing existing mask geometry during parent part outline edits
 ```
 
 Current upload status:
 
 ```text
-this upload includes implementation, tests, and this handoff update on origin/master.
+this upload includes the visibility-mask outline-rebase implementation, focused regressions, and this handoff update on origin/master.
 ```
 
 ## Current Project Notes
 
-As of this handoff update on 2026-05-24, implementation work includes the previous `ce43f68 Stabilize rigging and motion authoring state` baseline, the image upload/session restore and canonical punch/kick selected-part generation work, punch/kick draft context invalidation, boxer punch manual-edit workflow stabilization, arm-only `handTip` endpoint support, cutscene-only rear-cross depth ordering, separate arm-chain punch resolution, role-specific rig handle semantics, clean separate-chain validation, explicit arm handle auto-placement, core manual Undo/Redo coverage, and hidden-completion symmetry draft stabilization for existing JSON workflows.
+As of this handoff update on 2026-06-01, implementation work includes the previous `ce43f68 Stabilize rigging and motion authoring state` baseline, the image upload/session restore and canonical punch/kick selected-part generation work, punch/kick draft context invalidation, boxer punch manual-edit workflow stabilization, arm-only `handTip` endpoint support, cutscene-only rear-cross depth ordering, separate arm-chain punch resolution, role-specific rig handle semantics, clean separate-chain validation, explicit arm handle auto-placement, core manual Undo/Redo coverage, hidden-completion symmetry draft stabilization for existing JSON workflows, and visibility-mask geometry preservation during parent part outline edits.
 
 Latest completed implementation commits:
 
+- Current upload: part outline edits now preserve existing visibility-mask image-space placement by rebasing stored mask-local points when `applyShapeToPart()` changes the parent part rect.
+- Current upload: selected-part static flip/rotation continues to leave existing visibility-mask geometry unchanged; only outline/shape application performs the rebase.
+- Current upload: focused regressions cover source-editor outline edits with mask placement/keyframe preservation and transform commands with unchanged mask geometry.
 - `f2536d3 Add cutscene motion status visibility`: read-only punch/kick cutscene status line in the motion panel, backed by `scripts/cutscene-motion-status.js` and `tests/cutscene-motion-status.test.js`.
 - `ce43f68 Stabilize rigging and motion authoring state`: inspector parent fallback, `parentId`/`parentPartId` compatibility, out-of-rect pivot/joint preservation, pointer arbitration regressions, and motionDraft plus hiddenCompletionPatch guide round-trip coverage.
 - Current upload: symmetry hidden-completion drafts can be created for legacy/neutral arm names after users edit parts into reasonable `humanRole` values. If no side name hint exists, arm counterpart matching can infer front/rear from torso/body geometry.

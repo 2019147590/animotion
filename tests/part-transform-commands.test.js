@@ -129,6 +129,24 @@ test("selected part horizontal flip toggles static scaleX", () => {
   assert.equal(part.transform.scaleX, 1);
 });
 
+test("selected part transforms keep existing visibility mask geometry unchanged", () => {
+  const Animotion = loadAnimotion();
+  const part = Animotion.partCommands.createPart("arm", { x: 20, y: 20, w: 20, h: 20 });
+  part.visibilityMasks = [{
+    id: "mask-existing",
+    mask: { kind: "polygon", points: [{ x: 2, y: 2 }, { x: 14, y: 2 }, { x: 14, y: 18 }, { x: 2, y: 18 }] },
+    keyframes: [{ frame: 1, strength: 1 }, { frame: 12, strength: 0.25 }],
+  }];
+  const before = JSON.stringify(part.visibilityMasks);
+
+  Animotion.partCommands.flipSelectedPartHorizontal();
+  Animotion.partCommands.rotateSelectedPartClockwise(30);
+
+  assert.equal(JSON.stringify(part.visibilityMasks), before);
+  assert.equal(part.transform.scaleX, -1);
+  assert.equal(part.transform.rotation, 30);
+});
+
 test("selected part rotation commands rotate by quarter turns", () => {
   const Animotion = loadAnimotion();
   const part = Animotion.partCommands.createPart("head", { x: 20, y: 8, w: 20, h: 20 });
