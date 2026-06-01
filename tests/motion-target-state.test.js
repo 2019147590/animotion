@@ -14,6 +14,9 @@ require("../scripts/joint-coordinates.js");
 require("../scripts/motion-anchors.js");
 require("../scripts/cutscene-model.js");
 const characterRootMotion = require("../scripts/character-root-motion.js");
+require("../scripts/action-specs.js");
+require("../scripts/motion-track-builder.js");
+require("../scripts/boxing-step-locomotion.js");
 const motionPlanner = require("../scripts/motion-planner.js");
 const trajectoryEditor = require("../scripts/motion-trajectory-editor.js");
 

@@ -35,6 +35,7 @@
       template,
       isPunch: template === "punch",
       isKick: template === "kick",
+      family: Animotion.actionSpecs?.specFor?.(template)?.family || null,
       selectedPartId: options.selectedPartId ?? stateOrBridge?.selectedPartId ?? null,
       partCount: Array.isArray(options.parts) ? options.parts.length : (Array.isArray(stateOrBridge?.parts) ? stateOrBridge.parts.length : 0),
     };
@@ -43,10 +44,12 @@
   function actionTemplate(action = {}) {
     const timeline = rawActionTimeline(action);
     const template = timeline?.template || timeline?.id || "";
+    if (Animotion.actionSpecs?.hasSpec?.(template)) return template;
     if (template === "punch" || template === "kick") return template;
     const source = String(action?.source || "");
-    const match = source.match(/^motion-planner-(punch|kick)-anchors-v1$/);
-    if (match) return match[1];
+    const match = source.match(/^motion-planner-([A-Za-z0-9_-]+)-(?:anchors|locomotion)-v1$/);
+    if (match && Animotion.actionSpecs?.hasSpec?.(match[1])) return match[1];
+    if (match && (match[1] === "punch" || match[1] === "kick")) return match[1];
     if (source.includes("punch")) return "punch";
     if (source.includes("kick")) return "kick";
     return null;

@@ -25,6 +25,8 @@ function loadAnimotion() {
     "scripts/project-serialization.js",
     "scripts/cutscene-action-selectors.js",
     "scripts/cutscene-model.js",
+    "scripts/motion-track-builder.js",
+    "scripts/boxing-step-locomotion.js",
     "scripts/motion-planner.js",
   ]) runScript(context, path);
   const Animotion = context.window.Animotion;

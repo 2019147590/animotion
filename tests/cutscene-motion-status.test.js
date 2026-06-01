@@ -30,6 +30,7 @@ function loadAnimotion() {
     "scripts/cutscene-action-selectors.js",
     "scripts/cutscene-model.js",
     "scripts/motion-anchors.js",
+    "scripts/action-specs.js",
     "scripts/action-timeline-model.js",
     "scripts/impact-exaggeration-layer.js",
     "scripts/render-layer-utils.js",
@@ -42,6 +43,8 @@ function loadAnimotion() {
     "scripts/arm-extension.js",
     "scripts/motion-replacement-layer.js",
     "scripts/motion-replacement-render.js",
+    "scripts/motion-track-builder.js",
+    "scripts/boxing-step-locomotion.js",
     "scripts/motion-planner.js",
     "scripts/cutscene-motion-status.js",
   ]) runScript(context, path);

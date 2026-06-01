@@ -9,6 +9,9 @@ require("../scripts/motion-model.js");
 const jointCoordinates = require("../scripts/joint-coordinates.js");
 const motionAnchors = require("../scripts/motion-anchors.js");
 require("../scripts/arm-extension.js");
+require("../scripts/action-specs.js");
+require("../scripts/motion-track-builder.js");
+require("../scripts/boxing-step-locomotion.js");
 const motionPlanner = require("../scripts/motion-planner.js");
 
 function test(name, fn) {

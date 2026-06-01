@@ -28,7 +28,10 @@ function loadAnimotion() {
     "scripts/joint-coordinates.js",
     "scripts/cutscene-model.js",
     "scripts/motion-anchors.js",
+    "scripts/action-specs.js",
     "scripts/action-timeline-model.js",
+    "scripts/motion-track-builder.js",
+    "scripts/boxing-step-locomotion.js",
     "scripts/motion-planner.js",
   ]) runScript(context, path);
   return context.window.Animotion;

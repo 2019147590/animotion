@@ -41,6 +41,73 @@ The hardcoded demo genga cut remains available, but it should be treated as the 
 
 ## Current Implemented State
 
+### Latest 2026-06-01 BoxingStep Locomotion and Extensible ActionSpec Handoff
+
+This handoff captures the completed `boxingStep` locomotion action and the runtime `ActionSpec` split.
+
+Problem 1-pager:
+
+- Context: punch motion quality is now acceptable, and the next expansion is a concise boxing step locomotion action rather than another attack/hook action.
+- Problem: punch/kick/dash behavior and saved JSON need to remain stable while adding a new action family and avoiding more action-specific hardcoding.
+- Goal: add `boxingStep` as a short forward locomotion action driven by direction/distance, with generic action-frame buttons from the action timeline/spec.
+- Non-goals: no weapon action implementation, no hidden-completion provider changes, no AI/Stability/Local SD changes, no B correspondence changes, and no old JSON migration.
+- Constraints: keep body-part-only actions working, preserve saved `cutsceneBridge`/`part.keyframes`, keep new modules small, and keep future prop/weapon concepts extensible.
+
+Options considered:
+
+- Add `boxingStep` directly inside `motion-planner.js`. Pro: fewer files. Con/risk: grows action-specific branching and makes future action families harder to isolate.
+- Add small runtime action/track/locomotion modules. Pro: keeps the planner core small and makes action metadata shared by planner/editor/tests. Con/risk: requires careful script/test load ordering. Chosen.
+
+Implemented behavior:
+
+- Added `scripts/action-specs.js` for `punch`, `kick`, `dash`, and `boxingStep`.
+- `ActionSpec.primaryFocus` is now extensible: `{ owner: "bodyPart" | "prop", role, point }`.
+- Current specs use only `owner: "bodyPart"` at runtime, and include empty `requiredProps` and `attachments` plus a `focusTarget` object for future prop/weapon actions.
+- Punch/kick beat lists are preserved through specs. Dash remains available to the planner but does not gain an action timeline, preserving legacy saved behavior.
+- Added `scripts/boxing-step-locomotion.js`; generated `jointAction.actionTimeline.template` is `"boxingStep"`.
+- Default boxing step beats are `guard -> weightShift -> leadFootStep -> rearFootFollow -> settle` with 16 default frames.
+- Boxing step is a locomotion action: no target point, no attack trajectory, and no `impactExaggeration`.
+- Forward direction is implemented; internal direction/distance fields are structured for backward/left/right expansion later.
+- Root/body/head/arms move together over a short distance. Foot/leg chains step lead foot first and rear foot follows; no-leg rigs fall back to body-only motion.
+- Added `scripts/motion-track-builder.js` to keep existing punch/kick/dash part-track generation outside the planner.
+- Added `scripts/motion-planner-controls.js` so UI controls stay separate from planner generation logic.
+- Action-frame editor now reads editable frames from `actionSpecs`/`actionTimeline`, so boxing step buttons are generated from spec data and pose drags still write to `part.keyframes`.
+- Trajectory remains read-only diagnostic data during action-frame editing.
+- Legacy punch/kick selector fallback was preserved for older saved actions that have `actionTimeline.template` but no loaded `actionSpecs`.
+
+Regression tests added or updated:
+
+- `tests/action-specs.test.js`
+- `tests/boxing-step-locomotion.test.js`
+- `tests/action-frame-editor.test.js`
+- `tests/action-frame-pose-drag.test.js`
+- Existing motion planner/action timeline tests were updated to load the new helper modules.
+
+Verification for this upload:
+
+- `node --check scripts\action-specs.js`
+- `node --check scripts\boxing-step-locomotion.js`
+- `node --check scripts\motion-planner.js`
+- `node --check scripts\motion-track-builder.js`
+- `node --check scripts\motion-planner-controls.js`
+- `node tests\action-specs.test.js`
+- `node tests\boxing-step-locomotion.test.js`
+- `node tests\action-frame-editor.test.js`
+- `node tests\action-frame-pose-drag.test.js`
+- `node tests\action-timeline-model.test.js`
+- `node tests\motion-planner-commands.test.js`
+- `node tests\cutscene-options.test.js`
+- `Get-ChildItem tests -Filter *.test.js | Sort-Object Name | ForEach-Object { node $_.FullName }`
+- `git diff --check`
+
+Result: all focused tests and the full JavaScript test suite passed locally. `git diff --check` reported only CRLF conversion warnings.
+
+Upload scope:
+
+- Include the new action spec, boxing step locomotion, planner helper modules, bootstrap/load-order changes, action-frame generalization, and tests.
+- Include this `HANDOFF.md` update.
+- Exclude local QA/user artifacts: `_analysis_frames/`, `animotion-project (10).json`, `animotion-project (11).json`, `lookism/*.png`, `recording/`, and screenshot/video artifacts.
+
 ### Latest 2026-06-01 Visibility Mask Outline-Rebase Handoff
 
 This handoff captures the current local tracked change that preserves visibility-mask placement when a part outline is edited.

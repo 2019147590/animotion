@@ -13,6 +13,9 @@ require("../scripts/pose-assist.js");
 require("../scripts/joint-coordinates.js");
 require("../scripts/motion-anchors.js");
 const cutsceneModel = require("../scripts/cutscene-model.js");
+require("../scripts/action-specs.js");
+require("../scripts/motion-track-builder.js");
+require("../scripts/boxing-step-locomotion.js");
 const motionPlanner = require("../scripts/motion-planner.js");
 
 function test(name, fn) {

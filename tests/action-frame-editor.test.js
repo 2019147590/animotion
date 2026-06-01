@@ -30,10 +30,13 @@ function loadAnimotion() {
     "scripts/cutscene-action-selectors.js",
     "scripts/cutscene-model.js",
     "scripts/motion-anchors.js",
+    "scripts/action-specs.js",
     "scripts/action-timeline-model.js",
     "scripts/impact-exaggeration-layer.js",
     "scripts/arm-extension-controls.js",
     "scripts/arm-extension.js",
+    "scripts/motion-track-builder.js",
+    "scripts/boxing-step-locomotion.js",
     "scripts/motion-planner.js",
     "scripts/action-frame-editor.js",
     "scripts/cutscene-motion-status.js",
@@ -48,6 +51,17 @@ function runScript(context, path) {
 function punchBridge(Animotion) {
   const bridge = Animotion.cutsceneModel.normalizeBridge({ durationFrames: 36, impactFrame: 24, primaryPartId: "arm" });
   const result = Animotion.motionPlanner.createPlan(parts(), "arm", bridge, { template: "punch", target: { x: 160, y: 30 } });
+  return { ...bridge, jointAction: result.jointAction };
+}
+
+function boxingStepBridge(Animotion) {
+  const bridge = Animotion.cutsceneModel.normalizeBridge({
+    durationFrames: 16,
+    impactFrame: 16,
+    primaryPartId: "body",
+    effectDirection: { x: 1, y: 0 },
+  });
+  const result = Animotion.motionPlanner.createPlan(parts(), "body", bridge, { template: "boxingStep" });
   return { ...bridge, jointAction: result.jointAction };
 }
 
@@ -101,6 +115,18 @@ test("legacy punch beats without actionTimeline still expose safe action frames"
   };
   const frames = Animotion.actionFrameEditor.framesForBridge(bridge);
   assert.equal(JSON.stringify(frames.map((frame) => frame.id)), JSON.stringify(["windup", "impact"]));
+});
+
+test("boxingStep generation exposes spec-defined action frames", () => {
+  const Animotion = loadAnimotion();
+  const frames = Animotion.actionFrameEditor.framesForBridge(boxingStepBridge(Animotion));
+  assert.equal(JSON.stringify(frames.map((frame) => frame.normalizedId)), JSON.stringify([
+    "guard",
+    "weightshift",
+    "leadfootstep",
+    "rearfootfollow",
+    "settle",
+  ]));
 });
 
 test("stale selected action frame is inactive after switching away from punch", () => {

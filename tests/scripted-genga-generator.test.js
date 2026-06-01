@@ -25,6 +25,8 @@ function loadAnimotion() {
     "scripts/motion-drafts.js",
     "scripts/timeline.js",
     "scripts/cutscene-model.js",
+    "scripts/motion-track-builder.js",
+    "scripts/boxing-step-locomotion.js",
     "scripts/motion-planner.js",
     "scripts/project-model.js",
     "scripts/project-serialization.js",

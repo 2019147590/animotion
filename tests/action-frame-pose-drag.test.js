@@ -25,6 +25,7 @@ function loadAnimotion() {
     "scripts/motion-target-state.js",
     "scripts/motion-target-debug.js",
     "scripts/character-root-motion.js",
+    "scripts/action-specs.js",
     "scripts/action-timeline-model.js",
     "scripts/cutscene-action-selectors.js",
     "scripts/impact-exaggeration-layer.js",
@@ -36,6 +37,8 @@ function loadAnimotion() {
     "scripts/arm-extension.js",
     "scripts/motion-replacement-layer.js",
     "scripts/motion-replacement-render.js",
+    "scripts/motion-track-builder.js",
+    "scripts/boxing-step-locomotion.js",
     "scripts/motion-planner.js",
     "scripts/action-frame-editor.js",
     "scripts/preview-coordinate.js",
@@ -114,6 +117,17 @@ function generatePunch(Animotion) {
   Animotion.motionCommands.applyMotionPlanResult(bridge, { template: "punch" }, result);
 }
 
+function generateBoxingStep(Animotion) {
+  const bridge = Animotion.cutsceneModel.normalizeBridge({
+    primaryPartId: "spine",
+    durationFrames: 16,
+    impactFrame: 16,
+    effectDirection: { x: 1, y: 0 },
+  });
+  const result = Animotion.motionPlanner.createPlan(Animotion.state.parts, "spine", bridge, { template: "boxingStep" });
+  Animotion.motionCommands.applyMotionPlanResult(bridge, { template: "boxingStep" }, result);
+}
+
 function poseAt(part, frame) {
   return part.keyframes.find((keyframe) => keyframe.frame === frame)?.pose;
 }
@@ -172,4 +186,20 @@ test("windup action-frame drag does not overwrite the impact keyframe", () => {
 
   assert.notEqual(poseAt(arm, windupFrame).jointX, impact.jointX);
   assert.equal(poseAt(arm, 24).jointX, impact.jointX);
+});
+
+test("boxingStep action-frame drag writes the selected frame keyframe", () => {
+  const Animotion = loadAnimotion();
+  const arm = Animotion.state.parts.find((part) => part.id === "arm");
+  generateBoxingStep(Animotion);
+  Animotion.actionFrameEditor.selectBeat("settle");
+  const frame = Animotion.state.currentFrame;
+  const before = Animotion.timeline.evaluatePartAtFrame(arm, frame);
+
+  assert.equal(beginHandTipDrag(Animotion), true);
+  Animotion.previewEvents.updateDrag(pointer(18, 5));
+  Animotion.previewEvents.endDrag(pointer(18, 5));
+
+  assert.equal(poseAt(arm, frame).jointX, before.jointX + 10);
+  assert.equal(Animotion.state.cutsceneBridge.jointAction.actionTimeline.template, "boxingStep");
 });

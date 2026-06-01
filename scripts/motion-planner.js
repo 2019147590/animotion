@@ -1,7 +1,8 @@
 {
   const global = typeof window !== "undefined" ? window : globalThis;
   const Animotion = global.Animotion || (global.Animotion = {});
-  const TEMPLATES = { kick: { label: "킥", beats: [["ready", 0, 0, 0, 0], ["compress", 0.24, -0.16, 0.08, 0.2], ["chamber", 0.56, 0.1, -0.12, 0.48], ["extend", 0.82, 0.58, -0.04, 0.82], ["impact", 1, 0, 0, 1]] }, punch: { label: "펀치", beats: [["guard", 0, 0, 0, 0], ["windup", 0.25, -0.2, 0.04, 0.15], ["drive", 0.58, 0.24, -0.02, 0.58], ["extension", 0.84, 0.75, 0, 0.86], ["impact", 1, 0, 0, 1]] }, dash: { label: "돌진", beats: [["ready", 0, 0, 0, 0], ["lean", 0.28, -0.08, 0.04, 0.2], ["launch", 0.62, 0.45, -0.08, 0.58], ["snap", 0.86, 0.82, -0.02, 0.86], ["arrive", 1, 0, 0, 1]] } };
+  const TEMPLATES = Animotion.actionSpecs?.plannerTemplates?.() || fallbackTemplates();
+
   function normalizePlan(plan = {}, options = {}) {
     const bounds = options.imageBounds || sourceBounds();
     const target = normalizeTarget(plan.target, plan.targetNormalized, bounds);
@@ -26,93 +27,11 @@
       ...(plan.rootMotion && typeof plan.rootMotion === "object" ? { rootMotion: clonePlain(plan.rootMotion) } : {}),
     };
   }
-  function normalizeTarget(target, normalized, bounds) {
-    const restored = Animotion.coordinateSpaces?.pointFromNormalizedImagePoint?.(normalized, bounds);
-    const source = restored || target;
-    if (!source) return null;
-    return { x: Math.round(Number(source.x) || 0), y: Math.round(Number(source.y) || 0) };
-  }
-  function normalizeTargetSource(source, target = null) {
-    if (!source) return target ? { type: "manual" } : null;
-    const type = ["correspondence", "manual", "generated", "planner-default"].includes(source.type) ? source.type : "manual";
-    return { type, ...(source.correspondenceId ? { correspondenceId: String(source.correspondenceId) } : {}), ...(source.targetPartType ? { targetPartType: String(source.targetPartType) } : {}), ...(source.coordinateSpace ? { coordinateSpace: String(source.coordinateSpace) } : {}) };
-  }
-  function installControls() {
-    if (typeof document === "undefined") return;
-    const anchor = document.querySelector("#autoAnticipation");
-    if (!anchor || document.querySelector("#motionPlanTemplate")) return;
-    const box = document.createElement("div");
-    box.className = "motion-planner-tools";
-    box.innerHTML = `
-      <label>
-        컷신 동작 타입
-        <select id="motionPlanTemplate">
-          <option value="kick">킥</option>
-          <option value="punch">펀치</option>
-          <option value="dash">돌진</option>
-        </select>
-      </label>
-      <div class="button-row">
-        <button id="pickMotionTarget" type="button">움직임 목표 찍기</button>
-        <button id="generateMotionPlan" type="button">비트/이동 궤적 생성</button>
-      </div>
-      <p id="motionPlanStatus" class="hint">선택 파츠와 움직임 목표로 중간 관절 좌표를 생성합니다.</p>
-    `;
-    anchor.after(box);
-    refs().template.addEventListener("change", updateTemplate);
-    refs().pickTarget.addEventListener("click", toggleTargetMode);
-    refs().generate.addEventListener("click", () => Animotion.motionPlannerCommands?.generateFromSelection?.());
-  }
-  function refreshControls() {
-    const ui = refs();
-    if (!ui.template) return;
-    const plan = currentPlan();
-    const part = Animotion.parts?.selectedPart?.();
-    ui.template.value = plan.template;
-    ui.pickTarget.classList.toggle("active", plan.targetMode);
-    ui.pickTarget.disabled = !Animotion.state.image || !part;
-    ui.generate.disabled = !Animotion.state.image || !part;
-    ui.status.textContent = Animotion.motionPlannerCommands?.statusMessage?.(plan, part) || statusText(plan, part);
-  }
-  function currentPlan() {
-    return Animotion.motionCommands?.currentMotionPlan?.() || normalizePlan(Animotion.state.motionPlan);
-  }
-  function updateTemplate() {
-    Animotion.motionPlannerCommands?.clearStatus?.();
-    Animotion.motionCommands.setMotionPlan({ template: refs().template.value });
-    refresh();
-  }
-  function toggleTargetMode() { setTargetMode(!currentPlan().targetMode); }
-  function setTargetMode(active, options = {}) {
-    if (active && !options.skipExclusive) Animotion.previewPointerArbitration?.activateExclusivePicker?.("motionPlanner");
-    const plan = Animotion.motionCommands.setMotionPlan({ targetMode: Boolean(active) });
-    if (!plan.targetMode) Animotion.previewPointerArbitration?.clearActivePicker?.("motionPlanner");
-    const shouldPause = plan.targetMode && Animotion.state.running;
-    if (shouldPause) Object.assign(Animotion.state, { pausedTime: (performance.now() - Animotion.state.startTime) / 1000, running: false });
-    if (shouldPause) Animotion.dom.els.playPause.textContent = "재생";
-    if (options.refresh !== false) refresh();
-    return plan.targetMode;
-  }
-  function hitTarget(event) {
-    const plan = currentPlan();
-    if (!plan.targetMode || !Animotion.state.previewView || !Animotion.state.image) return null;
-    const point = previewPoint(event);
-    return point ? { label: "움직임 목표", point } : null;
-  }
-  function beginDragFromTarget(event, target) {
-    const payload = target?.payload || target?.hit || target;
-    const point = payload?.point || previewPoint(event);
-    if (!point) return false;
-    const bounds = Animotion.panelEditor?.imageBounds?.("source") || Animotion.imageBounds();
-    Animotion.motionCommands.setMotionPlan(Animotion.motionTargetState?.manualTargetPatch?.({
-      x: Math.round(Animotion.geometry.clamp(point.x, 0, bounds.width)),
-      y: Math.round(Animotion.geometry.clamp(point.y, 0, bounds.height)),
-      }) || { target: point, anchors: [], targetMode: false, targetSource: { type: "manual" } });
-    refresh();
-    return true;
-  }
+
   function createPlan(parts, primaryId, bridge, options = {}) {
-    const plan = normalizePlan(options); parts = Animotion.armExtension?.partsWithInferredHandTips?.(parts, primaryId, plan.template) || parts;
+    const plan = normalizePlan(options);
+    parts = Animotion.armExtension?.partsWithInferredHandTips?.(parts, primaryId, plan.template) || parts;
+    if (plan.template === "boxingStep") return Animotion.boxingStepLocomotion.createPlan(parts, primaryId, bridge, plan);
     const base = Animotion.jointCoordinates.inferJointPose(parts);
     const primary = parts.find((part) => part.id === primaryId) || parts[0];
     const active = activeKeys(primary, parts);
@@ -122,19 +41,20 @@
     let activeMotionTarget = motionTargetForPlan(plan, target);
     let targetDebug = targetDebugFor(plan, base, active, target, activeMotionTarget);
     let scopedPlan = { ...plan, targetDebug };
-    let punchStyle = Animotion.motionAnchors?.punchStyleFor?.(scopedPlan, parts, primary, base, active, direction, target) || "jab";
+    let punchStyle = punchStyleFor(scopedPlan, parts, primary, base, active, direction, target);
     if (targetInfo.generated && plan.template === "punch" && punchStyle === "rear-cross") {
       target = leadTarget(plan, base[active.end], rearCrossAutoTarget(base, active, direction, primary, parts));
       activeMotionTarget = motionTargetForPlan(plan, target);
       targetDebug = targetDebugFor(plan, base, active, target, activeMotionTarget);
       scopedPlan = { ...plan, targetDebug };
-      punchStyle = Animotion.motionAnchors?.punchStyleFor?.(scopedPlan, parts, primary, base, active, direction, target) || punchStyle;
+      punchStyle = punchStyleFor(scopedPlan, parts, primary, base, active, direction, target) || punchStyle;
     }
     targetDebug.punchStyle = punchStyle;
     targetDebug.roleDecision = Animotion.motionAnchors?.classificationDebug?.(scopedPlan, parts, primary, base, active, direction, target, { selectedPartId: options.selectedPartId || primaryId, explicitActionOverride: Boolean(plan.targetDebug?.punchStyle) }) || null;
     Object.assign(targetDebug, Animotion.armChainResolver?.targetDebug?.(parts, options.selectedPartId || primaryId, primary, targetDebug.roleDecision) || {});
     if (targetDebug.hiddenCompletionCandidate) targetDebug.hiddenCompletionReason = "wrist/forearm area may be exposed by separate glove motion";
-    const anchors = Animotion.motionAnchors?.anchorsFromPlan?.(scopedPlan, parts, primary, base, active, direction, target) || [], actionTimeline = actionTimelineFor(plan.template, bridge);
+    const anchors = Animotion.motionAnchors?.anchorsFromPlan?.(scopedPlan, parts, primary, base, active, direction, target) || [];
+    const actionTimeline = actionTimelineFor(plan.template, bridge);
     const beats = templateBeats(plan.template, bridge).map((spec) => poseBeat(spec, base, active, target, direction, anchors, punchStyle));
     const trajectorySamples = Animotion.motionTargetState?.trajectorySamples?.(beats, active.end) || [];
     Object.assign(targetDebug, Animotion.characterRootMotion?.debugForPlan?.(parts, primary, beats, base, plan, targetDebug) || {});
@@ -143,27 +63,49 @@
       motionScope: plan.motionScope,
       targetDebug,
       activeMotionTarget,
-      trajectoryPoints: trajectorySamples, trajectorySamples,
+      trajectoryPoints: trajectorySamples,
+      trajectorySamples,
       anchors,
       active,
-      jointAction: { source: `motion-planner-${plan.template}-anchors-v1`, focusKey: active.end, actionTimeline, impactExaggeration: impactExaggerationFor(actionTimeline, parts, primary), anchors, beats, targetDebug, activeMotionTarget, trajectoryPoints: trajectorySamples, trajectorySamples, motionHints: plan.motionHints, motionDraft: Animotion.motionDrafts?.snapshot?.(plan.motionDraft) || plan.motionDraft },
-      partTracks: tracksForParts(parts, primary, beats, base, active, { ...bridge, jointAction: { targetDebug } }),
+      jointAction: {
+        source: `motion-planner-${plan.template}-anchors-v1`,
+        focusKey: active.end,
+        actionTimeline,
+        impactExaggeration: impactExaggerationFor(actionTimeline, parts, primary),
+        anchors,
+        beats,
+        targetDebug,
+        activeMotionTarget,
+        trajectoryPoints: trajectorySamples,
+        trajectorySamples,
+        motionHints: plan.motionHints,
+        motionDraft: Animotion.motionDrafts?.snapshot?.(plan.motionDraft) || plan.motionDraft,
+      },
+      partTracks: Animotion.motionTrackBuilder.tracksForParts(parts, primary, beats, base, active, { ...bridge, jointAction: { targetDebug } }),
     };
   }
-  function activeKeys(primary, parts) {
-    const side = Animotion.poseAssist?.actionSide?.(primary, parts) < 0 ? "l" : "r";
-    if (partKind(primary) === "arm") return { root: `${side}Shoulder`, mid: `${side}Elbow`, end: `${side}Hand` };
-    if (partKind(primary) === "leg") return { root: "hip", mid: `${side}Knee`, end: `${side}Foot` };
-    if (isBodyPrimary(primary)) return { root: "hip", mid: "chest", end: "chest", motion: "translate" };
-    return { root: "chest", mid: "head", end: "head" };
+
+  function tracksForJointAction(parts, primaryId, action) {
+    return Animotion.motionTrackBuilder.tracksForJointAction(parts, primaryId, action);
   }
+
+  function activeKeys(primary, parts) {
+    return Animotion.motionTrackBuilder?.activeKeys?.(primary, parts) || { root: "hip", mid: "chest", end: "chest", motion: "translate" };
+  }
+
   function templateBeats(template, bridge) {
     const normalized = Animotion.cutsceneModel.normalizeBridge(bridge);
     const action = actionTimelineFor(template, normalized);
     if (action) return action.beats.map((spec) => ({ id: spec.id, at: spec.at, recoil: spec.recoil, lift: spec.lift, reach: spec.reach }));
     const impact = normalized.impactFrame;
-    return TEMPLATES[template].beats.map(([id, n, recoil, lift, reach]) => ({ id, at: Math.max(1, Math.round(1 + (impact - 1) * n)), recoil, lift, reach }));
+    return TEMPLATES[template].beats.map(([id, n, recoil, lift, reach]) => ({ id, at: frameForTemplateBeat(n, normalized, impact), recoil, lift, reach }));
   }
+
+  function frameForTemplateBeat(position, bridge, impact) {
+    if (position === "duration") return bridge.durationFrames || impact;
+    return Math.max(1, Math.round(1 + (impact - 1) * Number(position || 0)));
+  }
+
   function poseBeat(spec, base, active, target, direction, anchors, punchStyle = "jab") {
     const rearCross = punchStyle === "rear-cross";
     const strikeDirection = rearCross ? directionFrom(base[active.end], target, direction) : direction;
@@ -174,21 +116,23 @@
     const end = lerpPoint(startEnd, Animotion.motionAnchors?.anchorPoint?.(anchors, active.end) || target, spec.reach);
     end.x += strikeDirection.x * spec.recoil * 80;
     end.y += rearCross ? strikeDirection.y * spec.recoil * 40 + spec.lift * 20 : spec.lift * 40;
-    if (rearCross && spec.recoil < 0) {
-      const targetSide = Math.sign(target.x - startEnd.x) || Math.sign(strikeDirection.x) || Math.sign(direction.x) || 1;
-      end.x = startEnd.x - targetSide * Math.abs(spec.recoil) * 45;
-      end.y = startEnd.y - strikeDirection.y * Math.abs(spec.recoil) * 20 + spec.lift * 10;
-    }
+    if (rearCross && spec.recoil < 0) applyRearWindup(end, startEnd, strikeDirection, direction, target, spec);
     if (active.motion === "translate") {
       pose[active.end] = rounded(end);
       return { id: spec.id, at: spec.at, pose };
     }
     const midTarget = Animotion.motionAnchors?.anchorPoint?.(anchors, active.mid);
-    const mid = midTarget ? lerpPoint(pointFromArray(base[active.mid]), midTarget, spec.reach) : solveMid(root, end, base, active, spec.reach);
-    pose[active.mid] = rounded(mid);
+    pose[active.mid] = rounded(midTarget ? lerpPoint(pointFromArray(base[active.mid]), midTarget, spec.reach) : solveMid(root, end, base, active, spec.reach));
     pose[active.end] = rounded(end);
     return { id: spec.id, at: spec.at, pose };
   }
+
+  function applyRearWindup(end, startEnd, strikeDirection, direction, target, spec) {
+    const targetSide = Math.sign(target.x - startEnd.x) || Math.sign(strikeDirection.x) || Math.sign(direction.x) || 1;
+    end.x = startEnd.x - targetSide * Math.abs(spec.recoil) * 45;
+    end.y = startEnd.y - strikeDirection.y * Math.abs(spec.recoil) * 20 + spec.lift * 10;
+  }
+
   function shiftBody(base, shift, recoil, direction) {
     const pose = { ...base };
     for (const key of ["hip", "chest", "head"]) {
@@ -197,12 +141,14 @@
     }
     return pose;
   }
+
   function applyAnchorPose(pose, base, anchors, reach, excludedKeys = []) {
     for (const anchor of anchors || []) {
       if (excludedKeys.includes(anchor.key) || !base[anchor.key]) continue;
       pose[anchor.key] = rounded(lerpPoint(pointFromArray(base[anchor.key]), anchor.point, reach));
     }
   }
+
   function solveMid(root, end, base, active, bendScale) {
     const baseRoot = pointFromArray(base[active.root] || base.hip);
     const baseMid = pointFromArray(base[active.mid] || base.head);
@@ -215,75 +161,7 @@
     const normal = bendNormal(baseRoot, baseMid, baseEnd, root, end);
     return { x: root.x + (end.x - root.x) * along + normal.x * height, y: root.y + (end.y - root.y) * along + normal.y * height };
   }
-  function tracksForParts(parts, primary, beats, base, active, bridge) {
-    const chain = Animotion.armChainResolver?.resolve?.(parts, primary?.id);
-    return parts.map((part) => ({ partId: part.id, keyframes: beats.map((beat) => trackKeyframe(part, primary, beat, base, active, bridge, chain)) }));
-  }
-  function tracksForJointAction(parts, primaryId, action) {
-    const bridge = action?.jointAction ? action : { jointAction: action, bodyAssistEnabled: true };
-    parts = Animotion.armExtension?.partsWithInferredHandTips?.(parts, primaryId, actionTemplateName(bridge.jointAction)) || parts;
-    const base = Animotion.jointCoordinates.inferJointPose(parts);
-    const primary = parts.find((part) => part.id === primaryId) || parts[0];
-    const active = activeKeys(primary, parts);
-    return tracksForParts(parts, primary, bridge.jointAction?.beats || [], base, active, bridge);
-  }
-  function trackKeyframe(part, primary, beat, base, active, bridge, chain = null) {
-    const pose = Animotion.motionModel.defaultCustomMotion(), parentId = parentIdFor(part);
-    const chainFactor = separateChainMotionFactor(part, chain);
-    if (part.id === primary.id) {
-      const extensionPose = Animotion.armExtension?.poseForArmOnlyRearPunch?.(part, beat, base, active, bridge);
-      if (extensionPose) Object.assign(pose, extensionPose); else if (active.motion === "translate" || drivesHandTipEndpoint(part, active) || chainFactor > 0) {
-        pose.x = (beat.pose[active.end][0] - base[active.end][0]) * (chainFactor || 1);
-        pose.y = (beat.pose[active.end][1] - base[active.end][1]) * (chainFactor || 1);
-      } else {
-        pose.jointX = beat.pose[active.end][0] - base[active.end][0];
-        pose.jointY = beat.pose[active.end][1] - base[active.end][1];
-      }
-      return { frame: beat.at, pose };
-    }
-    if (chainFactor > 0) {
-      pose.x = (beat.pose[active.end][0] - base[active.end][0]) * chainFactor;
-      pose.y = (beat.pose[active.end][1] - base[active.end][1]) * chainFactor;
-      pose.rotate = chainFactor * 8 * Math.sign(pose.x || 1);
-      return { frame: beat.at, pose };
-    }
-    if (!parentId && bridge.bodyAssistEnabled !== false && bridge?.jointAction?.targetDebug?.chosenMotionScope === "full-character") {
-      Object.assign(pose, { x: beat.pose.hip[0] - base.hip[0], y: beat.pose.hip[1] - base.hip[1] });
-      return { frame: beat.at, pose };
-    }
-    if (!parentId && bridge.bodyAssistEnabled !== false && !isBodyPrimary(primary) && isBodyPrimary(part)) {
-      Object.assign(pose, { x: beat.pose.hip[0] - base.hip[0], y: beat.pose.hip[1] - base.hip[1] });
-    }
-    if (!parentId && bridge.bodyAssistEnabled !== false && !isBodyPrimary(primary) && partKind(part) === "head") {
-      pose.x = (beat.pose.head[0] - base.head[0]) * 0.7;
-      pose.y = (beat.pose.head[1] - base.head[1]) * 0.7;
-    }
-    return { frame: beat.at, pose };
-  }
-  function drivesHandTipEndpoint(part, active) { return partKind(part) === "arm" && Boolean(Animotion.rigging?.handTipForPart?.(part) || part.handTip) && String(active.end || "").endsWith("Hand"); }
-  function separateChainMotionFactor(part, chain) {
-    if (!chain?.separateRigPath || !chain.handOrGloveId) return 0;
-    if (part.id === chain.upperArmId) return chain.forearmId ? 0.15 : 0.22;
-    if (part.id === chain.forearmId) return chain.upperArmId ? 0.3 : 0.35;
-    if (part.id === chain.handOrGloveId) return chain.upperArmId && chain.forearmId ? 0.55 : chain.forearmId ? 0.65 : 1;
-    return 0;
-  }
-  function statusText(plan, part) {
-    if (!part) return "파츠를 선택하면 움직임 목표 기반 궤적을 만들 수 있습니다.";
-    const target = plan.target ? `움직임 목표 ${plan.target.x}, ${plan.target.y}` : "움직임 목표 없음";
-    const debug = Animotion.motionTargetState?.activeMotionTargetDebug?.(plan);
-    const source = debug?.source ? ` · 현재 움직임 목표 ${sourceLabel(debug.source)} · 위치 ${debug.point.x},${debug.point.y} · 좌표계 ${debug.coordinateSpace} · B컷 참조 ${debug.bReferenceUsedForMotion ? "사용" : "미사용"}` : "";
-    const hints = Animotion.motionHints?.statusText?.(plan.motionHints);
-    const selected = plan.selectedBeatId ? ` · beat ${plan.selectedBeatId}` : "";
-    const scope = plan.targetDebug?.chosenMotionScope ? ` · ${plan.targetDebug.chosenMotionScope}` : "";
-    const distance = Number.isFinite(plan.targetDebug?.computedDistance) ? ` · d ${Math.round(plan.targetDebug.computedDistance)}` : "";
-    return `${templateFor(plan.template).label} · ${target}${source}${scope}${distance}${hints ? ` · ${hints}` : ""}${plan.anchors.length ? ` · anchors ${plan.anchors.length}` : ""}${selected}`;
-  }
-  function autoTarget(start, direction, primary) {
-    const p = pointFromArray(start || [0, 0]);
-    const distance = partKind(primary) === "leg" ? 170 : 120;
-    return { x: Math.round(p.x + direction.x * distance), y: Math.round(p.y + direction.y * distance) };
-  }
+
   function targetForPlan(plan, base, active, direction, primary) {
     const anchored = Animotion.motionAnchors?.anchorPoint?.(plan.anchors, active.end);
     if (anchored) return { point: anchored, generated: false };
@@ -291,101 +169,85 @@
     if (activeTarget) return { point: activeTarget, generated: false };
     return { point: autoTarget(base[active.end], direction, primary), generated: true };
   }
+
   function targetDebugFor(plan, base, active, target, activeMotionTarget) {
     const targetDebug = Animotion.motionTargetDebug?.analyzeTarget?.(plan, base, active, target) || {};
     targetDebug.activeMotionTarget = Animotion.motionTargetState?.activeMotionTargetDebug?.({ ...plan, activeMotionTarget }) || null;
     return targetDebug;
   }
-  function leadTarget(plan, start, target) {
-    return Animotion.motionTargetDebug?.primaryLeadTarget?.(plan, start, target) || target;
+
+  function autoTarget(start, direction, primary) {
+    const p = pointFromArray(start || [0, 0]);
+    const move = partKind(primary) === "leg" ? 170 : 120;
+    return { x: Math.round(p.x + direction.x * move), y: Math.round(p.y + direction.y * move) };
   }
+
   function rearCrossAutoTarget(base, active, direction, primary, parts) {
     const root = pointFromArray(base[active.root] || base.chest || base.hip);
     const end = pointFromArray(base[active.end] || base.head);
     const face = coveringBounds(parts);
     const sign = Math.sign(direction.x) || Math.sign(end.x - root.x) || 1;
-    const reach = rearCrossReach(root, end, parts);
-    const target = { x: Math.round(end.x + sign * reach), y: Math.round(end.y + (direction.y || 0) * reach * 0.25) };
-    return clampTargetToBounds(pushTargetOutsideCover(target, face, sign));
+    const reach = Math.max(120, distance(root, end) * 1.2, (parts.find((part) => partKind(part) === "body")?.rect?.w || 0) * 1.45);
+    return clampTargetToBounds(pushTargetOutsideCover({ x: Math.round(end.x + sign * reach), y: Math.round(end.y + (direction.y || 0) * reach * 0.25) }, face, sign));
   }
-  function torsoPoint(base, parts) {
-    const chest = pointFromArray(base.chest), hip = pointFromArray(base.hip);
-    if (chest.x || chest.y || hip.x || hip.y) return { x: (chest.x + hip.x) / 2, y: (chest.y + hip.y) / 2 };
-    const body = parts.find((part) => partKind(part) === "body") || parts[0];
-    return { x: Number(body?.rect?.x || 0) + Number(body?.rect?.w || 0) / 2, y: Number(body?.rect?.y || 0) + Number(body?.rect?.h || 0) / 2 };
+
+  function normalizeTarget(target, normalized, bounds) {
+    const restored = Animotion.coordinateSpaces?.pointFromNormalizedImagePoint?.(normalized, bounds);
+    const source = restored || target;
+    return source ? { x: Math.round(Number(source.x) || 0), y: Math.round(Number(source.y) || 0) } : null;
   }
-  function rearCrossReach(root, end, parts) {
-    const body = parts.find((part) => partKind(part) === "body") || {};
-    const bodyWidth = Number(body.rect?.w) || 0;
-    return Math.max(120, distance(root, end) * 1.2, bodyWidth * 1.45);
+
+  function normalizeTargetSource(source, target = null) {
+    if (!source) return target ? { type: "manual" } : null;
+    const type = ["correspondence", "manual", "generated", "planner-default"].includes(source.type) ? source.type : "manual";
+    return { type, ...(source.correspondenceId ? { correspondenceId: String(source.correspondenceId) } : {}), ...(source.targetPartType ? { targetPartType: String(source.targetPartType) } : {}), ...(source.coordinateSpace ? { coordinateSpace: String(source.coordinateSpace) } : {}) };
   }
+
+  function punchStyleFor(plan, parts, primary, base, active, direction, target) { return Animotion.motionAnchors?.punchStyleFor?.(plan, parts, primary, base, active, direction, target) || "jab"; }
+  function leadTarget(plan, start, target) { return Animotion.motionTargetDebug?.primaryLeadTarget?.(plan, start, target) || target; }
+  function activeTargetPoint(plan) { return plan.activeMotionTarget?.point || plan.target || null; }
+  function motionTargetForPlan(plan, point) { return plan.activeMotionTarget ? { ...plan.activeMotionTarget, point } : Animotion.motionTargetState?.generatedTarget?.(point) || null; }
+  function templateFor(template) { return TEMPLATES[template] || (Animotion.actionTimelineModel?.hasTemplate?.(template) ? Animotion.actionTimelineModel.timelineForTemplate(template) : null); }
+  function actionTimelineFor(template, bridge) { return Animotion.actionTimelineModel?.hasTemplate?.(template) ? Animotion.actionTimelineModel.timelineForTemplate(template, bridge) : null; }
+  function impactExaggerationFor(actionTimeline, parts, primary) { return Animotion.impactExaggerationLayer?.createDefaultImpactExaggerationForActionTimeline?.(actionTimeline, { parts, primaryPartId: primary?.id }) || null; }
+  function partKind(part = {}) { if (["thigh", "shin", "foot"].includes(part.humanRole) || part.type === "leg") return "leg"; if (["upperArm", "forearm", "hand", "glove"].includes(part.humanRole) || ["arm", "glove"].includes(part.type)) return "arm"; if (["torso", "pelvis"].includes(part.humanRole) || part.type === "body" || part.type === "spine") return "body"; if (part.humanRole === "head" || part.type === "head") return "head"; return part.type || null; }
+  function directionFrom(startPoint, endPoint, fallback) { const start = pointFromArray(startPoint), end = pointFromArray(endPoint), dx = end.x - start.x, dy = end.y - start.y, length = Math.hypot(dx, dy); return length > 0.001 ? { x: dx / length, y: dy / length } : fallback; }
+  function bendNormal(baseRoot, baseMid, baseEnd, root, end) { const sign = Math.sign((baseMid.x - baseRoot.x) * (baseEnd.y - baseRoot.y) - (baseMid.y - baseRoot.y) * (baseEnd.x - baseRoot.x)) || 1; const dx = end.x - root.x, dy = end.y - root.y, length = Math.max(1, Math.hypot(dx, dy)); return { x: -dy / length * sign, y: dx / length * sign }; }
+  function pointFromArray(point) { return { x: Number(point?.[0]) || 0, y: Number(point?.[1]) || 0 }; }
+  function lerpPoint(a, b, ratio) { return { x: a.x + (b.x - a.x) * ratio, y: a.y + (b.y - a.y) * ratio }; }
+  function rounded(point) { return [Math.round(point.x), Math.round(point.y)]; }
+  function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+  function normalizedPoint(point, bounds) { return Animotion.coordinateSpaces?.normalizedImagePointFromPoint?.(point, bounds) || null; }
+  function clonePlain(value) { return JSON.parse(JSON.stringify(value)); }
+  function sourceBounds() { return Animotion.state?.image ? { width: Animotion.state.image.naturalWidth, height: Animotion.state.image.naturalHeight } : typeof Animotion.imageBounds === "function" ? Animotion.imageBounds() : null; }
+
   function coveringBounds(parts) {
-    const covering = parts.filter((part) => isFaceOrHeadLayer(part)).map((part) => rectBounds(part.rect)).filter((rect) => rect.w || rect.h);
-    if (!covering.length) return null;
-    const minX = Math.min(...covering.map((rect) => rect.x)), minY = Math.min(...covering.map((rect) => rect.y));
-    const maxX = Math.max(...covering.map((rect) => rect.x + rect.w)), maxY = Math.max(...covering.map((rect) => rect.y + rect.h));
+    const list = parts.filter((part) => isFaceOrHeadLayer(part)).map((part) => rectBounds(part.rect)).filter((rect) => rect.w || rect.h);
+    if (!list.length) return null;
+    const minX = Math.min(...list.map((rect) => rect.x)), minY = Math.min(...list.map((rect) => rect.y));
+    const maxX = Math.max(...list.map((rect) => rect.x + rect.w)), maxY = Math.max(...list.map((rect) => rect.y + rect.h));
     return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
   }
+
   function pushTargetOutsideCover(target, cover, sign) {
     if (!cover) return target;
     const padding = 32;
-    const insideY = target.y >= cover.y - padding && target.y <= cover.y + cover.h + padding;
     if (sign > 0 && (target.x <= cover.x + cover.w + padding || insideRect(target, cover))) return { ...target, x: Math.round(cover.x + cover.w + padding) };
     if (sign < 0 && (target.x >= cover.x - padding || insideRect(target, cover))) return { ...target, x: Math.round(cover.x - padding) };
-    if (insideY && insideRect(target, cover)) return { ...target, x: Math.round(target.x + sign * padding) };
     return target;
   }
-  function isFaceOrHeadLayer(part = {}) {
-    const text = `${part.id || ""} ${part.name || ""} ${part.type || ""} ${part.humanRole || ""}`.toLowerCase();
-    return /head|face|hair|eye|eyes|mouth|nose|facial/.test(text) || /얼굴|머리|눈|입|코/.test(text);
-  }
+
   function clampTargetToBounds(target) {
     const bounds = sourceBounds();
-    if (!bounds) return target;
-    return { x: Math.round(clamp(target.x, 0, bounds.width)), y: Math.round(clamp(target.y, 0, bounds.height)) };
+    return bounds ? { x: Math.round(clamp(target.x, 0, bounds.width)), y: Math.round(clamp(target.y, 0, bounds.height)) } : target;
   }
+
   function rectBounds(rect = {}) { return { x: Number(rect.x) || 0, y: Number(rect.y) || 0, w: Number(rect.w) || 0, h: Number(rect.h) || 0 }; }
   function insideRect(point, rect) { return point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h; }
-  function activeTargetPoint(plan) { return plan.activeMotionTarget?.point || plan.target || null; }
-  function motionTargetForPlan(plan, point) { return plan.activeMotionTarget ? { ...plan.activeMotionTarget, point } : Animotion.motionTargetState?.generatedTarget?.(point) || null; }
-  function sourceLabel(source) { return ({ manual: "수동", correspondence: "B컷 참조", generated: "자동 생성" })[source] || source; } function partKind(part = {}) { if (["thigh", "shin", "foot"].includes(part.humanRole) || part.type === "leg") return "leg"; if (["upperArm", "forearm", "hand", "glove"].includes(part.humanRole) || ["arm", "glove"].includes(part.type)) return "arm"; if (["torso", "pelvis"].includes(part.humanRole) || part.type === "body" || part.type === "spine") return "body"; if (part.humanRole === "head" || part.type === "head") return "head"; return part.type || null; } function isBodyPrimary(part) { return partKind(part) === "body"; }
-  function templateFor(template) { return TEMPLATES[template] || (Animotion.actionTimelineModel?.hasTemplate?.(template) ? Animotion.actionTimelineModel.timelineForTemplate(template) : null); } function actionTimelineFor(template, bridge) { return Animotion.actionTimelineModel?.hasTemplate?.(template) ? Animotion.actionTimelineModel.timelineForTemplate(template, bridge) : null; }
-  function impactExaggerationFor(actionTimeline, parts, primary) { return Animotion.impactExaggerationLayer?.createDefaultImpactExaggerationForActionTimeline?.(actionTimeline, { parts, primaryPartId: primary?.id }) || null; }
-  function actionTemplateName(action = {}) { return Animotion.cutsceneActionSelectors?.actionTemplate?.(action) || null; }
-  function parentIdFor(part) { return Animotion.rigConnection?.parentIdFor?.(part) || null; }
-  function directionFrom(startPoint, endPoint, fallback) { const start = pointFromArray(startPoint), end = pointFromArray(endPoint), dx = end.x - start.x, dy = end.y - start.y, length = Math.hypot(dx, dy); return length > 0.001 ? { x: dx / length, y: dy / length } : fallback; }
-  function bendNormal(baseRoot, baseMid, baseEnd, root, end) {
-    const sign = Math.sign((baseMid.x - baseRoot.x) * (baseEnd.y - baseRoot.y) - (baseMid.y - baseRoot.y) * (baseEnd.x - baseRoot.x)) || 1;
-    const dx = end.x - root.x;
-    const dy = end.y - root.y;
-    const length = Math.max(1, Math.hypot(dx, dy));
-    return { x: -dy / length * sign, y: dx / length * sign };
-  }
-  function refs() {
-    return { template: document.querySelector("#motionPlanTemplate"), pickTarget: document.querySelector("#pickMotionTarget"), generate: document.querySelector("#generateMotionPlan"), status: document.querySelector("#motionPlanStatus") };
-  }
-  function previewPoint(event) {
-    const canvas = Animotion.dom.previewCanvas;
-    const rect = canvas.getBoundingClientRect();
-    const screen = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-    return Animotion.previewTransform?.screenPointToImage?.(
-      screen,
-      Animotion.state.previewView,
-      Animotion.state.previewSourceFrame,
-      Animotion.state.previewSourceTransform
-    ) || screen;
-  }
-  function pointFromArray(point) { return { x: Number(point?.[0]) || 0, y: Number(point?.[1]) || 0 }; }
-  function lerpPoint(a, b, ratio) {
-    return { x: a.x + (b.x - a.x) * ratio, y: a.y + (b.y - a.y) * ratio };
-  }
-  function rounded(point) { return [Math.round(point.x), Math.round(point.y)]; }
-  function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); } function normalizedPoint(point, bounds) { return Animotion.coordinateSpaces?.normalizedImagePointFromPoint?.(point, bounds) || null; }
-  function clonePlain(value) { return JSON.parse(JSON.stringify(value)); }
+  function isFaceOrHeadLayer(part = {}) { const text = `${part.id || ""} ${part.name || ""} ${part.type || ""} ${part.humanRole || ""}`.toLowerCase(); return /head|face|hair|eye|eyes|mouth|nose|facial/.test(text) || /\uC5BC\uAD74|\uBA38\uB9AC|\uB208|\uC785|\uCF54/.test(text); }
   function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
-  function sourceBounds() { return Animotion.state?.image ? { width: Animotion.state.image.naturalWidth, height: Animotion.state.image.naturalHeight } : typeof Animotion.imageBounds === "function" ? Animotion.imageBounds() : null; }
-  function refresh() { Animotion.ui?.refreshUi?.(); }
-  Animotion.motionPlanner = { normalizePlan, createPlan, installControls, refreshControls, tracksForJointAction, hitTarget, beginDragFromTarget, setTargetMode };
-  installControls();
+  function fallbackTemplates() { return { kick: { label: "Kick", beats: [["ready", 0, 0, 0, 0], ["compress", 0.24, -0.16, 0.08, 0.2], ["chamber", 0.56, 0.1, -0.12, 0.48], ["extend", 0.82, 0.58, -0.04, 0.82], ["impact", 1, 0, 0, 1]] }, punch: { label: "Punch", beats: [["guard", 0, 0, 0, 0], ["windup", 0.25, -0.2, 0.04, 0.15], ["drive", 0.58, 0.24, -0.02, 0.58], ["extension", 0.84, 0.75, 0, 0.86], ["impact", 1, 0, 0, 1]] }, dash: { label: "Dash", beats: [["ready", 0, 0, 0, 0], ["lean", 0.28, -0.08, 0.04, 0.2], ["launch", 0.62, 0.45, -0.08, 0.58], ["snap", 0.86, 0.82, -0.02, 0.86], ["arrive", 1, 0, 0, 1]] } }; }
+
+  Animotion.motionPlanner = { normalizePlan, createPlan, tracksForJointAction };
   if (typeof module !== "undefined") module.exports = Animotion.motionPlanner;
 }

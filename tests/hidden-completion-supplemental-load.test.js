@@ -47,6 +47,8 @@ function loadAnimotion() {
     "scripts/hidden-completion-supplemental-project.js",
     "scripts/cutscene-action-selectors.js",
     "scripts/cutscene-model.js",
+    "scripts/motion-track-builder.js",
+    "scripts/boxing-step-locomotion.js",
     "scripts/motion-planner.js",
     "scripts/motion-commands.js",
     "scripts/correspondence-model.js",

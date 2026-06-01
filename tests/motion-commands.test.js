@@ -24,6 +24,8 @@ function loadAnimotion() {
     "scripts/motion-target-debug.js",
     "scripts/impact-exaggeration-layer.js",
     "scripts/cutscene-model.js",
+    "scripts/motion-track-builder.js",
+    "scripts/boxing-step-locomotion.js",
     "scripts/motion-planner.js",
     "scripts/command-history.js",
   ]) runScript(context, path);

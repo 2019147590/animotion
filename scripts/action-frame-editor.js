@@ -2,17 +2,23 @@
   const global = typeof window !== "undefined" ? window : globalThis;
   const Animotion = global.Animotion || (global.Animotion = {});
   const BEAT_LABELS = {
-    guard: "가드",
-    start: "시작",
-    windup: "예비",
-    drive: "전진",
-    extension: "확장",
-    extend: "확장",
-    impact: "타격",
-    hold: "유지",
-    recover: "회수",
+    guard: "Guard",
+    ready: "Ready",
+    start: "Start",
+    windup: "Windup",
+    drive: "Drive",
+    extension: "Extension",
+    extend: "Extend",
+    impact: "Impact",
+    hold: "Hold",
+    recover: "Recover",
+    compress: "Compress",
+    chamber: "Chamber",
+    weightshift: "Weight shift",
+    leadfootstep: "Lead foot",
+    rearfootfollow: "Rear foot",
+    settle: "Settle",
   };
-  const PUNCH_BEAT_ORDER = ["guard", "start", "windup", "drive", "extension", "extend", "impact", "hold", "recover"];
 
   function installControls() {
     if (typeof document === "undefined") return;
@@ -21,7 +27,7 @@
     const panel = document.createElement("div");
     panel.id = "actionFrameControls";
     panel.className = "action-frame-tools hidden";
-    panel.innerHTML = `<div class="action-frame-title">Punch action frames</div><div class="action-frame-list"></div>`;
+    panel.innerHTML = `<div class="action-frame-title">Action frames</div><div class="action-frame-list"></div>`;
     anchor.after(panel);
   }
 
@@ -30,36 +36,30 @@
     if (!panel) return;
     const frames = framesForBridge(Animotion.state?.cutsceneBridge);
     panel.classList.toggle("hidden", !frames.length);
-    const list = panel.querySelector(".action-frame-list");
-    list.replaceChildren(...frames.map(frameButton));
-  }
-
-  function frameButton(frame) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `action-frame-button${isSelected(frame) ? " selected" : ""}`;
-    button.textContent = `${frame.label} ${frame.frame}`;
-    button.addEventListener("click", () => selectBeat(frame.id));
-    return button;
+    panel.querySelector(".action-frame-list").replaceChildren(...frames.map(frameButton));
   }
 
   function framesForBridge(bridge = Animotion.state?.cutsceneBridge) {
     const status = Animotion.cutsceneActionSelectors?.getCutsceneActionStatus?.(bridge) || {};
+    const template = status.template;
     const action = status.action;
-    if (status.template !== "punch") return [];
+    if (!template || !action) return [];
+    const editable = editableIds(template);
+    if (!editable.length) return [];
     return uniqueFrames(actionBeats(action))
-      .filter((beat) => PUNCH_BEAT_ORDER.includes(normalizeBeatId(beat.id)) || hasPose(beat))
+      .filter((beat) => editable.includes(normalizeBeatId(beat.id)) || hasPose(beat))
       .sort((a, b) => a.frame - b.frame);
   }
 
   function selectBeat(beatId, options = {}) {
     const frame = framesForBridge().find((candidate) => candidate.id === beatId);
-    if (!frame) return null;
+    const template = currentTemplate();
+    if (!frame || !template) return null;
     Animotion.state.actionFrameSelection = {
       selectedBeatId: frame.id,
       selectedFrameNumber: frame.frame,
       selectedLabel: frame.label,
-      actionType: "punch",
+      actionType: template,
     };
     if (options.setFrame !== false) setCurrentFrame(frame.frame);
     refresh();
@@ -91,9 +91,19 @@
       selectedBeatId: selected.selectedBeatId,
       selectedFrame: frame.frame,
       selectedLabel: frame.label,
+      actionType: selected.actionType,
       writesToKeyframes: true,
       trajectoryReadOnly: true,
     };
+  }
+
+  function frameButton(frame) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `action-frame-button${isSelected(frame) ? " selected" : ""}`;
+    button.textContent = `${frame.label} ${frame.frame}`;
+    button.addEventListener("click", () => selectBeat(frame.id));
+    return button;
   }
 
   function actionBeats(action = {}) {
@@ -112,17 +122,33 @@
   function frameForBeat(beat = {}) {
     const frame = Math.round(Number(beat.at) || 0);
     if (!beat.id || frame < 1) return null;
-    const id = normalizeBeatId(beat.id);
-    return { id: beat.id, normalizedId: id, label: BEAT_LABELS[id] || beat.id, frame };
+    const normalizedId = normalizeBeatId(beat.id);
+    return { id: beat.id, normalizedId, label: BEAT_LABELS[normalizedId] || beat.id, frame };
+  }
+
+  function editableIds(template) {
+    const ids = Animotion.actionSpecs?.editableFrameIds?.(template);
+    return Array.isArray(ids) && ids.length ? ids.map(normalizeBeatId) : legacyEditableIds(template);
+  }
+
+  function legacyEditableIds(template) {
+    if (template !== "punch") return [];
+    return ["guard", "start", "windup", "drive", "extension", "extend", "impact", "hold", "recover"];
+  }
+
+  function currentSelectedFrame() {
+    const selected = Animotion.state?.actionFrameSelection;
+    if (!selected || selected.actionType !== currentTemplate()) return null;
+    return framesForBridge().find((frame) => frame.id === selected.selectedBeatId) || null;
+  }
+
+  function currentTemplate() {
+    return Animotion.cutsceneActionSelectors?.getCutsceneActionStatus?.(Animotion.state?.cutsceneBridge)?.template || null;
   }
 
   function setCurrentFrame(frame) {
     if (Animotion.timelineControls?.setCurrentFrame) Animotion.timelineControls.setCurrentFrame(frame);
     else if (Animotion.state) Animotion.state.currentFrame = frame;
-  }
-
-  function actionType(action = {}) {
-    return Animotion.cutsceneActionSelectors?.actionTemplate?.(action) === "punch" ? "punch" : null;
   }
 
   function normalizeBeatId(id) {
@@ -135,12 +161,6 @@
 
   function isSelected(frame) {
     return Animotion.state?.actionFrameSelection?.selectedBeatId === frame.id;
-  }
-
-  function currentSelectedFrame() {
-    const selected = Animotion.state?.actionFrameSelection;
-    if (selected?.actionType !== "punch") return null;
-    return framesForBridge().find((frame) => frame.id === selected.selectedBeatId) || null;
   }
 
   function refresh() {

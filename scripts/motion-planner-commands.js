@@ -75,8 +75,19 @@
 
   function bridgeForGeneration(nextBridge, previousBridge, template, primary) {
     const preserved = Animotion.cutsceneControls.preservePanelTransform(nextBridge, previousBridge);
-    if (!shouldPreserveFacingDirection(previousBridge, template, primary)) return preserved;
-    return { ...preserved, effectDirection: previousBridge.effectDirection };
+    const timed = actionTimedBridge(preserved, template);
+    if (!shouldPreserveFacingDirection(previousBridge, template, primary)) return timed;
+    return { ...timed, effectDirection: previousBridge.effectDirection };
+  }
+
+  function actionTimedBridge(bridge, template) {
+    const spec = Animotion.actionSpecs?.specFor?.(template);
+    if (!spec?.defaultDurationFrames) return bridge;
+    return {
+      ...bridge,
+      durationFrames: spec.defaultDurationFrames,
+      impactFrame: spec.family === "locomotion" ? spec.defaultDurationFrames : Math.min(bridge.impactFrame, spec.defaultDurationFrames),
+    };
   }
 
   function shouldPreserveFacingDirection(previousBridge, template, primary) {
@@ -132,9 +143,17 @@
   }
 
   function primaryForAction(template, part) {
+    if (Animotion.actionSpecs?.specFor?.(template)?.family === "locomotion") return bodyRootPart() || part;
     if (template !== "punch" || !part) return part;
     const resolved = Animotion.armChainResolver?.resolve?.(Animotion.state?.parts || [], part);
     return resolved?.terminalPart || terminalPunchPart(part) || part;
+  }
+
+  function bodyRootPart() {
+    const parts = Animotion.state?.parts || [];
+    return parts.find((part) => ["torso", "pelvis"].includes(part.humanRole))
+      || parts.find((part) => part.type === "spine" || part.type === "body")
+      || null;
   }
 
   function terminalPunchPart(part) {
