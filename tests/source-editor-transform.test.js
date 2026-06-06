@@ -42,8 +42,13 @@ function loadAnimotion() {
     sourceView: { scale: 1 },
     project: Animotion.projectModel.createEmptyProject(),
   };
-  Animotion.dom = { sourceCtx: { isPointInPath: () => false } };
+  Animotion.dom = {
+    sourceCanvas: fakeEventCanvas(),
+    sourceCtx: { isPointInPath: () => false },
+    els: { selectionTool: { value: Animotion.tool.edit } },
+  };
   Animotion.ui = { refreshUi() {} };
+  Animotion.view = { canvasPoint: (event) => ({ x: event.imageX, y: event.imageY }) };
   Animotion.imageBounds = () => ({ width: 140, height: 120 });
   runScript(context, "scripts/part-visibility-masks.js");
   runScript(context, "scripts/edit-target.js");
@@ -51,7 +56,9 @@ function loadAnimotion() {
   runScript(context, "scripts/parts.js");
   runScript(context, "scripts/part-supplemental-transform.js");
   runScript(context, "scripts/part-commands.js");
+  runScript(context, "scripts/part-command-history.js");
   runScript(context, "scripts/editor.js");
+  runScript(context, "scripts/source-canvas-events.js");
   return Animotion;
 }
 
@@ -86,6 +93,36 @@ test("source editor drags the visible flipped rotated upperArm vertex", () => {
   assert.equal(started, true);
   assert.equal(Animotion.state.drag.partId, upperArm.id);
   assertPointClose(after, moved);
+});
+
+test("source canvas click-drag moves a selected part polygon vertex", () => {
+  const Animotion = loadAnimotion();
+  const part = partFromPolygon(Animotion, "body", [{ x: 20, y: 20 }, { x: 75, y: 20 }, { x: 75, y: 80 }, { x: 20, y: 80 }]);
+  Animotion.editTarget.setPart(part);
+  Animotion.sourceCanvasEvents.bindSourceCanvasEvents();
+
+  Animotion.dom.sourceCanvas.listeners.pointerdown(pointerEvent({ imageX: 75, imageY: 20 }));
+  Animotion.dom.sourceCanvas.listeners.pointermove(pointerEvent({ imageX: 82, imageY: 26 }));
+  Animotion.dom.sourceCanvas.listeners.pointerup(pointerEvent({ imageX: 82, imageY: 26 }));
+
+  assert.deepEqual(JSON.parse(JSON.stringify(part.mask.points[1])), { x: 62, y: 6 });
+  assert.equal(Animotion.state.drag, null);
+});
+
+test("source canvas click-drag ignores unselected visibility mask handles while editing a part", () => {
+  const Animotion = loadAnimotion();
+  const part = partFromPolygon(Animotion, "body", [{ x: 20, y: 20 }, { x: 75, y: 20 }, { x: 75, y: 80 }, { x: 20, y: 80 }]);
+  part.visibilityMasks = [visibilityMask("mask-a", [{ x: 18, y: 18 }, { x: 30, y: 18 }, { x: 30, y: 30 }, { x: 18, y: 30 }])];
+  Animotion.editTarget.setPart(part);
+  Animotion.sourceCanvasEvents.bindSourceCanvasEvents();
+  const before = JSON.stringify(part.visibilityMasks[0].mask.points);
+
+  Animotion.dom.sourceCanvas.listeners.pointerdown(pointerEvent({ imageX: 38, imageY: 38 }));
+  Animotion.dom.sourceCanvas.listeners.pointermove(pointerEvent({ imageX: 44, imageY: 44 }));
+  Animotion.dom.sourceCanvas.listeners.pointerup(pointerEvent({ imageX: 44, imageY: 44 }));
+
+  assert.equal(JSON.stringify(part.visibilityMasks[0].mask.points), before);
+  assert.equal(Animotion.state.drag, null);
 });
 
 test("source editor defaults missing editTarget to selected part editing", () => {
@@ -157,6 +194,46 @@ test("visibility mask edit target changes only the selected mask in transformed 
   assert.equal(JSON.stringify(part.visibilityMasks[1].mask.points), beforeOtherMask);
 });
 
+test("double-click deletion removes a selected part polygon vertex through source editor coordinates", () => {
+  const Animotion = loadAnimotion();
+  const part = partFromPolygon(Animotion, "body", [{ x: 20, y: 20 }, { x: 75, y: 20 }, { x: 80, y: 55 }, { x: 75, y: 80 }, { x: 20, y: 80 }]);
+  Animotion.editTarget.setPart(part);
+
+  const deleted = Animotion.editor.deleteEditablePointAt({ x: 80, y: 55 });
+
+  assert.equal(deleted, true);
+  assert.equal(part.mask.points.length, 4);
+  assert.equal(part.mask.points.some((point) => point.x === 60 && point.y === 35), false);
+  assert.equal(Animotion.commandHistory.undo(), true);
+  assert.equal(Animotion.state.parts[0].mask.points.length, 5);
+});
+
+test("source editor does not delete the last three part polygon vertices", () => {
+  const Animotion = loadAnimotion();
+  const part = partFromPolygon(Animotion, "body", [{ x: 20, y: 20 }, { x: 75, y: 20 }, { x: 20, y: 80 }]);
+  Animotion.editTarget.setPart(part);
+
+  const deleted = Animotion.editor.deleteEditablePointAt({ x: 75, y: 20 });
+
+  assert.equal(deleted, false);
+  assert.equal(part.mask.points.length, 3);
+});
+
+test("source editor double-click deletion ignores active visibility mask targets", () => {
+  const Animotion = loadAnimotion();
+  const part = partFromPolygon(Animotion, "body", [{ x: 20, y: 20 }, { x: 75, y: 20 }, { x: 80, y: 55 }, { x: 75, y: 80 }, { x: 20, y: 80 }]);
+  part.visibilityMasks = [visibilityMask("mask-a", [{ x: 18, y: 18 }, { x: 30, y: 18 }, { x: 30, y: 30 }, { x: 18, y: 30 }])];
+  Animotion.editTarget.setVisibilityMask(part, "mask-a");
+  const beforePartMask = JSON.stringify(part.mask.points);
+  const beforeVisibilityMask = JSON.stringify(part.visibilityMasks[0].mask.points);
+
+  const deleted = Animotion.editor.deleteEditablePointAt({ x: 80, y: 55 });
+
+  assert.equal(deleted, false);
+  assert.equal(JSON.stringify(part.mask.points), beforePartMask);
+  assert.equal(JSON.stringify(part.visibilityMasks[0].mask.points), beforeVisibilityMask);
+});
+
 function partFromPolygon(Animotion, type, points) {
   return Animotion.partCommands.createPartFromShape(type, { kind: "polygon", closed: true, points }, type);
 }
@@ -183,6 +260,30 @@ function plain(value) {
 
 function fakeCanvas() {
   return { width: 0, height: 0, getContext: () => ({ drawImage() {}, fill() {}, set globalCompositeOperation(value) { this._composite = value; }, set fillStyle(value) { this._fillStyle = value; } }) };
+}
+
+function fakeEventCanvas() {
+  return {
+    listeners: {},
+    captured: null,
+    addEventListener(type, handler) { this.listeners[type] = handler; },
+    setPointerCapture(pointerId) { this.captured = pointerId; },
+    hasPointerCapture(pointerId) { return this.captured === pointerId; },
+    releasePointerCapture(pointerId) { if (this.captured === pointerId) this.captured = null; },
+  };
+}
+
+function pointerEvent(overrides = {}) {
+  return {
+    button: 0,
+    clientX: 0,
+    clientY: 0,
+    imageX: 0,
+    imageY: 0,
+    pointerId: 1,
+    preventDefault() {},
+    ...overrides,
+  };
 }
 
 function randomId() {

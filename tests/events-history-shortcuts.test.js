@@ -76,6 +76,7 @@ function loadAnimotion() {
   Animotion.ui = { refreshUi() {} };
   runScript(context, "scripts/history-controls.js");
   Animotion.historyControls.installControls();
+  runScript(context, "scripts/source-canvas-events.js");
   runScript(context, "scripts/events.js");
   Animotion.events.bindEvents();
   return { Animotion, listeners, HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, EditableElement };
@@ -86,7 +87,12 @@ function runScript(context, path) {
 }
 
 function eventTarget() {
-  return { addEventListener() {} };
+  return {
+    listeners: {},
+    addEventListener(type, handler) {
+      this.listeners[type] = handler;
+    },
+  };
 }
 
 function elementMap(selectors) {
@@ -164,6 +170,30 @@ test("history buttons trigger command history undo and redo", () => {
   assert.equal(Animotion.dom.els.redoCommand.disabled, false);
   Animotion.dom.els.redoCommand.listeners.click();
   assert.equal(redoCount, 1);
+});
+
+test("source double-click delegates selected polygon vertex deletion", () => {
+  const { Animotion } = loadAnimotion();
+  let deleteCount = 0;
+  Animotion.state.image = {};
+  Animotion.state.sourceView = { scale: 1 };
+  Animotion.dom.els.selectionTool.value = Animotion.tool.edit;
+  Animotion.panelEditor.canEditRig = () => true;
+  Animotion.view.canvasPoint = () => ({ x: 12, y: 18 });
+  Animotion.editor.deleteEditablePointAt = (point) => {
+    deleteCount += 1;
+    assert.deepEqual(point, { x: 12, y: 18 });
+    return true;
+  };
+  const event = {
+    prevented: false,
+    preventDefault() { this.prevented = true; },
+  };
+
+  Animotion.dom.sourceCanvas.listeners.dblclick(event);
+
+  assert.equal(deleteCount, 1);
+  assert.equal(event.prevented, true);
 });
 
 test("history shortcuts do not intercept text input targets", () => {

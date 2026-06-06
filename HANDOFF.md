@@ -41,6 +41,68 @@ The hardcoded demo genga cut remains available, but it should be treated as the 
 
 ## Current Implemented State
 
+### Latest 2026-06-06 Source Polygon Point Editing Handoff
+
+This handoff captures the completed source-canvas polygon point editing pass for manual part creation and existing part outlines.
+
+Problem 1-pager:
+
+- Context: source-canvas editing shows polygon handles for selected parts, and the polygon creation tool lets users place points before capturing a new part.
+- Problem: users needed direct cleanup for mistaken polygon points: delete unwanted selected-part outline vertices and move already placed points while drawing a new polygon.
+- Goal: support double-click deletion of selected part polygon vertices and click-drag movement of existing points in an open polygon selection used for new part creation.
+- Non-goals: no persisted schema change, no visibility-mask vertex deletion shortcut, no new UI button, no browser framework/dependency change, and no unrelated motion/action behavior change.
+- Constraints: preserve the first-point click-to-close polygon workflow, keep visibility-mask edit targets isolated from part editing, preserve undo/redo for existing part outline edits, and keep touched implementation/test files under 300 LOC.
+
+Options considered:
+
+- Handle all source-canvas polygon editing directly inside `events.js`. Pro: fewer files. Con/risk: `events.js` was already over the 300 LOC target and mixes drawing, selection, inspector, and window events.
+- Split source-canvas input into a focused module and keep geometric mutations in `editor.js`. Pro: keeps source input handling isolated, preserves existing editor hit-test/coordinate conversion behavior, and brings touched files under 300 LOC. Con/risk: requires bootstrap load-order update. Chosen.
+
+Implemented behavior:
+
+- Added `scripts/source-canvas-events.js` for source-canvas pointer/wheel/double-click input.
+- `scripts/events.js` now delegates source-canvas binding and selection closing to `Animotion.sourceCanvasEvents`, reducing it to 240 LOC.
+- Selected part polygon/lasso outline vertices can be double-clicked in edit mode to delete a point, while keeping at least three vertices.
+- Existing selected-part outline vertex dragging still works through the source-canvas pointer path and uses existing `applyShapeToPart()` history/canvas update behavior.
+- While using the polygon tool for a new part, clicking and dragging an existing open polygon point moves that point instead of adding a duplicate point.
+- Clicking away from existing open polygon points still appends a new point.
+- Clicking back on the first point still closes the polygon and switches to edit mode.
+- Active visibility-mask edit targets remain isolated; part-outline deletion and part-target drags do not mutate visibility-mask geometry by mistake.
+- All touched implementation and test files are below 300 LOC: `scripts/source-canvas-events.js` 172, `scripts/events.js` 240, `scripts/editor.js` 253, `tests/events-history-shortcuts.test.js` 238, `tests/source-editor-transform.test.js` 292, and `tests/source-polygon-selection-drag.test.js` 122.
+
+Impact note:
+
+- Source canvas input now depends on `scripts/source-canvas-events.js` loading before `scripts/events.js`; `scripts/bootstrap.js` was updated accordingly.
+- Existing external `Animotion.events.bindEvents()` and `Animotion.events.onSourcePointerDown` entrypoints remain available.
+- Existing part outline edits still go through `Animotion.editor.applyDragEdit()` and `Animotion.parts.applyShapeToPart()`, so project sync, part canvas updates, and command-history snapshots are preserved.
+- New open-polygon point movement mutates only `state.selection.points`; it does not create a command-history entry because the part does not exist yet.
+
+Regression tests added or updated:
+
+- Added `tests/source-polygon-selection-drag.test.js` for open polygon point drag, point append, and first-point close behavior.
+- Updated `tests/source-editor-transform.test.js` for source-canvas pointer-route part vertex dragging and visibility-mask isolation.
+- Updated `tests/events-history-shortcuts.test.js` to load `source-canvas-events.js` and verify source double-click delegation.
+
+Verification for this upload:
+
+- `node --check scripts\source-canvas-events.js`
+- `node --check scripts\editor.js`
+- `node --check tests\source-polygon-selection-drag.test.js`
+- `node tests\source-polygon-selection-drag.test.js`
+- `node tests\source-editor-transform.test.js`
+- `node tests\events-history-shortcuts.test.js`
+- `node tests\part-commands.test.js`
+- `node tests\part-visibility-masks.test.js`
+- `node tests\source-visibility-mask-render.test.js`
+- `git diff --check`
+
+Result: all listed focused tests passed locally. `git diff --check` reported only CRLF conversion warnings.
+
+Upload scope:
+
+- Include `scripts/source-canvas-events.js`, `scripts/events.js`, `scripts/editor.js`, `scripts/bootstrap.js`, `tests/source-polygon-selection-drag.test.js`, `tests/source-editor-transform.test.js`, `tests/events-history-shortcuts.test.js`, and this `HANDOFF.md` update.
+- Exclude pre-existing unrelated local changes and QA/user artifacts: `scripts/boxing-step-locomotion.js`, `tests/boxing-step-locomotion.test.js`, `_analysis_frames/`, `animotion-project (10).json`, `animotion-project (11).json`, `lookism/*.png`, `recording/`, screenshots, and untracked planning scratch files unless explicitly requested.
+
 ### Latest 2026-06-01 BoxingStep Locomotion and Extensible ActionSpec Handoff
 
 This handoff captures the completed `boxingStep` locomotion action and the runtime `ActionSpec` split.

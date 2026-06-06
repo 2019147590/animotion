@@ -134,6 +134,7 @@
     "hidden-completion-supplemental-warp-editor",
     "hidden-completion-supplemental-part-ui",
     "preview-pointer-arbitration",
+    "source-canvas-events",
     "editor",
     "io",
     "export",

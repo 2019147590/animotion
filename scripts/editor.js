@@ -48,6 +48,21 @@
     return Boolean(state.selection && beginSelectionEdit(point, tolerance));
   }
 
+  function beginSelectionVertexEdit(point) {
+    const tolerance = Animotion.config.hitTolerancePx / (state.sourceView?.scale || 1);
+    if (!state.selection || state.selection.closed) return false;
+    const index = hitVertex(state.selection.points, point, tolerance);
+    if (index === -1) return false;
+    state.drag = {
+      kind: dragKind.editSelection,
+      mode: "vertex",
+      index,
+      start: point,
+      originalPoints: geometry.clonePoints(state.selection.points),
+    };
+    return true;
+  }
+
   function beginSelectionEdit(point, tolerance) {
     const hit = hitShape(state.selection, point, tolerance);
     if (!hit) return false;
@@ -69,6 +84,12 @@
       : beginSelectedPartEdit(target.partId, point, tolerance);
   }
 
+  function deleteEditablePointAt(point) {
+    const target = Animotion.editTarget?.current?.() || { kind: "part", partId: state.selectedPartId, maskId: null };
+    if (target.kind !== "part") return false;
+    return deletePartVertex(target.partId, point);
+  }
+
   function beginSelectedPartEdit(partId, point, tolerance) {
     const part = findPart(partId);
     if (!part) return false;
@@ -80,6 +101,25 @@
     state.drag = editPartDrag(part, point, hit, index, shape);
     Animotion.ui.refreshUi();
     return true;
+  }
+
+  function deletePartVertex(partId, point) {
+    const part = findPart(partId);
+    if (!part) return false;
+    const shape = editablePartShape(part);
+    if (!canDeleteShapeVertex(shape)) return false;
+    const tolerance = Animotion.config.hitTolerancePx / (state.sourceView?.scale || 1);
+    const index = hitVertex(shape.points, point, tolerance);
+    if (index === -1) return false;
+    const points = shape.points.filter((_, pointIndex) => pointIndex !== index);
+    applyDisplayedShapeToPart(part, { ...shape, points });
+    state.drag = null;
+    Animotion.ui.refreshUi();
+    return true;
+  }
+
+  function canDeleteShapeVertex(shape) {
+    return (shape.kind === shapeKind.polygon || shape.kind === shapeKind.lasso) && shape.points.length > 3;
   }
 
   function beginVisibilityMaskEdit(target, point, tolerance) {
@@ -209,5 +249,5 @@
     }));
   }
 
-  Animotion.editor = { beginShapeEdit, beginSelectionEditOnly, applyDragEdit, hitShape };
+  Animotion.editor = { beginShapeEdit, beginSelectionEditOnly, beginSelectionVertexEdit, applyDragEdit, deleteEditablePointAt, hitShape };
 }
