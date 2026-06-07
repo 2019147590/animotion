@@ -33,15 +33,28 @@
     }
     for (const part of items) {
       if (drawnSupplementalIds?.has(part.id)) continue;
-      drawSupplementalPart(part, source, matrix, context, requestForSupplemental(part, hiddenFillRequests));
+      drawSupplementalPartInMatrix(part, source, matrix, context, requestForSupplemental(part, hiddenFillRequests));
       drawnSupplementalIds?.add(part.id);
     }
     if (restore) context.previewCtx.restore();
   }
 
+  function drawSupplementalPartInMatrix(part, source, currentMatrix, context, request = null) {
+    const runtimeMatrix = supplementalRuntimeMatrix(part, currentMatrix, context);
+    if (runtimeMatrix === currentMatrix) {
+      drawSupplementalPart(part, source, currentMatrix, context, request);
+      return;
+    }
+    context.previewCtx.save();
+    context.applyMatrix(context.previewCtx, Animotion.supplementalFollow.inverseMatrix(currentMatrix));
+    context.applyMatrix(context.previewCtx, runtimeMatrix);
+    drawSupplementalPart(part, source, runtimeMatrix, context, request);
+    context.previewCtx.restore();
+  }
+
   function drawSupplementalPart(part, source, matrix, context, request = null) {
     const coverage = Animotion.hiddenCompletionSupplementalPart?.coverageForPart?.(part) || null;
-    if (coverage) part.supplementalCoverage = coverage;
+    if (coverage && !part.supplementalFollow) part.supplementalCoverage = coverage;
     context.previewCtx.save();
     clipSupplementalPart(context.previewCtx, part);
     context.previewCtx.globalAlpha = (part.alpha ?? 1) * context.alpha;
@@ -93,5 +106,10 @@
     return Animotion.renderLayerUtils?.baseOrder?.(part) ?? Number(part?.order || 0);
   }
 
-  Animotion.previewSupplementalRenderer = { drawDueSupplementalsBefore, drawSupplementalPartsForSource, drawSupplementalPart };
+  function supplementalRuntimeMatrix(part, sourceMatrix, context) {
+    if (!part?.supplementalFollow || !Animotion.supplementalFollow) return sourceMatrix;
+    return context.worldMatrix(part, context.t, context.matrixCache);
+  }
+
+  Animotion.previewSupplementalRenderer = { drawDueSupplementalsBefore, drawSupplementalPartsForSource, drawSupplementalPart, supplementalRuntimeMatrix };
 }

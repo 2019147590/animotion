@@ -60,6 +60,22 @@ test("forward boxingStep moves root and body parts in the same short direction",
   assert.equal(head.x, arm.x);
 });
 
+test("boxingStep does not double-translate parented head and arm chains", () => {
+  const Animotion = loadAnimotion();
+  const plan = boxingPlan(Animotion, parentedParts());
+  const settle = frame(plan, "settle");
+  const body = poseAt(plan, "body", settle);
+  const head = poseAt(plan, "head", settle);
+  const upperArm = poseAt(plan, "upper_arm", settle);
+  const forearm = poseAt(plan, "forearm", settle);
+
+  assert.equal(body.x > 0, true);
+  assert.deepEqual({ x: head.x, y: head.y }, { x: 0, y: 0 });
+  assert.deepEqual({ x: upperArm.x, y: upperArm.y }, { x: 0, y: 0 });
+  assert.deepEqual({ x: forearm.x, y: forearm.y }, { x: 0, y: 0 });
+  assert.equal(plan.jointAction.targetDebug.rootDeltaPartIds.includes("head"), false);
+});
+
 test("boxingStep lead foot advances before the rear foot follows", () => {
   const Animotion = loadAnimotion();
   const plan = boxingPlan(Animotion, boxingParts());
@@ -73,6 +89,34 @@ test("boxingStep lead foot advances before the rear foot follows", () => {
 
   assert.equal(leadAtStep > rearAtStep, true);
   assert.equal(rearAtFollow > rearAtStep, true);
+});
+
+test("boxingStep leg-only parts separate during step and settle with the body", () => {
+  const Animotion = loadAnimotion();
+  const plan = boxingPlan(Animotion, legOnlyParts());
+  const leadId = plan.jointAction.targetDebug.leadFootKey === "rFoot" ? "right_leg" : "left_leg";
+  const rearId = leadId === "right_leg" ? "left_leg" : "right_leg";
+  const leadStep = frame(plan, "leadFootStep");
+  const settle = frame(plan, "settle");
+  const bodySettle = poseAt(plan, "body", settle).x;
+
+  assert.equal(poseAt(plan, leadId, leadStep).x > poseAt(plan, rearId, leadStep).x, true);
+  assert.equal(poseAt(plan, "left_leg", settle).x, bodySettle);
+  assert.equal(poseAt(plan, "right_leg", settle).x, bodySettle);
+});
+
+test("boxingStep keeps foot children attached to their leg parent", () => {
+  const Animotion = loadAnimotion();
+  const plan = boxingPlan(Animotion, legWithFootChildrenParts());
+  const leadStep = frame(plan, "leadFootStep");
+  const settle = frame(plan, "settle");
+  const leftFootStep = poseAt(plan, "left_foot", leadStep);
+  const rightFootStep = poseAt(plan, "right_foot", leadStep);
+
+  assert.deepEqual({ x: leftFootStep.x, y: leftFootStep.y }, { x: 0, y: 0 });
+  assert.deepEqual({ x: rightFootStep.x, y: rightFootStep.y }, { x: 0, y: 0 });
+  assert.deepEqual({ x: poseAt(plan, "left_foot", settle).x, y: poseAt(plan, "left_foot", settle).y }, { x: 0, y: 0 });
+  assert.equal(poseAt(plan, "right_leg", leadStep).x > poseAt(plan, "left_leg", leadStep).x, true);
 });
 
 test("boxingStep falls back to body-only motion without leg or foot parts", () => {
@@ -112,6 +156,37 @@ function bodyOnlyParts() {
     part("body", "body", "torso", 40, 20, 28, 64),
     part("head", "head", "head", 42, 2, 24, 20),
     part("guard_arm", "arm", "forearm", 64, 34, 24, 28),
+  ];
+}
+
+function parentedParts() {
+  return [
+    part("body", "body", "torso", 40, 20, 28, 64),
+    { ...part("head", "head", "head", 42, 2, 24, 20), parentId: "body" },
+    { ...part("upper_arm", "arm", "upperArm", 58, 28, 18, 34), parentId: "body" },
+    { ...part("forearm", "arm", "forearm", 72, 36, 20, 32), parentId: "upper_arm" },
+    part("left_leg", "leg", null, 28, 76, 20, 44),
+    part("right_leg", "leg", null, 66, 76, 20, 44),
+  ];
+}
+
+function legOnlyParts() {
+  return [
+    part("body", "body", "torso", 40, 20, 28, 64),
+    part("head", "head", "head", 42, 2, 24, 20),
+    part("left_leg", "leg", null, 28, 76, 20, 44),
+    part("right_leg", "leg", null, 66, 76, 20, 44),
+  ];
+}
+
+function legWithFootChildrenParts() {
+  return [
+    part("body", "body", "torso", 40, 20, 28, 64),
+    part("head", "head", "head", 42, 2, 24, 20),
+    part("left_leg", "leg", null, 28, 76, 20, 44),
+    part("right_leg", "leg", null, 66, 76, 20, 44),
+    { ...part("left_foot", "foot", "foot", 26, 110, 18, 10), parentId: "left_leg" },
+    { ...part("right_foot", "foot", "foot", 66, 110, 18, 10), parentId: "right_leg" },
   ];
 }
 

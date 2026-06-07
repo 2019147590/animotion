@@ -81,7 +81,7 @@
         motionHints: plan.motionHints,
         motionDraft: Animotion.motionDrafts?.snapshot?.(plan.motionDraft) || plan.motionDraft,
       },
-      partTracks: Animotion.motionTrackBuilder.tracksForParts(parts, primary, beats, base, active, { ...bridge, jointAction: { targetDebug } }),
+      partTracks: Animotion.motionTrackBuilder.tracksForParts(parts, primary, beats, { base, active, bridge: { ...bridge, jointAction: { targetDebug } } }),
     };
   }
 

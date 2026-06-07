@@ -83,6 +83,24 @@ test("separate rear glove renders above face at impact and returns on recover wi
   assert.deepEqual(parts.map((item) => item.order), [1, 2, 3, 6]);
 });
 
+test("rear-cross lead retreat chain renders glove above forearm above upper arm", () => {
+  const depth = loadDepth();
+  const parts = [
+    part("body", "body", 0),
+    { ...part("front_hand", "hand", 1, "front_forearm", "hand"), rect: { x: 90, y: 50, w: 16, h: 16 }, pivot: { x: 1, y: 8 }, handTip: { x: 16, y: 8 } },
+    { ...part("front_forearm", "arm", 5, "front_upper", "forearm"), rect: { x: 74, y: 42, w: 24, h: 24 }, pivot: { x: 0, y: 10 }, joint: { x: 20, y: 12 } },
+    { ...part("front_upper", "arm", 9, "body", "upperArm"), rect: { x: 58, y: 38, w: 24, h: 24 }, pivot: { x: 0, y: 12 }, joint: { x: 20, y: 12 } },
+    { ...part("rear_upper", "arm", 2, "body", "upperArm"), rect: { x: 28, y: 38, w: 24, h: 24 }, pivot: { x: 24, y: 12 }, joint: { x: 4, y: 12 } },
+    { ...part("rear_forearm", "arm", 3, "rear_upper", "forearm"), rect: { x: 12, y: 42, w: 24, h: 24 }, pivot: { x: 24, y: 10 }, joint: { x: 4, y: 12 } },
+    { ...part("rear_hand", "hand", 4, "rear_forearm", "hand"), rect: { x: 0, y: 50, w: 16, h: 16 }, pivot: { x: 14, y: 8 }, handTip: { x: 0, y: 8 } },
+  ];
+  const ordered = ids(depth.orderedParts(parts, { parts, bridge: rearPunchBridge("rear_hand"), frame: 20 }));
+
+  assert.equal(ordered.indexOf("front_upper") < ordered.indexOf("front_forearm"), true);
+  assert.equal(ordered.indexOf("front_forearm") < ordered.indexOf("front_hand"), true);
+  assert.equal(parts.find((item) => item.id === "front_upper").order, 9);
+});
+
 test("front jab and non punch actions keep base render order", () => {
   const depth = loadDepth();
   const parts = [part("body", "body", 1), part("front_arm", "arm", 2), part("head", "head", 5)];

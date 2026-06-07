@@ -106,11 +106,30 @@
 
   function worldMatrix(part, t, cache) {
     if (cache.has(part.id)) return cache.get(part.id);
+    const follow = runtimeSupplementalMatrix(part, t, cache);
+    if (follow) {
+      cache.set(part.id, follow);
+      return follow;
+    }
     const local = localMatrix(part, t);
     const parent = parentPart(part);
     const matrix = parent ? worldMatrix(parent, t, cache).multiply(local) : local;
     cache.set(part.id, matrix);
     return matrix;
+  }
+
+  function runtimeSupplementalMatrix(part, t, cache) {
+    const resolver = Animotion.supplementalFollow?.resolveSupplementalFollow;
+    if (!part?.supplementalFollow || typeof resolver !== "function") return null;
+    const frame = state.running ? currentMotionFrame(t) : state.currentFrame;
+    const resolved = resolver(part, {
+      state,
+      t,
+      frame,
+      matrixCache: cache,
+      worldMatrix: (driver) => worldMatrix(driver, t, cache),
+    });
+    return resolved?.matrix || null;
   }
 
   function localMatrix(part, t) {

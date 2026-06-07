@@ -47,16 +47,16 @@
     const normalized = geometry.normalizeShape(shape, Animotion.imageBounds());
     const rect = geometry.pointsBounds(normalized.points, Animotion.imageBounds());
     if (rect.w < Animotion.config.minShapeSize || rect.h < Animotion.config.minShapeSize) return part;
-    const oldPivot = absolutePoint(part.rect, part.pivot);
-    const oldJoint = absolutePoint(part.rect, part.joint);
-    const oldHandTip = part.handTip ? absolutePoint(part.rect, part.handTip) : null;
+    const rigPoints = Animotion.partShapeRigLink?.rebasedRigPoints?.(part, state.parts, rect) || {
+      pivot: localPointFromAbsolute(absolutePoint(part.rect, part.pivot), rect),
+      joint: localPointFromAbsolute(absolutePoint(part.rect, part.joint), rect),
+      ...(part.handTip ? { handTip: localPointFromAbsolute(absolutePoint(part.rect, part.handTip), rect) } : {}),
+    };
     const visibilityMasks = rebaseVisibilityMasks(part.visibilityMasks, part.rect, rect);
     part.rect = rect;
     part.sourceRect = rect;
     part.mask = geometry.shapeToMask(normalized, rect);
-    part.pivot = localPointFromAbsolute(oldPivot, rect);
-    part.joint = localPointFromAbsolute(oldJoint, rect);
-    if (oldHandTip) part.handTip = localPointFromAbsolute(oldHandTip, rect);
+    Object.assign(part, rigPoints);
     if (visibilityMasks) part.visibilityMasks = visibilityMasks;
     Animotion.parts.updatePartCanvas(part);
     syncProjectParts();
@@ -256,10 +256,7 @@
   }
 
   function localPointFromAbsolute(point, rect) {
-    return {
-      x: point.x - rect.x,
-      y: point.y - rect.y,
-    };
+    return { x: point.x - rect.x, y: point.y - rect.y };
   }
 
   function rebaseVisibilityMasks(masks, fromRect, toRect) {

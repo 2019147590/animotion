@@ -44,6 +44,7 @@
     renderCutsceneMotionStatus();
     renderPartsList();
     renderInspector();
+    Animotion.supplementalFollowControls?.refreshControls?.();
     Animotion.editTargetInspector?.refreshControls?.();
   }
 
@@ -183,7 +184,7 @@
 
   function renderSupplementalPartControls(part) {
     if (!els.supplementalPartEditor) return;
-    const visible = part.isSupplementalPart === true;
+    const visible = part.isSupplementalPart === true || Animotion.supplementalFollowCommands?.canShowForPart?.(part);
     els.supplementalPartEditor.classList.toggle("hidden", !visible);
     if (!visible) return;
     els.supplementalPartX.value = part.rect.x;

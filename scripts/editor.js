@@ -150,6 +150,8 @@
       mode: hit.mode === "edge" ? "vertex" : hit.mode,
       index,
       start: point,
+      startTransform: normalizeTransform(part.transform),
+      parentMatrix: parentWorldMatrix(part),
       originalPoints: geometry.clonePoints(shape.points),
       shapeKind: part.mask?.kind || shapeKind.rect,
     };
@@ -179,6 +181,7 @@
     if (state.drag.kind === dragKind.editPart) {
       const part = state.parts.find((candidate) => candidate.id === state.drag.partId);
       if (part && state.drag.targetKind === "visibilityMask") applyDisplayedMaskToPart(part, state.drag.maskId, { kind: state.drag.shapeKind, closed: true, points });
+      else if (part && state.drag.mode === "move") movePartTransform(part, point);
       else if (part) applyDisplayedShapeToPart(part, { kind: state.drag.shapeKind, closed: true, points });
     }
     Animotion.ui.refreshUi();
@@ -221,6 +224,40 @@
   function partLocalPoints(part, points) {
     return Animotion.partTransformGeometry?.imagePointsToPartLocal?.(part, points, state.parts)
       || points.map((point) => ({ x: point.x - part.rect.x, y: point.y - part.rect.y }));
+  }
+
+  function movePartTransform(part, point) {
+    const delta = parentLocalDelta({ x: point.x - state.drag.start.x, y: point.y - state.drag.start.y }, state.drag.parentMatrix);
+    const transform = state.drag.startTransform || normalizeTransform(part.transform);
+    Animotion.partCommands.updatePart(part, { transform: { ...transform, x: transform.x + delta.x, y: transform.y + delta.y } });
+  }
+
+  function parentLocalDelta(delta, matrix) {
+    const helper = Animotion.partTransformGeometry;
+    if (!helper?.inverseMatrix || !helper?.applyMatrix) return delta;
+    const inverse = helper.inverseMatrix(matrix || identityMatrix());
+    const start = helper.applyMatrix(inverse, { x: 0, y: 0 });
+    const end = helper.applyMatrix(inverse, delta);
+    return { x: end.x - start.x, y: end.y - start.y };
+  }
+
+  function parentWorldMatrix(part) {
+    const parent = findPart(Animotion.rigConnection?.parentIdFor?.(part) || part?.parentId || part?.parentPartId);
+    return parent && Animotion.partTransformGeometry?.worldMatrix ? Animotion.partTransformGeometry.worldMatrix(parent, state.parts) : identityMatrix();
+  }
+
+  function identityMatrix() {
+    return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+  }
+
+  function normalizeTransform(transform = {}) {
+    return Animotion.partTransformGeometry?.normalizeTransform?.(transform) || {
+      x: Number(transform.x) || 0,
+      y: Number(transform.y) || 0,
+      rotation: Number(transform.rotation) || 0,
+      scaleX: Number(transform.scaleX) || 1,
+      scaleY: Number(transform.scaleY) || 1,
+    };
   }
 
   function findPart(partId) {

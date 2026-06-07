@@ -56,6 +56,7 @@
     copy.order = nextOrder();
     copy.layerIndex = copy.order;
     copy.transform = offsetTransform(copy.transform);
+    copy.supplementalCandidateSourcePartId = source.id;
     copy.visibilityMasks = reidentifiedVisibilityMasks(copy.visibilityMasks);
     Animotion.parts?.updatePartCanvas?.(copy);
     return copy;

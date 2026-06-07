@@ -39,7 +39,8 @@
       return;
     }
     if (drawnSupplementalIds.has(request.part.id)) return;
-    const matrix = context.worldMatrix(request.source, context.t, context.matrixCache);
+    const sourceMatrix = context.worldMatrix(request.source, context.t, context.matrixCache);
+    const matrix = Animotion.previewSupplementalRenderer?.supplementalRuntimeMatrix?.(request.part, sourceMatrix, context) || sourceMatrix;
     context.previewCtx.save();
     context.applyMatrix(context.previewCtx, matrix);
     Animotion.previewSupplementalRenderer.drawSupplementalPart(request.part, request.source, matrix, context, request);

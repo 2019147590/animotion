@@ -42,6 +42,12 @@ function loadAnimotion() {
     partTypeLabels: { body: "몸통", head: "머리", eye: "눈" },
     shapeKind: { rect: "rect" },
     tool: { edit: "edit" },
+    supplementalFollowControls: {
+      refreshControls: () => state.followControlRefreshes.push({
+        selectedPartId: state.selectedPartId,
+        hidden: els.supplementalPartEditor.classList.lastToggle?.force,
+      }),
+    },
   });
   runScript(context, "scripts/ui.js");
   return Animotion;
@@ -100,6 +106,7 @@ function sampleState() {
     sourceZoom: 1,
     separateCharacter: false,
     cutsceneBridge: null,
+    followControlRefreshes: [],
   };
 }
 
@@ -198,6 +205,33 @@ test("inspector shows supplemental part transform controls only for supplemental
   delete head.isSupplementalPart;
   Animotion.ui.refreshUi();
   assert.equal(Animotion.dom.els.supplementalPartEditor.classList.lastToggle.force, true);
+});
+
+test("supplemental follow controls refresh after supplemental inspector visibility returns", () => {
+  const Animotion = loadAnimotion();
+  const head = Animotion.state.parts.find((item) => item.id === "head");
+  Object.assign(head, { isSupplementalPart: true, supplementalMaskScale: 1 });
+
+  Animotion.ui.refreshUi();
+  delete head.isSupplementalPart;
+  Animotion.ui.refreshUi();
+  Object.assign(head, { isSupplementalPart: true });
+  Animotion.ui.refreshUi();
+
+  assert.deepEqual(Animotion.state.followControlRefreshes.at(-1), { selectedPartId: "head", hidden: false });
+});
+
+test("copied regular part can show supplemental follow controls before conversion", () => {
+  const Animotion = loadAnimotion();
+  const head = Animotion.state.parts.find((item) => item.id === "head");
+  const copy = { ...part("head-copy", "head", "torso"), supplementalCandidateSourcePartId: head.id };
+  Animotion.state.parts.push(copy);
+  Animotion.state.selectedPartId = copy.id;
+  Animotion.supplementalFollowCommands = { canShowForPart: (item) => item?.supplementalCandidateSourcePartId === head.id };
+
+  Animotion.ui.refreshUi();
+
+  assert.equal(Animotion.dom.els.supplementalPartEditor.classList.lastToggle.force, false);
 });
 
 test("inspector parent options exclude descendants through parentPartId fallback", () => {

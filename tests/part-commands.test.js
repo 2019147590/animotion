@@ -44,6 +44,7 @@ function loadAnimotion() {
   runScript(context, "scripts/path.js");
   runScript(context, "scripts/parts.js");
   runScript(context, "scripts/part-supplemental-transform.js");
+  runScript(context, "scripts/part-shape-rig-link.js");
   runScript(context, "scripts/part-commands.js");
   runScript(context, "scripts/part-command-history.js");
   return context.window.Animotion;
@@ -197,7 +198,6 @@ test("part shape application records undo and redo", () => {
   assert.equal(Animotion.commandHistory.redo(), true);
   assert.equal(Animotion.state.parts[0].rect.w, 12);
 });
-
 test("part update command records undo and redo patches", () => {
   const Animotion = loadAnimotion();
   const part = Animotion.partCommands.createPart("body", { x: 0, y: 0, w: 20, h: 20 });
@@ -230,7 +230,6 @@ test("part update command normalizes optional humanRole without changing type", 
   Animotion.partCommands.updatePart(part.id, { humanRole: "hand" });
   assert.equal(part.type, "prop");
   assert.equal(part.humanRole, "hand");
-
   Animotion.partCommands.updatePart(part.id, { humanRole: "claw" });
   assert.equal(part.type, "prop");
   assert.equal(part.humanRole, null);
@@ -246,9 +245,7 @@ test("supplemental part transform preserves generated canvas and scales mask", (
     mask: { kind: "polygon", points: [{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 30 }, { x: 0, y: 30 }] },
   });
   Animotion.commandHistory.clear();
-
   Animotion.partCommands.transformSupplementalPart(part.id, { x: 14, y: 16, w: 40, h: 60, maskScale: 0.75 });
-
   assert.equal(part.canvas, canvas);
   assert.deepEqual(JSON.parse(JSON.stringify(part.rect)), { x: 14, y: 16, w: 40, h: 60 });
   assert.deepEqual(JSON.parse(JSON.stringify(part.sourceRect)), JSON.parse(JSON.stringify(part.rect)));

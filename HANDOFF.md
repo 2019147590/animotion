@@ -41,6 +41,88 @@ The hardcoded demo genga cut remains available, but it should be treated as the 
 
 ## Current Implemented State
 
+### Latest 2026-06-07 Supplemental Follow Parts and Rear-Cross Arm Gap Handoff
+
+This handoff captures the completed non-destructive supplemental follow system for rear-cross/rear-hand punch shoulder and elbow gaps, plus the UI path for copied regular parts.
+
+Problem 1-pager:
+
+- Context: rear-hand punch preview can expose empty shoulder and elbow regions when the upper arm and forearm separate. Existing hidden-completion supplemental parts render non-destructively, but they previously followed only the source part group and had no runtime follow metadata for copied fill pieces.
+- Problem: static shoulder fills should stay attached to torso/body/shoulder space, while elbow fills should track the evaluated upperArm.joint and forearm.pivot. Copied regular parts also needed a visible UI path to become supplemental fill parts after loading existing JSON.
+- Goal: add optional `part.supplementalFollow` metadata, compute follow transforms only at preview/playback runtime, preserve legacy JSON, and expose minimal inspector controls for copied fill parts.
+- Non-goals: no mesh/4-point warp, no foot/leg follow implementation, no saved punch regeneration or migration, no destructive part merge/bake, and no broad motion planner rewrite.
+- Constraints: do not mutate `state.parts` order or saved JSON during preview, keep hidden-completion, visibilityMask, cutsceneDepth, handTip, and rear-cross punch behavior intact, and keep new helper files under 300 LOC.
+
+Options considered:
+
+- Put follow logic directly into `preview-supplemental-renderer.js`. Pro: fewer files. Con/risk: mixes draw ordering with coordinate math and makes later 4-point warp harder.
+- Add a focused supplemental-follow helper and keep renderers as consumers. Pro: isolates coordinate-space math, makes unit testing easier, and preserves hidden-completion renderer structure. Con/risk: requires script load-order and project-normalization wrappers. Chosen.
+- Make every copied part automatically supplemental. Pro: one-click copy becomes immediately usable as a fill. Con/risk: breaks normal duplicate-part workflow. Chosen alternative: copied parts receive `supplementalCandidateSourcePartId`, show the supplemental UI, and become real supplemental parts only when the user clicks `Use as supplemental`, `Shoulder fill`, or `Elbow joint fill`.
+
+Implemented behavior:
+
+- Added `scripts/supplemental-follow.js`.
+  - `shoulderFill` uses `mode: "staticAttach"` and follows a torso/body/shoulder driver matrix through a stored bind matrix.
+  - `elbowJointFill` uses `mode: "jointBridge"` and tracks the midpoint between evaluated `upperArm.joint` and `forearm.pivot`.
+  - Elbow fill rotation is based on the anchor direction in v1, and scale/stretch increases as the anchor distance grows.
+  - Runtime math is position/rotation/scale only; no mesh warp was added.
+- Added `scripts/supplemental-follow-project.js` to preserve optional `supplementalFollow` metadata through project normalize/save without migrating legacy parts.
+- Added `scripts/supplemental-follow-commands.js` for manual supplemental conversion and follow assignment commands.
+- Added `scripts/supplemental-follow-controls.js` for minimal inspector controls:
+  - `Use as supplemental`
+  - `Shoulder fill`
+  - `Elbow joint fill`
+  - `Clear follow`
+- Copied parts now receive `supplementalCandidateSourcePartId`; this makes the supplemental inspector section visible for the copy without silently converting it to a persisted supplemental part.
+- Clicking a follow button on a copied candidate converts it into a non-destructive supplemental part with `isSupplementalPart: true`, `sourcePartId`, `supplementalKind: "manualCopy"`, and follow metadata.
+- `preview.worldMatrix()` now returns the runtime supplemental follow matrix only for parts with `supplementalFollow`.
+- Supplemental draw paths now use the follow matrix for follow parts while preserving source-group draw ordering for existing hidden-completion supplemental parts.
+- Preview draw no longer writes `supplementalCoverage` onto follow parts; runtime follow computation does not mutate saved part data.
+- `ui.refreshUi()` refreshes supplemental follow controls after inspector visibility is rendered, so the UI reappears after selecting a normal part and returning to a supplemental/candidate part.
+- Rear-cross punch lead-hand elbow locking remains scoped to the lead/front retreat chain and no longer affects the rear punching chain.
+
+Impact note:
+
+- Follow rendering depends on `scripts/supplemental-follow.js` loading before preview/runtime draw modules.
+- Follow command/UI depends on `scripts/supplemental-follow-commands.js` loading after `part-commands` and `part-transform-commands`.
+- Existing supplemental hidden-completion parts without `supplementalFollow` keep the previous source-group behavior.
+- Legacy JSON without `supplementalFollow` is ignored safely and is not auto-migrated.
+- Normal copy remains non-destructive and reversible; only explicit user action turns a copy into a supplemental part.
+
+Regression tests added or updated:
+
+- Added `tests/supplemental-follow.test.js` for shoulder fill driver following, elbow midpoint following, stretch growth, preview no-mutation, project metadata preservation, and command assignment.
+- Added `tests/supplemental-follow-controls.test.js` for inspector control installation and command dispatch.
+- Updated `tests/ui-inspector.test.js` for supplemental UI visibility returning after normal-part selection and for copied regular part candidates showing the follow controls before conversion.
+- Updated `tests/part-transform-commands.test.js` to verify copied parts receive `supplementalCandidateSourcePartId`.
+- Updated preview/render fixtures and focused hidden-completion/render-order tests to load the new follow helper.
+- Rear-cross/punch regressions cover lead-hand retreat scoping and rear punching chain freedom.
+
+Verification for this upload:
+
+- `node tests\supplemental-follow.test.js`
+- `node tests\supplemental-follow-controls.test.js`
+- `node tests\ui-inspector.test.js`
+- `node tests\part-transform-commands.test.js`
+- `node tests\preview-render-order-supplemental-fill.test.js`
+- `node tests\hidden-completion-supplemental-load.test.js`
+- `node tests\part-visibility-masks.test.js`
+- `node tests\preview-render-order-runtime.test.js`
+- `node tests\rear-cross-lead-hand-retract.test.js`
+- `node tests\motion-planner-commands.test.js`
+- `node tests\punch-hand-tip-regression.test.js`
+- `node tests\cutscene-depth.test.js`
+- `Get-ChildItem tests -Filter *.test.js | Sort-Object Name | ForEach-Object { node $_.FullName; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }`
+- `git diff --check`
+
+Result: all focused tests and the full JavaScript test suite passed locally. `git diff --check` reported only LF-to-CRLF conversion warnings.
+
+Upload scope:
+
+- Include supplemental follow runtime/project/command/UI files, preview draw/runtime wiring, copied-part candidate metadata, UI refresh ordering, rear-cross lead-hand retreat scoping, related tests, and this `HANDOFF.md` update.
+- Include source/test files currently required by the passing local suite for this branch.
+- Exclude local QA/user artifacts and scratch files: `_analysis_frames/`, `animotion-project (*.json)`, `lookism/*.png`, `recording/`, screenshots, and planning scratch files unless explicitly requested.
+
 ### Latest 2026-06-06 Source Polygon Point Editing Handoff
 
 This handoff captures the completed source-canvas polygon point editing pass for manual part creation and existing part outlines.

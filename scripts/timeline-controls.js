@@ -9,6 +9,7 @@
     els.insertKeyframe.addEventListener("click", insertKeyframe);
     els.deleteKeyframe.addEventListener("click", deleteKeyframe);
     els.autoAnticipation.addEventListener("click", generateAnticipation);
+    els.upgradeLoadedPunchTracks?.addEventListener("click", upgradeLoadedPunchTracks);
   }
 
   function setCurrentFrame(frame) {
@@ -69,6 +70,13 @@
     Animotion.motionCommands.applyGeneratedTracks(result.tracks);
     els.motionTemplate.value = state.cutsceneBridge ? "cutscene" : "keyframes";
     setCurrentFrame(result.impactFrame);
+  }
+
+  function upgradeLoadedPunchTracks() {
+    const result = Animotion.motionTrackUpgradeCommands?.upgradeCurrentPunchTracks?.();
+    if (result?.ok) els.motionTemplate.value = "cutscene";
+    syncSelectedPartPoseToFrame();
+    Animotion.ui.refreshUi();
   }
 
   function clampFrame(frame) {

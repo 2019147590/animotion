@@ -36,6 +36,7 @@
     impactExaggerationStatus: "#impactExaggerationStatus",
     cutsceneMotionStatus: "#cutsceneMotionStatus",
     autoAnticipation: "#autoAnticipation",
+    upgradeLoadedPunchTracks: "#upgradeLoadedPunchTracks",
     motionStrength: "#motionStrength",
     backgroundOpacity: "#backgroundOpacity",
     impactReferenceOpacity: "#impactReferenceOpacity",

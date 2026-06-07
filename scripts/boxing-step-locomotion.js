@@ -42,7 +42,7 @@
         motionHints: plan.motionHints,
         motionDraft: Animotion.motionDrafts?.snapshot?.(plan.motionDraft) || plan.motionDraft,
       },
-      partTracks: tracksForParts(parts, beats, base, direction, distance, foot),
+      partTracks: tracksForParts(parts, beats, trackContext(parts, base, direction, distance)),
     };
   }
 
@@ -56,33 +56,48 @@
     return { id: beat.id, at: beat.at, pose };
   }
 
-  function tracksForParts(parts, beats, base, direction, distance, foot) {
+  function trackContext(parts, base, direction, distance) {
+    return { base, direction, distance, partById: new Map(parts.map((part) => [part.id, part])) };
+  }
+
+  function tracksForParts(parts, beats, context) {
     return parts.map((part) => ({
       partId: part.id,
-      keyframes: beats.map((beat) => ({ frame: beat.at, pose: poseForPart(part, beat, base, direction, distance, foot) })),
+      keyframes: beats.map((beat) => ({ frame: beat.at, pose: poseForPart(part, beat, context) })),
     }));
   }
 
-  function poseForPart(part, beat, base, direction, distance, foot) {
+  function poseForPart(part, beat, context) {
     const pose = Animotion.motionModel.defaultCustomMotion();
-    const root = scaled(direction, distance * rootRatio(beat.id));
-    const side = sideForPart(part, base);
-    if (isBodyLike(part) || isHeadLike(part) || isArmLike(part)) {
-      pose.x = root.x;
-      pose.y = root.y;
-      return pose;
-    }
-    if (isLegLike(part) && side) {
-      const key = side === "l" ? "lFoot" : "rFoot";
-      const target = beat.pose[key] || base[key];
-      pose.x = target[0] - base[key][0];
-      pose.y = target[1] - base[key][1];
-      if (!isFootLike(part)) {
-        pose.x *= 0.55;
-        pose.y *= 0.55;
-      }
-    }
+    const desired = desiredWorldDelta(part, beat, context);
+    const inherited = inheritedWorldDelta(part, beat, context);
+    pose.x = desired.x - inherited.x;
+    pose.y = desired.y - inherited.y;
     return pose;
+  }
+
+  function desiredWorldDelta(part, beat, context, visited = new Set()) {
+    if (!part || visited.has(part.id)) return { x: 0, y: 0 };
+    visited.add(part.id);
+    const { base, direction, distance, partById } = context;
+    const root = scaled(direction, distance * rootRatio(beat.id));
+    const parent = parentPart(part, partById);
+    if (isFootLike(part) && parent && isLegLike(parent)) return desiredWorldDelta(parent, beat, context, visited);
+    if (isBodyLike(part) || isHeadLike(part) || isArmLike(part)) return root;
+    const side = sideForPart(part, base);
+    if (!isLegLike(part) || !side) return { x: 0, y: 0 };
+    const key = side === "l" ? "lFoot" : "rFoot";
+    const target = beat.pose[key] || base[key];
+    return legWorldDelta(part, target, base[key], root);
+  }
+
+  function legWorldDelta(part, target, baseFoot, root) {
+    const footDelta = { x: target[0] - baseFoot[0], y: target[1] - baseFoot[1] };
+    const influence = isFootLike(part) ? 1 : 0.55;
+    return {
+      x: Math.round(root.x + (footDelta.x - root.x) * influence),
+      y: Math.round(root.y + (footDelta.y - root.y) * influence),
+    };
   }
 
   function targetDebugFor(parts, primary, direction, distance, foot) {
@@ -189,6 +204,19 @@
 
   function parentIdFor(part = {}) {
     return Animotion.rigConnection?.parentIdFor?.(part) || part.parentId || part.parentPartId || null;
+  }
+
+  function inheritedWorldDelta(part, beat, context, visited = new Set()) {
+    const parent = parentPart(part, context.partById);
+    if (!parent || visited.has(parent.id)) return { x: 0, y: 0 };
+    visited.add(parent.id);
+    if (characterPart(parent)) return desiredWorldDelta(parent, beat, context);
+    return inheritedWorldDelta(parent, beat, context, visited);
+  }
+
+  function parentPart(part, partById) {
+    const parentId = parentIdFor(part);
+    return parentId ? partById.get(parentId) || null : null;
   }
 
   function centerPoint(part = {}) {

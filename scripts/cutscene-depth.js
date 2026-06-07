@@ -3,6 +3,9 @@
   const Animotion = global.Animotion || (global.Animotion = {});
   const PRIMARY_BIAS = 1000;
   const SECONDARY_BIAS = 500;
+  const LEAD_UPPER_BIAS = 100;
+  const LEAD_FOREARM_BIAS = 200;
+  const LEAD_HAND_BIAS = 300;
 
   function orderedParts(parts = [], context = {}) {
     return parts.map((part, index) => ({ part, index, order: baseOrder(part) + depthBiasForPart(part, context) }))
@@ -28,6 +31,22 @@
     if (!primary) return 0;
     if (part.id === primary.id) return Math.round(Math.max(PRIMARY_BIAS, coveringLiftBias(part, context.parts || [])) * weight);
     if (part.id === parentIdFor(primary) && isArmPart(part)) return Math.round(SECONDARY_BIAS * weight);
+    return leadRetreatDepthBias(part, context.parts || [], primary, action, weight);
+  }
+
+  function leadRetreatDepthBias(part, parts, primary, action, weight) {
+    const chain = leadRetreatChain(parts, primary, action);
+    const roleBias = leadChainRoleBias(part, chain);
+    if (!roleBias) return 0;
+    const chainOrders = [chain.upperArm, chain.forearm, chain.handOrGlove].filter(Boolean).map(baseOrder);
+    return Math.round((Math.max(...chainOrders) - baseOrder(part) + roleBias) * weight);
+  }
+
+  function leadChainRoleBias(part, chain) {
+    if (!chain?.separateRigPath) return 0;
+    if (part.id === chain.upperArmId) return LEAD_UPPER_BIAS;
+    if (part.id === chain.forearmId) return LEAD_FOREARM_BIAS;
+    if (part.id === chain.handOrGloveId) return LEAD_HAND_BIAS;
     return 0;
   }
 
@@ -62,6 +81,37 @@
 
   function beatFrame(action, id) {
     return Math.round(Number((action?.beats || []).find((beat) => beat.id === id)?.at) || 0);
+  }
+
+  function leadRetreatChain(parts, primary, action) {
+    const primaryChain = Animotion.armChainResolver?.resolve?.(parts, primary?.id);
+    if (!primaryChain?.separateRigPath) return null;
+    const leadPoint = leadHandPoint(action?.targetDebug?.roleDecision);
+    return uniqueArmChains(parts)
+      .filter((chain) => chain.handOrGloveId !== primaryChain.handOrGloveId)
+      .sort((a, b) => chainDistance(a, leadPoint) - chainDistance(b, leadPoint))[0] || null;
+  }
+
+  function uniqueArmChains(parts = []) {
+    const seen = new Set(), chains = [];
+    for (const part of parts) {
+      const chain = Animotion.armChainResolver?.resolve?.(parts, part);
+      if (!chain?.separateRigPath || !chain.handOrGloveId || seen.has(chain.handOrGloveId)) continue;
+      seen.add(chain.handOrGloveId);
+      chains.push(chain);
+    }
+    return chains;
+  }
+
+  function leadHandPoint(role = {}) {
+    const side = Number(role.selectedSide) < 0 ? "right" : "left";
+    return pointFromObject(role.handTipPositions?.[side]) || null;
+  }
+
+  function chainDistance(chain, point) {
+    if (!point) return 0;
+    const terminal = chain.terminalContactPoint?.image || absolutePoint(chain.handOrGlove, chain.handOrGlove?.handTip);
+    return terminal ? Math.hypot(terminal.x - point.x, terminal.y - point.y) : Number.POSITIVE_INFINITY;
   }
 
   function isLegacyRearArmOnlyPunch(primary, parts, action) {
@@ -117,6 +167,7 @@
     return { x: Math.round(joint.x + dx / length * extension), y: Math.round(joint.y + dy / length * extension) };
   }
   function pointFromArray(point) { const next = point ? { x: Number(point.x ?? point[0]), y: Number(point.y ?? point[1]) } : null; return next && Number.isFinite(next.x) && Number.isFinite(next.y) ? next : null; }
+  function pointFromObject(point) { const next = point ? { x: Number(point.x), y: Number(point.y) } : null; return next && Number.isFinite(next.x) && Number.isFinite(next.y) ? next : null; }
   function absolutePoint(part, local) { return local ? { x: Number(part.rect?.x || 0) + Number(local.x || 0), y: Number(part.rect?.y || 0) + Number(local.y || 0) } : null; }
   function partCenterX(part = {}) { return Number(part.rect?.x || 0) + Number(part.rect?.w || 0) / 2; }
   function characterCenterX(parts = []) {

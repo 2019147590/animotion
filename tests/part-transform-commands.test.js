@@ -95,6 +95,7 @@ test("selected part copy creates an offset selected duplicate with undo", () => 
   assert.notEqual(copy.id, source.id);
   assert.equal(copy.name, "torso copy");
   assert.equal(copy.order, 2);
+  assert.equal(copy.supplementalCandidateSourcePartId, source.id);
   assert.equal(copy.transform.x, 16);
   assert.equal(copy.transform.y, 16);
   assert.equal(Animotion.state.selectedPartId, copy.id);
