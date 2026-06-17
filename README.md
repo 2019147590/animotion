@@ -1,65 +1,102 @@
 # Animotion MVP
 
-오리지널 또는 정식 권리를 확보한 2D 캐릭터를 파츠 기반으로 리깅하고, 키포즈/이동 경로/숨은 부위 보완 가이드를 직접 편집해 짧은 컷신 모션을 만드는 정적 웹 MVP입니다.
+Animotion은 원본 또는 사용 권한이 있는 2D 캐릭터 이미지를 파츠로 나누고, pivot/joint/parent 관계를 잡은 뒤 키포즈와 액션 모션을 편집하는 2D/2.5D 리깅 애니메이션 실험 도구입니다.
 
-현재 A/B 컷, B컷 참조, Lookism식 컷신 기능은 메인 제품 방향이 아니라 리깅/모션/레퍼런스 포즈 보조를 검증하기 위한 프로토타입 기능입니다. 무단 웹툰 컷을 그대로 애니메이션화하는 워크플로우는 제품 목표가 아닙니다.
+현재 저장소에는 복서 샘플 이미지와 미리 저장된 프로젝트 JSON이 포함되어 있어, 별도 제작 과정 없이 바로 후방 펀치 모션을 재생하고 편집해 볼 수 있습니다.
 
-## 현재 구현된 범위
+## 빠른 체험: 복서 모션 재생
 
-- 오리지널/허가 캐릭터 이미지 업로드
-- 두 번째 이미지를 고스트 레퍼런스 또는 포즈 보조로 업로드
-- 사각형, 타원, 자유 라쏘, 폴리곤 선택 영역을 파츠로 추출
-- 선택 영역선의 꼭짓점 드래그, 선분 클릭 점 추가, 내부 드래그 이동
-- 기존 파츠의 영역선을 직접 클릭해 마스크 변형
-- 소스 이미지 확대/축소, 휠 줌, Space/마우스 가운데 버튼 팬
-- 머리, 몸통, 팔, 다리, 눈, 입, 머리카락 등 타입 지정
-- 스파인 파츠를 중심으로 머리, 팔, 다리 부모 관계 자동 추정
-- 파츠별 피벗, 부모 파츠, 레이어, 불투명도 편집
-- 몸 고정 피벗과 관절 피벗 분리 편집
-- 미리보기에서 피벗/관절 핸들을 직접 드래그해 위치 편집
-- 기본 가이드 박스 생성
-- 선택 파츠 기준 준비동작, 임팩트, 복귀 키프레임 자동 생성
-- 두 번째 이미지를 임팩트/포즈 레퍼런스로 쓰는 컷신 모드
-- 속도선, 잔상, 흔들림, 플래시, 패널 테두리, 최종 컷 스냅 합성
-- A컷/B컷 위치와 크기 조정, A컷 위치에서 B컷 위치로 이동하는 전환
-- 파츠 마스크를 기준으로 A컷 캐릭터와 배경을 분리하는 미리보기 옵션
-- A컷 이동 잔상, B컷 임팩트 스냅, 관절 궤적 레이어
-- `lookism` 폴더의 PNG와 분리 파츠를 즉시 불러오는 컷신 검증 프리셋
-- 파츠 피벗/관절 핸들에서 관절좌표 액션 테이블 자동 생성
-- 키프레임 모드에서 관절 핸들을 드래그하면 스파인, 몸통, 머리가 함께 반응하는 컨트롤 리그
-- 호흡, 고개 끄덕임, 말하기, 시선 이동, 컷 드리프트 모션 템플릿
-- 선택 파츠별 직접 만든 루프 모션 편집
-- 프레임 기반 키프레임 모션 삽입/삭제와 선형 보간
-- 리그 JSON 저장/불러오기
-- Canvas `MediaRecorder` 기반 WebM 내보내기
-- 권리 안전한 원화 컷 fixture를 만드는 실험용 `Generate Demo Genga Cut` 진입점
+준비 파일:
 
-## 실행
+- `lookism/boxer.png`
+- `animotion-project (8).json`
+- `animotion-project (17).json`
+- `animotion-project (17-1).json`
 
-`index.html`을 브라우저에서 열면 됩니다. 별도 빌드 과정은 없습니다.
+권장 순서:
+
+1. 브라우저에서 `index.html`을 엽니다.
+2. 왼쪽 패널의 `원화/캐릭터 컷 업로드`에서 `lookism/boxer.png`를 선택합니다.
+3. 오른쪽 아래 프로젝트 영역의 `JSON 불러오기`에서 샘플 JSON 중 하나를 선택합니다.
+4. 모션 패널의 템플릿이 자동으로 `액션 컷신` 상태가 되면, `재생` 버튼을 눌러 모션을 확인합니다.
+5. `프레임` 슬라이더를 움직이면 각 키포즈를 정지 상태로 볼 수 있습니다.
+6. 미리보기 캔버스에서 손, 팔, 몸통 파츠를 선택하면 현재 파츠의 pivot/joint/handTip과 키프레임 반응을 확인할 수 있습니다.
+
+샘플 JSON 선택 기준:
+
+- `animotion-project (8).json`: 초기 후방 펀치 리깅/모션 확인용입니다.
+- `animotion-project (17).json`: 후방 손 펀치가 `rear-cross`로 분류된 18프레임 모션입니다.
+- `animotion-project (17-1).json`: `17` 기반에 발/추가 파츠가 포함된 확장 샘플입니다.
+
+참고: JSON 불러오기는 이미지가 먼저 업로드되어 있어야 동작합니다. 먼저 JSON을 선택해도 아무 변화가 없으면 `lookism/boxer.png`를 먼저 업로드한 뒤 다시 JSON을 불러오세요.
+
+## 뒷손펀치_01 직접 생성
+
+`뒷손펀치_01`은 `animotion-project (17).json`에 들어 있던 후방 손 펀치 성격을 별도 액션 템플릿으로 노출한 것입니다. UI에는 `뒷손펀치_01`로 보이고, 저장되는 내부 템플릿 ID는 `rearHandPunch01`입니다.
+
+직접 생성 절차:
+
+1. `lookism/boxer.png`를 업로드하고 샘플 JSON을 불러옵니다.
+2. 파츠 목록 또는 미리보기에서 후방 팔 체인의 파츠를 선택합니다. 상완, 전완, 손 중 하나를 선택해도 됩니다.
+3. 모션 패널의 `Action` 드롭다운에서 `뒷손펀치_01`을 선택합니다.
+4. `Generate beats/path`를 누릅니다.
+5. 앱이 선택한 팔 체인의 terminal hand를 타격 끝점으로 잡고, 18프레임 후방 손 펀치 모션을 다시 생성합니다.
+6. `재생` 또는 프레임 슬라이더로 결과를 확인합니다.
+
+기대 동작:
+
+- `impact`는 15프레임 기준으로 잡힙니다.
+- 후방 손은 전방 목표로 뻗고, 앞손 체인은 가드 쪽으로 접힙니다.
+- 생성된 액션은 기존 `Punch`와 구분되는 `rearHandPunch01` 템플릿으로 저장됩니다.
+
+## 주요 UI 흐름
+
+- `원화/캐릭터 컷 업로드`: 작업할 기준 이미지를 올립니다.
+- `JSON 불러오기`: 저장된 파츠, 리깅, 모션, 컷신 상태를 복원합니다.
+- `JSON 저장`: 현재 상태를 Animotion 프로젝트 JSON으로 저장합니다.
+- `Action`: `Punch`, `Kick`, `Boxing step`, `뒷손펀치_01` 같은 액션 초안을 선택합니다.
+- `Generate beats/path`: 선택한 파츠와 액션 템플릿을 기준으로 키포즈와 경로를 생성합니다.
+- `프레임`: 현재 프레임을 수동으로 확인합니다.
+- `재생`: 현재 컷신 또는 키프레임 모션을 반복 재생합니다.
+- `불러온 펀치 트랙 보정 적용`: 오래된 펀치 JSON을 현재 펀치 트랙 생성 로직으로 다시 맞춥니다.
+
+## 직접 파츠를 만들 때
+
+1. `원화/캐릭터 컷 업로드`로 이미지를 올립니다.
+2. 선택 도구에서 사각형, 타원, 자유 올가미, 폴리곤 중 하나를 선택합니다.
+3. 원본 캔버스에서 파츠 영역을 지정합니다.
+4. 파츠 타입과 이름을 정하고 `선택 영역을 파츠로 추가`를 누릅니다.
+5. 미리보기에서 pivot, joint, handTip을 조정합니다.
+6. 필요한 경우 parent 관계와 humanRole을 지정합니다.
+7. 액션 템플릿을 선택하고 `Generate beats/path`로 모션을 생성합니다.
 
 ## 검증
 
+주요 회귀 테스트:
+
 ```powershell
-node tests/geometry.test.js
+node tests\action-specs.test.js
+node tests\rear-cross-lead-hand-retract.test.js
+node tests\rear-hand-punch-template.test.js
+node tests\motion-planner-commands.test.js
+```
+
+전체 테스트를 돌릴 때:
+
+```powershell
+Get-ChildItem tests -Filter *.test.js | Sort-Object Name | ForEach-Object { node $_.FullName; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
 ```
 
 ## 개발 메모
 
-현재 기획/진행상황/다음 작업 인계 문서는 [HANDOFF.md](HANDOFF.md)에 정리되어 있습니다.
-제품 방향과 개발 판단 기준은 [animotion_2_5_d_planning_spec.md](animotion_2_5_d_planning_spec.md)에 정리되어 있습니다.
-AI 기반 파츠/리깅 보조 전략은 [AI_VISION_WORKFLOW_STRATEGY.md](AI_VISION_WORKFLOW_STRATEGY.md)에 정리되어 있습니다.
+- 최신 구현 상태와 다음 작업 맥락은 [HANDOFF.md](HANDOFF.md)에 정리합니다.
+- 제품 방향과 기획 판단은 [animotion_2_5_d_planning_spec.md](animotion_2_5_d_planning_spec.md)에 정리합니다.
+- AI 기반 파츠/리깅 보조 전략은 [AI_VISION_WORKFLOW_STRATEGY.md](AI_VISION_WORKFLOW_STRATEGY.md)에 정리합니다.
 
-## 기획 원칙
+## 원칙
 
-- [animotion_2_5_d_planning_spec.md](animotion_2_5_d_planning_spec.md)는 최종 확정 사양이 아니라 구현/테스트/사용자 피드백에 따라 갱신되는 living document다.
-- 오리지널 IP, 허가받은 IP, 상업 사용 가능한 에셋을 기본 입력으로 본다.
-- A/B 컷 대응은 메인 기능이 아니라 선택적 레퍼런스/포즈 보조 기능이다.
-- AI 결과물은 항상 사용자가 수정 가능한 asset, guide, patch, texture로 저장한다.
-- pivot, joint, guide vertex 같은 part-local 좌표는 `rect` 밖과 normalized `0..1` 밖 값을 보존해야 한다.
-- scripted cut generator는 professional drawing app이 아니라 리깅/모션/hidden completion 테스트에 바로 쓰는 rights-safe original source cut fixture 생성기다.
-- 세부 구현은 고정하지 않는다. 반복 버그, 테스트 병목, UI 혼란, 법적/IP 판단, 구현 난이도 대비 가치가 드러나면 기획과 우선순위를 함께 조정한다.
-
-## MVP 한계
-
-현재 파츠 분리는 AI 세그멘테이션이 아니라 사용자가 지정한 선택 마스크입니다. 다음 단계에서는 파츠/피벗/관절 편집 안정화, save/load round-trip, command 기반 undo/redo, hidden completion guide/patch asset 편집을 우선 정리합니다. AI 세그멘테이션과 인페인팅은 이후 창작자 보조 기능으로 붙입니다.
+- 입력 이미지는 직접 제작했거나 사용 권한이 있는 원본/라이선스 이미지여야 합니다.
+- A/B 컷 참조와 Lookism 스타일 프리셋은 메인 제품 방향이 아니라 리깅/모션/렌더링 검증용 프로토타입입니다.
+- AI 결과물은 최종 산출물이 아니라 사용자가 편집할 수 있는 draft, guide, patch, texture로 취급합니다.
+- pivot, joint, guide vertex 같은 좌표는 파츠 rect 밖 좌표와 normalized 값을 보존해야 합니다.
+- scripted cut generator는 전문 드로잉 앱이 아니라 리깅/모션/hidden completion 테스트에 바로 쓰는 rights-safe fixture 생성기입니다.

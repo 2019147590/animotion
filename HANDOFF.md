@@ -41,6 +41,65 @@ The hardcoded demo genga cut remains available, but it should be treated as the 
 
 ## Current Implemented State
 
+### Latest 2026-06-18 README Boxer Fixture Usage Handoff
+
+This handoff captures the README update that explains how a person can use the included boxer image and saved project JSON fixtures to experience the rear-hand punch motion workflow.
+
+Problem 1-pager:
+
+- Context: the repository now includes `lookism/boxer.png` and the sample project fixtures `animotion-project (8).json`, `animotion-project (17).json`, and `animotion-project (17-1).json`. The `rearHandPunch01` action template is available in the UI as a separate rear-hand punch motion template.
+- Problem: the previous README did not give a clear human-readable path for loading the boxer image first, restoring the JSON projects, playing/scrubbing the motion, or generating the new rear-hand punch template directly from the UI.
+- Goal: rewrite the README into a practical usage guide for trying the saved boxer motion fixtures and creating the `rearHandPunch01` motion from the existing UI.
+- Non-goals: no app code change, no fixture data rewrite, no UI redesign, no new generated asset, and no migration of unrelated local scratch files.
+- Constraints: keep this as a docs-only update, preserve the current fixture filenames exactly, and make the guide understandable to someone operating the app manually.
+
+Options considered:
+
+- Append a short note to the existing README. Pro: minimal diff. Con/risk: still leaves the main usage path scattered and unclear for first-time manual testing.
+- Rewrite the README as a focused quick-start and usage guide. Pro: gives the user an ordered workflow from image upload to JSON load, playback, frame scrub, and direct template generation. Con/risk: larger documentation diff. Chosen.
+
+Implemented documentation:
+
+- Rewrote `README.md` with a quick-start section for the boxer motion fixtures.
+- Documented the required files:
+  - `lookism/boxer.png`
+  - `animotion-project (8).json`
+  - `animotion-project (17).json`
+  - `animotion-project (17-1).json`
+- Documented the required order: open `index.html`, upload the boxer image, then load one of the sample JSON files.
+- Explained how to play the motion, scrub frames, and inspect selected body parts in the preview.
+- Added sample-selection notes for the three JSON fixtures.
+- Added a direct `rearHandPunch01` generation workflow: select a rear arm chain part, choose the rear-hand punch template in the `Action` dropdown, and run `Generate beats/path`.
+- Kept development references to `HANDOFF.md`, `animotion_2_5_d_planning_spec.md`, and `AI_VISION_WORKFLOW_STRATEGY.md`.
+- Restated the rights-safe input principle: use original, licensed, or otherwise usable images/assets.
+
+Impact note:
+
+- This is documentation-only; runtime behavior and project JSON data are unchanged.
+- The README explicitly warns that project JSON loading expects the source image to be uploaded first.
+- The user-visible rear-hand punch label may depend on browser font/encoding display, but the internal saved template id remains `rearHandPunch01`.
+- The pre-existing local modification to `scripts/motion-draft-editor.js` and local scratch files are intentionally excluded from this upload.
+
+Verification for this upload:
+
+- `git diff --check -- README.md` passed with only LF-to-CRLF conversion warnings.
+- A final staged diff check should include only `README.md` and this `HANDOFF.md` update.
+
+Upload scope:
+
+- Include:
+  - `README.md`
+  - `HANDOFF.md`
+- Exclude unrelated local artifacts and scratch files unless explicitly requested:
+  - `scripts/motion-draft-editor.js`
+  - `_analysis_frames/`
+  - `recording/`
+  - screenshots
+  - `animotion-project (10).json`
+  - `animotion-project (11).json`
+  - `tests/motion-draft-billing-controls.test.js`
+  - planning scratch files
+
 ### Latest 2026-06-18 Rear-Hand Punch Template and Project Fixtures Handoff
 
 This handoff captures the added `rearHandPunch01` action template, exposed in the UI as `뒷손펀치_01`, plus the requested project/image fixture upload scope.
