@@ -8,7 +8,7 @@
     const status = Animotion.cutsceneActionSelectors?.getCutsceneActionStatus?.(safe, options) || {};
     const action = status.action;
     const actionType = status.template;
-    if (!action || !["punch", "kick"].includes(actionType)) return { active: false, reason: status.reason || "unsupported-cutscene-action" };
+    if (!action || !(isPunchTemplate(actionType) || actionType === "kick")) return { active: false, reason: status.reason || "unsupported-cutscene-action" };
     const beats = Array.isArray(action.beats) ? action.beats : [];
     const impactBeat = beatById(beats, "impact");
     const currentBeat = currentBeatFor(beats, options.currentFrame || 1);
@@ -222,7 +222,11 @@
   }
 
   function recoilLabel(actionType) {
-    return actionType === "punch" ? "windup" : "recoil";
+    return isPunchTemplate(actionType) ? "windup" : "recoil";
+  }
+
+  function isPunchTemplate(template) {
+    return Animotion.cutsceneActionSelectors?.isPunchTemplate?.(template) || template === "punch";
   }
 
   function frameFor(beats = [], id) {

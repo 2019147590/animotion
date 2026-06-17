@@ -41,6 +41,111 @@ The hardcoded demo genga cut remains available, but it should be treated as the 
 
 ## Current Implemented State
 
+### Latest 2026-06-18 Rear-Hand Punch Template and Project Fixtures Handoff
+
+This handoff captures the added `rearHandPunch01` action template, exposed in the UI as `뒷손펀치_01`, plus the requested project/image fixture upload scope.
+
+Problem 1-pager:
+
+- Context: `animotion-project (17).json` contains a saved rear-cross/rear-hand punch action with 18 frames, impact frame 15, `punchStyle: "rear-cross"`, a terminal hand endpoint, and manual target/anchor data. The existing UI already had the generic `Punch` template, but did not expose this saved rear-hand punch as a separate selectable motion template.
+- Problem: adding a separate template only to the UI would make it selectable, but would risk bypassing existing punch-specific rear-cross behavior such as terminal hand resolution, rear-cross auto target adjustment, lead-hand retreat, body/root follow, status/debug reporting, and loaded punch track upgrade compatibility.
+- Goal: add a distinct selectable template named `뒷손펀치_01` while keeping the generated action stored with its own template id and reusing the proven punch/rear-cross code path internally.
+- Non-goals: no broad motion planner rewrite, no new project schema, no JSON repair pass for malformed historical fixture text, no change to the existing generic `Punch` behavior, and no import of unrelated local scratch assets.
+- Constraints: keep files small, avoid editing already-overgrown files where possible, preserve existing rear-cross/jab/kick regressions, and keep the user-requested image/project files explicit in the upload.
+
+Options considered:
+
+- Add `뒷손펀치_01` as a hidden parameter of the existing `punch` template. Pro: minimal implementation. Con/risk: the UI still would not show a distinct motion template, and saved actions would not be easy to distinguish from ordinary punch generation.
+- Add a distinct action spec with `baseTemplate: "punch"` and `punchStyle: "rear-cross"`. Pro: the UI gets a separate option, saved actions keep a separate template id, and existing rear-cross punch behavior remains shared. Con/risk: all punch-specific selectors need a punch-like check instead of direct `template === "punch"` checks. Chosen.
+
+Implemented behavior:
+
+- Added `rearHandPunch01` to `scripts/action-specs.js`.
+  - UI label is `뒷손펀치_01`.
+  - Internal saved template id is ASCII: `rearHandPunch01`.
+  - The template uses the saved project timing: 18 duration frames and impact frame 15.
+  - Beat phases match the saved rear-cross punch shape: `guard -> windup -> drive -> extension -> impact -> recover`.
+  - `baseTemplate: "punch"` and `punchStyle: "rear-cross"` mark it as a punch-compatible rear-hand template.
+- Added action-spec helpers for punch-like templates:
+  - `baseTemplateFor(id)`
+  - `punchStyleFor(id)`
+  - `isPunchLike(id)`
+- Updated `scripts/motion-planner.js` so punch-like templates keep their own template id in `actionTimeline`, but use punch-compatible classification and anchor generation internally.
+- Updated command, selector, track, status, path explanation, and primary-selection paths to use punch-like checks where a rear-hand punch should behave like a punch:
+  - `scripts/motion-planner-commands.js`
+  - `scripts/cutscene-action-selectors.js`
+  - `scripts/motion-track-builder.js`
+  - `scripts/motion-primary-selection.js`
+  - `scripts/cutscene-motion-status.js`
+  - `scripts/motion-path-explainer.js`
+- Selecting an upper arm, forearm, or hand in a valid arm chain can still resolve to the terminal punching hand for `rearHandPunch01`.
+- The generated action remains `rearHandPunch01`, while `targetDebug.punchStyle` is forced to `rear-cross`.
+- Existing generic `punch`, jab, rear-cross, kick, and boxing step behavior remains covered by focused regression tests.
+
+Impact note:
+
+- The user-visible template name is `뒷손펀치_01`; the project JSON stores `actionTimeline.template: "rearHandPunch01"`.
+- `rearHandPunch01` intentionally reuses rear-cross punch support rather than duplicating planner math.
+- `animotion-project (17).json` was used as the behavior reference, but historical JSON parsing defects in that file were not repaired in this implementation unit.
+- The pre-existing local modification to `scripts/motion-draft-editor.js` was not part of this template change and should not be mixed into the upload unless it is separately reviewed.
+
+Regression tests added or updated:
+
+- Updated `tests/action-specs.test.js` for the new template metadata, label, timing, punch-like mapping, and editable beat ids.
+- Updated `tests/rear-cross-lead-hand-retract.test.js` to verify `rearHandPunch01` keeps its distinct template id while preserving rear-cross support and lead-hand retreat.
+- Added `tests/rear-hand-punch-template.test.js` to exercise the UI command path through `motionPlannerCommands.generateFromSelection()`.
+
+Verification for this upload:
+
+- `node --check scripts\action-specs.js`
+- `node --check scripts\motion-planner.js`
+- `node --check scripts\motion-planner-commands.js`
+- `node --check scripts\cutscene-action-selectors.js`
+- `node --check tests\rear-hand-punch-template.test.js`
+- `node tests\action-specs.test.js`
+- `node tests\rear-cross-lead-hand-retract.test.js`
+- `node tests\rear-hand-punch-template.test.js`
+- `node tests\cutscene-action-selectors.test.js`
+- `node tests\cutscene-motion-status.test.js`
+- `node tests\motion-planner-commands.test.js`
+- `node tests\action-timeline-model.test.js`
+- `node tests\motion-path-explainer.test.js`
+- `node tests\loaded-punch-track-upgrade.test.js`
+- `node tests\preview-point-info.test.js`
+- `node tests\action-frame-editor.test.js`
+- `git diff --check`
+
+Result: all focused tests listed above passed locally. `git diff --check` reported only LF-to-CRLF conversion warnings.
+
+Upload scope:
+
+- Include the rear-hand punch template implementation and tests:
+  - `scripts/action-specs.js`
+  - `scripts/motion-planner.js`
+  - `scripts/motion-planner-commands.js`
+  - `scripts/cutscene-action-selectors.js`
+  - `scripts/motion-track-builder.js`
+  - `scripts/motion-primary-selection.js`
+  - `scripts/cutscene-motion-status.js`
+  - `scripts/motion-path-explainer.js`
+  - `tests/action-specs.test.js`
+  - `tests/rear-cross-lead-hand-retract.test.js`
+  - `tests/rear-hand-punch-template.test.js`
+  - `HANDOFF.md`
+- Include the user-requested fixtures/assets:
+  - `lookism/boxer.png`
+  - `animotion-project (8).json`
+  - `animotion-project (17).json`
+  - `animotion-project (17-1).json`
+- Exclude unrelated local artifacts and scratch files unless explicitly requested:
+  - `_analysis_frames/`
+  - `recording/`
+  - screenshots
+  - `animotion-project (10).json`
+  - `animotion-project (11).json`
+  - unrelated Lookism screenshots
+  - pre-existing `scripts/motion-draft-editor.js` changes
+
 ### Latest 2026-06-07 Supplemental Follow Parts and Rear-Cross Arm Gap Handoff
 
 This handoff captures the completed non-destructive supplemental follow system for rear-cross/rear-hand punch shoulder and elbow gaps, plus the UI path for copied regular parts.

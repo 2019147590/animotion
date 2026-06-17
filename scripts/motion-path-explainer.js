@@ -27,7 +27,7 @@
     const action = status.action;
     if (!action) return { active: false, reason: status.reason || "no-cutscene-action" };
     const type = status.template;
-    if (!["punch", "kick"].includes(type)) return { active: false };
+    if (!(isPunchTemplate(type) || type === "kick")) return { active: false };
     const parts = options.parts || [];
     const primary = parts.find((part) => part.id === (safe.primaryPartId || action.targetDebug?.primaryPartId)) || null;
     const style = styleInfo(safe, parts, primary);
@@ -147,6 +147,7 @@
   function imagePointToScreen(point, view) { return Animotion.previewTransform.imagePointToScreen(point, view, Animotion.state.previewSourceFrame, Animotion.state.previewSourceTransform); }
   function label(ctx, x, y, text, fill) { ctx.fillStyle = fill; ctx.strokeStyle = "#27221b"; ctx.lineWidth = 3; ctx.strokeText(text, x, y); ctx.fillText(text, x, y); }
   function escapeHtml(value) { return String(value || "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[char]); }
+  function isPunchTemplate(template) { return Animotion.cutsceneActionSelectors?.isPunchTemplate?.(template) || template === "punch"; }
 
   Animotion.motionPathExplainer = { installControls, refreshControls, explain, drawOverlay };
   installControls();

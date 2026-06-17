@@ -159,7 +159,11 @@
   function isRearCrossPunch(bridge = {}) {
     const template = actionTemplateName(bridge.jointAction);
     const rearCross = bridge.jointAction?.targetDebug?.punchStyle === "rear-cross";
-    return rearCross && (!template || template === "punch");
+    return rearCross && (!template || isPunchTemplate(template));
+  }
+
+  function isPunchTemplate(template) {
+    return Animotion.actionSpecs?.isPunchLike?.(template) || template === "punch";
   }
 
   function oppositeArmKeys(active = {}) {

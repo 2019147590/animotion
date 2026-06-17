@@ -33,8 +33,19 @@ test("boxingStep spec exposes editable locomotion frames", () => {
   ]);
 });
 
+test("rearHandPunch01 spec exposes the saved rear-cross template", () => {
+  const spec = actionSpecs.specFor("rearHandPunch01");
+  assert.equal(spec.family, "attack");
+  assert.equal(spec.label, "뒷손펀치_01");
+  assert.equal(spec.baseTemplate, "punch");
+  assert.equal(spec.punchStyle, "rear-cross");
+  assert.equal(spec.defaultDurationFrames, 18);
+  assert.equal(actionSpecs.isPunchLike("rearHandPunch01"), true);
+  assert.deepEqual(actionSpecs.editableFrameIds("rearHandPunch01"), ids("punch"));
+});
+
 test("current action specs use extensible body-part focus without requiring props", () => {
-  for (const id of ["punch", "kick", "dash", "boxingStep"]) {
+  for (const id of ["punch", "rearHandPunch01", "kick", "dash", "boxingStep"]) {
     const spec = actionSpecs.specFor(id);
     assert.equal(spec.primaryFocus.owner, "bodyPart");
     assert.equal(spec.focusTarget.owner, "bodyPart");

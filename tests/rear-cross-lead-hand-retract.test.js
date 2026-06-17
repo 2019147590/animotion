@@ -82,6 +82,23 @@ test("rear-cross keeps punching forearm free to drive forward", () => {
   assert.equal(Math.hypot(impactForearm.x, impactForearm.y) > 0, true);
 });
 
+test("rearHandPunch01 keeps separate template id and rear-cross support", () => {
+  const Animotion = loadAnimotion();
+  const parts = separateBoxerParts();
+  const bridge = Animotion.cutsceneModel.normalizeBridge({ durationFrames: 18, impactFrame: 15, effectDirection: { x: 1, y: 0 } });
+  const plan = Animotion.motionPlanner.createPlan(parts, "back_hand", bridge, { template: "rearHandPunch01", target: { x: 150, y: 38 } });
+  const impactForearm = poseAt(plan, "back_forearm", "impact");
+  const leadImpact = poseAt(plan, "front_forearm", "impact");
+
+  assert.equal(plan.jointAction.actionTimeline.template, "rearHandPunch01");
+  assert.equal(plan.jointAction.actionTimeline.durationFrames, 18);
+  assert.equal(plan.jointAction.actionTimeline.impactFrame, 15);
+  assert.equal(plan.jointAction.targetDebug.punchStyle, "rear-cross");
+  assert.equal(plan.jointAction.targetDebug.roleDecision.explicitActionOverride, true);
+  assert.equal(Math.hypot(impactForearm.x, impactForearm.y) > 0, true);
+  assert.equal(Math.abs(leadImpact.jointY) > 0, true);
+});
+
 test("front jab generation does not retract the opposite rear hand", () => {
   const Animotion = loadAnimotion();
   const parts = separateBoxerParts();

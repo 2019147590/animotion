@@ -30,7 +30,10 @@
 
   function createPlan(parts, primaryId, bridge, options = {}) {
     const plan = normalizePlan(options);
-    parts = Animotion.armExtension?.partsWithInferredHandTips?.(parts, primaryId, plan.template) || parts;
+    const punchLike = isPunchLikeTemplate(plan.template);
+    const anchorPlan = punchLike ? { ...plan, template: "punch" } : plan;
+    const forcedPunchStyle = Animotion.actionSpecs?.punchStyleFor?.(plan.template) || null;
+    parts = Animotion.armExtension?.partsWithInferredHandTips?.(parts, primaryId, punchLike ? "punch" : plan.template) || parts;
     if (plan.template === "boxingStep") return Animotion.boxingStepLocomotion.createPlan(parts, primaryId, bridge, plan);
     const base = Animotion.jointCoordinates.inferJointPose(parts);
     const primary = parts.find((part) => part.id === primaryId) || parts[0];
@@ -40,20 +43,21 @@
     let target = leadTarget(plan, base[active.end], targetInfo.point);
     let activeMotionTarget = motionTargetForPlan(plan, target);
     let targetDebug = targetDebugFor(plan, base, active, target, activeMotionTarget);
-    let scopedPlan = { ...plan, targetDebug };
-    let punchStyle = punchStyleFor(scopedPlan, parts, primary, base, active, direction, target);
-    if (targetInfo.generated && plan.template === "punch" && punchStyle === "rear-cross") {
+    let punchStyle = forcedPunchStyle || punchStyleFor({ ...anchorPlan, targetDebug }, parts, primary, base, active, direction, target);
+    if (targetInfo.generated && punchLike && punchStyle === "rear-cross") {
       target = leadTarget(plan, base[active.end], rearCrossAutoTarget(base, active, direction, primary, parts));
       activeMotionTarget = motionTargetForPlan(plan, target);
       targetDebug = targetDebugFor(plan, base, active, target, activeMotionTarget);
-      scopedPlan = { ...plan, targetDebug };
-      punchStyle = punchStyleFor(scopedPlan, parts, primary, base, active, direction, target) || punchStyle;
+      punchStyle = forcedPunchStyle || punchStyleFor({ ...anchorPlan, targetDebug }, parts, primary, base, active, direction, target) || punchStyle;
     }
     targetDebug.punchStyle = punchStyle;
-    targetDebug.roleDecision = Animotion.motionAnchors?.classificationDebug?.(scopedPlan, parts, primary, base, active, direction, target, { selectedPartId: options.selectedPartId || primaryId, explicitActionOverride: Boolean(plan.targetDebug?.punchStyle) }) || null;
+    targetDebug.roleDecision = forcedRoleDecision(
+      Animotion.motionAnchors?.classificationDebug?.({ ...anchorPlan, targetDebug }, parts, primary, base, active, direction, target, { selectedPartId: options.selectedPartId || primaryId, explicitActionOverride: Boolean(plan.targetDebug?.punchStyle || forcedPunchStyle) }) || null,
+      forcedPunchStyle
+    );
     Object.assign(targetDebug, Animotion.armChainResolver?.targetDebug?.(parts, options.selectedPartId || primaryId, primary, targetDebug.roleDecision) || {});
     if (targetDebug.hiddenCompletionCandidate) targetDebug.hiddenCompletionReason = "wrist/forearm area may be exposed by separate glove motion";
-    const anchors = Animotion.motionAnchors?.anchorsFromPlan?.(scopedPlan, parts, primary, base, active, direction, target) || [];
+    const anchors = Animotion.motionAnchors?.anchorsFromPlan?.({ ...anchorPlan, targetDebug }, parts, primary, base, active, direction, target) || [];
     const actionTimeline = actionTimelineFor(plan.template, bridge);
     const beats = templateBeats(plan.template, bridge).map((spec) => poseBeat(spec, base, active, target, direction, anchors, punchStyle));
     const trajectorySamples = Animotion.motionTargetState?.trajectorySamples?.(beats, active.end) || [];
@@ -204,6 +208,8 @@
   }
 
   function punchStyleFor(plan, parts, primary, base, active, direction, target) { return Animotion.motionAnchors?.punchStyleFor?.(plan, parts, primary, base, active, direction, target) || "jab"; }
+  function isPunchLikeTemplate(template) { return Animotion.actionSpecs?.isPunchLike?.(template) || template === "punch"; }
+  function forcedRoleDecision(debug, forcedStyle) { return debug && forcedStyle ? { ...debug, result: forcedStyle, explicitActionOverride: true } : debug; }
   function leadTarget(plan, start, target) { return Animotion.motionTargetDebug?.primaryLeadTarget?.(plan, start, target) || target; }
   function activeTargetPoint(plan) { return plan.activeMotionTarget?.point || plan.target || null; }
   function motionTargetForPlan(plan, point) { return plan.activeMotionTarget ? { ...plan.activeMotionTarget, point } : Animotion.motionTargetState?.generatedTarget?.(point) || null; }

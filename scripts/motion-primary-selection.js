@@ -13,7 +13,7 @@
 
   function selectedPrimary(parts = [], selectedPartId = null, template = "punch") {
     const selected = parts.find((part) => part.id === selectedPartId) || null;
-    if (!selected || template !== "punch") return selected;
+    if (!selected || !isPunchTemplate(template)) return selected;
     const resolved = Animotion.armChainResolver?.resolve?.(parts, selected);
     if (resolved?.terminalPart) return resolved.terminalPart;
     return terminalPunchPart(selected, parts) || selected;
@@ -32,7 +32,7 @@
 
   function actionTemplate(action = {}) {
     const template = Animotion.cutsceneActionSelectors?.actionTemplate?.(action);
-    return ["punch", "kick"].includes(template) ? template : null;
+    return isPunchTemplate(template) || template === "kick" ? template : null;
   }
 
   function terminalPunchPart(part, parts) {
@@ -73,6 +73,10 @@
 
   function numberedSuffix(part) {
     return String(`${part?.id || ""} ${part?.name || ""}`).match(/(?:^|[^0-9])([0-9]+)(?!.*[0-9])/)?.[1] || null;
+  }
+
+  function isPunchTemplate(template) {
+    return Animotion.actionSpecs?.isPunchLike?.(template) || template === "punch";
   }
 
   Animotion.motionPrimarySelection = { runtimePrimaryId, selectedPrimary, samePartReference, actionTemplate };

@@ -48,16 +48,16 @@
   }
 
   function primaryGuardMessage(template, part) {
-    if (!part) return template === "punch"
+    if (!part) return isPunchTemplate(template)
       ? "펀치 동작을 만들려면 arm/hand 파츠를 선택하세요."
       : "킥 동작을 만들려면 leg/foot 파츠를 선택하세요.";
-    if (template === "punch" && !PUNCH_ROLES.has(partKind(part))) return "펀치 동작은 arm/hand 계열 파츠를 선택한 뒤 생성하세요.";
+    if (isPunchTemplate(template) && !PUNCH_ROLES.has(partKind(part))) return "펀치 동작은 arm/hand 계열 파츠를 선택한 뒤 생성하세요.";
     if (template === "kick" && !KICK_ROLES.has(partKind(part))) return "킥 동작은 leg/foot 계열 파츠를 선택한 뒤 생성하세요.";
     return "";
   }
 
   function isCanonicalAction(template) {
-    return template === "punch" || template === "kick";
+    return isPunchTemplate(template) || template === "kick";
   }
 
   function planForGeneration(plan, template, selected, primary, previousBridge) {
@@ -91,7 +91,7 @@
   }
 
   function shouldPreserveFacingDirection(previousBridge, template, primary) {
-    if (template !== "punch" || actionTemplate(previousBridge?.jointAction) !== "punch") return false;
+    if (!isPunchTemplate(template) || !isPunchTemplate(actionTemplate(previousBridge?.jointAction))) return false;
     const previousId = previousBridge?.primaryPartId || previousBridge?.jointAction?.targetDebug?.primaryPartId;
     return !samePartReference(previousId, primary?.id, primary?.id);
   }
@@ -144,7 +144,7 @@
 
   function primaryForAction(template, part) {
     if (Animotion.actionSpecs?.specFor?.(template)?.family === "locomotion") return bodyRootPart() || part;
-    if (template !== "punch" || !part) return part;
+    if (!isPunchTemplate(template) || !part) return part;
     const resolved = Animotion.armChainResolver?.resolve?.(Animotion.state?.parts || [], part);
     return resolved?.terminalPart || terminalPunchPart(part) || part;
   }
@@ -204,6 +204,10 @@
 
   function currentPlan() {
     return Animotion.motionCommands?.currentMotionPlan?.() || Animotion.motionPlanner?.normalizePlan?.(Animotion.state?.motionPlan) || {};
+  }
+
+  function isPunchTemplate(template) {
+    return Animotion.actionSpecs?.isPunchLike?.(template) || template === "punch";
   }
 
   function refresh() {

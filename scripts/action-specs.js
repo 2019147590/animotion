@@ -21,6 +21,27 @@
         beat("recover", "duration", 0.04, 0.02, 0.22),
       ],
     }),
+    rearHandPunch01: spec({
+      id: "rearHandPunch01",
+      family: "attack",
+      label: "\uB4B7\uC190\uD380\uCE58_01",
+      baseTemplate: "punch",
+      punchStyle: "rear-cross",
+      defaultDurationFrames: 18,
+      requiredRoles: ["hand"],
+      optionalRoles: ["upperArm", "forearm", "torso", "head"],
+      primaryFocus: focus("bodyPart", "hand", "handTip"),
+      motionScope: "body-follow",
+      editableFrames: ["guard", "windup", "drive", "extension", "impact", "recover"],
+      beats: [
+        beat("guard", 0, 0, 0, 0),
+        beat("windup", 0.2, -0.24, 0.06, 0.1),
+        beat("drive", 0.52, 0.18, -0.03, 0.62),
+        beat("extension", 0.78, 0.38, -0.01, 0.9),
+        beat("impact", 1, 0, 0, 1),
+        beat("recover", "duration", 0.04, 0.02, 0.22),
+      ],
+    }),
     kick: spec({
       id: "kick",
       family: "attack",
@@ -102,6 +123,19 @@
     return clone(specFor(id)?.editableFrames || []);
   }
 
+  function baseTemplateFor(id) {
+    const found = specFor(id);
+    return found?.baseTemplate || found?.id || null;
+  }
+
+  function punchStyleFor(id) {
+    return specFor(id)?.punchStyle || null;
+  }
+
+  function isPunchLike(id) {
+    return baseTemplateFor(id) === "punch";
+  }
+
   function plannerTemplates() {
     return Object.fromEntries(templateIds().map((id) => [id, plannerTemplate(SPECS[id])]));
   }
@@ -125,6 +159,8 @@
       ...input,
       primaryFocus,
       focusTarget: normalizeFocus(input.focusTarget || primaryFocus),
+      ...(input.baseTemplate ? { baseTemplate: String(input.baseTemplate) } : {}),
+      ...(input.punchStyle ? { punchStyle: String(input.punchStyle) } : {}),
       beats: Object.freeze(input.beats.map((item) => Object.freeze({ ...item }))),
       editableFrames: Object.freeze([...(input.editableFrames || [])]),
       requiredRoles: Object.freeze([...(input.requiredRoles || [])]),
@@ -163,6 +199,9 @@
     templateIds,
     timelineTemplateIds,
     editableFrameIds,
+    baseTemplateFor,
+    punchStyleFor,
+    isPunchLike,
     plannerTemplates,
     optionSpecs,
   };

@@ -1,0 +1,4854 @@
+{
+  "version": "1.0.0",
+  "format": "animotion-project",
+  "metadata": {
+    "name": "ig_05fecb2bce92183a016a0ea5a3aab48191825d5073910496ac.png",
+    "createdAt": "2026-05-21T07:40:34.887Z",
+    "updatedAt": "2026-05-23T14:16:53.684Z"
+  },
+  "canvas": {
+    "width": 1023,
+    "height": 1537,
+    "fps": 24,
+    "durationFrames": 18,
+    "backgroundColor": "#f7f0df"
+  },
+  "assets": [
+    {
+      "id": "source-image",
+      "type": "sourceImage",
+      "name": "ig_05fecb2bce92183a016a0ea5a3aab48191825d5073910496ac.png",
+      "uri": "ig_05fecb2bce92183a016a0ea5a3aab48191825d5073910496ac.png",
+      "width": 1023,
+      "height": 1537
+    },
+    {
+      "id": "asset-28ac7708-598e-4a9b-8f42-606b372fe259",
+      "type": "partImage",
+      "name": "arm_01",
+      "uri": "part://28ac7708-598e-4a9b-8f42-606b372fe259",
+      "width": 409,
+      "height": 176
+    },
+    {
+      "id": "asset-b865c290-9823-4ec7-b913-3971fc4dc966",
+      "type": "partImage",
+      "name": "leg_01",
+      "uri": "part://b865c290-9823-4ec7-b913-3971fc4dc966",
+      "width": 450,
+      "height": 862
+    },
+    {
+      "id": "asset-8c66d9f9-9958-416f-8c17-140b8f06b6d4",
+      "type": "partImage",
+      "name": "leg_02",
+      "uri": "part://8c66d9f9-9958-416f-8c17-140b8f06b6d4",
+      "width": 335,
+      "height": 694
+    },
+    {
+      "id": "asset-654fda4c-eaff-4f72-9b31-98652b76cdcb",
+      "type": "partImage",
+      "name": "body_01",
+      "uri": "part://654fda4c-eaff-4f72-9b31-98652b76cdcb",
+      "width": 260,
+      "height": 389
+    },
+    {
+      "id": "asset-362ff4e1-bf0b-476f-8f6d-868f7bf1db62",
+      "type": "partImage",
+      "name": "head_01",
+      "uri": "part://362ff4e1-bf0b-476f-8f6d-868f7bf1db62",
+      "width": 272,
+      "height": 260
+    },
+    {
+      "id": "asset-316845c3-0e83-4880-94d7-df6d83852448",
+      "type": "partImage",
+      "name": "hand",
+      "uri": "part://316845c3-0e83-4880-94d7-df6d83852448",
+      "width": 175,
+      "height": 195
+    },
+    {
+      "id": "asset-612d3ea0-7471-4649-8a61-7da9055cfc76",
+      "type": "partImage",
+      "name": "forearm",
+      "uri": "part://612d3ea0-7471-4649-8a61-7da9055cfc76",
+      "width": 110,
+      "height": 132
+    },
+    {
+      "id": "asset-344d68b5-da9a-4a05-ae0c-aef075518a3d",
+      "type": "partImage",
+      "name": "upperarm",
+      "uri": "part://344d68b5-da9a-4a05-ae0c-aef075518a3d",
+      "width": 98,
+      "height": 157
+    }
+  ],
+  "parts": [
+    {
+      "id": "28ac7708-598e-4a9b-8f42-606b372fe259",
+      "name": "arm_01",
+      "type": "arm",
+      "humanRole": null,
+      "assetId": "asset-28ac7708-598e-4a9b-8f42-606b372fe259",
+      "sourceAssetId": "source-image",
+      "parentId": null,
+      "parentPartId": null,
+      "attachPointSelf": "none",
+      "attachPointParent": "none",
+      "rotationPivot": {
+        "x": 0,
+        "y": 105.6
+      },
+      "followStrength": 1,
+      "layerIndex": 1,
+      "visible": true,
+      "opacity": 1,
+      "pivot": {
+        "x": 0,
+        "y": 106
+      },
+      "joint": {
+        "x": 205,
+        "y": 120
+      },
+      "sourceRectNormalized": {
+        "xNorm": 0.5268817204301075,
+        "yNorm": 0.15224463240078073,
+        "wNorm": 0.3998044965786901,
+        "hNorm": 0.11450878334417697,
+        "coordinateSpace": "normalized-image"
+      },
+      "pivotNormalized": {
+        "xNorm": 0,
+        "yNorm": 0.6022727272727273,
+        "coordinateSpace": "part-local-normalized"
+      },
+      "jointNormalized": {
+        "xNorm": 0.5012224938875306,
+        "yNorm": 0.6818181818181818,
+        "coordinateSpace": "part-local-normalized"
+      },
+      "mask": {
+        "kind": "polygon",
+        "points": [
+          {
+            "x": 19,
+            "y": 176
+          },
+          {
+            "x": 39,
+            "y": 148
+          },
+          {
+            "x": 85,
+            "y": 150
+          },
+          {
+            "x": 136,
+            "y": 152
+          },
+          {
+            "x": 148,
+            "y": 144
+          },
+          {
+            "x": 222,
+            "y": 140
+          },
+          {
+            "x": 241,
+            "y": 129
+          },
+          {
+            "x": 278,
+            "y": 122
+          },
+          {
+            "x": 321,
+            "y": 140
+          },
+          {
+            "x": 362,
+            "y": 146
+          },
+          {
+            "x": 399,
+            "y": 119
+          },
+          {
+            "x": 409,
+            "y": 79
+          },
+          {
+            "x": 398,
+            "y": 34
+          },
+          {
+            "x": 344,
+            "y": 0
+          },
+          {
+            "x": 320,
+            "y": 2
+          },
+          {
+            "x": 276,
+            "y": 22
+          },
+          {
+            "x": 253,
+            "y": 39
+          },
+          {
+            "x": 177,
+            "y": 64
+          },
+          {
+            "x": 137,
+            "y": 74
+          },
+          {
+            "x": 103,
+            "y": 74
+          },
+          {
+            "x": 49,
+            "y": 61
+          },
+          {
+            "x": 17,
+            "y": 61
+          },
+          {
+            "x": 1,
+            "y": 143
+          },
+          {
+            "x": 4,
+            "y": 167
+          }
+        ]
+      },
+      "maskVerticesNormalized": [
+        {
+          "xNorm": 0.04645476772616137,
+          "yNorm": 1,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.09535452322738386,
+          "yNorm": 0.8409090909090909,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.2078239608801956,
+          "yNorm": 0.8522727272727273,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.33251833740831294,
+          "yNorm": 0.8636363636363636,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.36185819070904646,
+          "yNorm": 0.8181818181818182,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.5427872860635696,
+          "yNorm": 0.7954545454545454,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.589242053789731,
+          "yNorm": 0.7329545454545454,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.6797066014669927,
+          "yNorm": 0.6931818181818182,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.784841075794621,
+          "yNorm": 0.7954545454545454,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.8850855745721271,
+          "yNorm": 0.8295454545454546,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.9755501222493888,
+          "yNorm": 0.6761363636363636,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 1,
+          "yNorm": 0.44886363636363635,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.9731051344743277,
+          "yNorm": 0.19318181818181818,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.8410757946210269,
+          "yNorm": 0,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.78239608801956,
+          "yNorm": 0.011363636363636364,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.6748166259168704,
+          "yNorm": 0.125,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.6185819070904646,
+          "yNorm": 0.2215909090909091,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.43276283618581907,
+          "yNorm": 0.36363636363636365,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.33496332518337407,
+          "yNorm": 0.42045454545454547,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.25183374083129584,
+          "yNorm": 0.42045454545454547,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.1198044009779951,
+          "yNorm": 0.3465909090909091,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.04156479217603912,
+          "yNorm": 0.3465909090909091,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.0024449877750611247,
+          "yNorm": 0.8125,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.009779951100244499,
+          "yNorm": 0.9488636363636364,
+          "coordinateSpace": "part-local-normalized"
+        }
+      ],
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      "sourceRect": {
+        "x": 539,
+        "y": 234,
+        "w": 409,
+        "h": 176
+      },
+      "motionSettings": {
+        "x": 0,
+        "y": 0,
+        "rotate": 0,
+        "scaleY": 0,
+        "jointX": 120,
+        "jointY": -30,
+        "phase": 0
+      },
+      "keyframes": [
+        {
+          "frame": 1,
+          "pose": {
+            "x": 0,
+            "y": 0,
+            "rotate": 0,
+            "scaleY": 0,
+            "jointX": 0,
+            "jointY": 0,
+            "phase": 0
+          }
+        },
+        {
+          "frame": 4,
+          "pose": {
+            "x": 0,
+            "y": 0,
+            "rotate": 0,
+            "scaleY": 0,
+            "jointX": -7,
+            "jointY": -1,
+            "phase": 0
+          }
+        },
+        {
+          "frame": 8,
+          "pose": {
+            "x": 0,
+            "y": 0,
+            "rotate": 0,
+            "scaleY": 0,
+            "jointX": 89,
+            "jointY": -20,
+            "phase": 0
+          }
+        },
+        {
+          "frame": 12,
+          "pose": {
+            "x": 0,
+            "y": 0,
+            "rotate": 0,
+            "scaleY": 0,
+            "jointX": 138,
+            "jointY": -27,
+            "phase": 0
+          }
+        },
+        {
+          "frame": 15,
+          "pose": {
+            "x": 0,
+            "y": 0,
+            "rotate": 0,
+            "scaleY": 0,
+            "jointX": 120,
+            "jointY": -30,
+            "phase": 0
+          }
+        },
+        {
+          "frame": 18,
+          "pose": {
+            "x": 0,
+            "y": 0,
+            "rotate": 0,
+            "scaleY": 0,
+            "jointX": 30,
+            "jointY": -6,
+            "phase": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "b865c290-9823-4ec7-b913-3971fc4dc966",
+      "name": "leg_01",
+      "type": "leg",
+      "humanRole": null,
+      "assetId": "asset-b865c290-9823-4ec7-b913-3971fc4dc966",
+      "sourceAssetId": "source-image",
+      "parentId": null,
+      "parentPartId": null,
+      "attachPointSelf": "none",
+      "attachPointParent": "none",
+      "rotationPivot": {
+        "x": 225,
+        "y": 68.96000000000001
+      },
+      "followStrength": 1,
+      "layerIndex": 2,
+      "visible": true,
+      "opacity": 1,
+      "pivot": {
+        "x": 225,
+        "y": 69
+      },
+      "joint": {
+        "x": 225,
+        "y": 759
+      },
+      "sourceRectNormalized": {
+        "xNorm": 0.4232649071358749,
+        "yNorm": 0.4046844502277163,
+        "wNorm": 0.4398826979472141,
+        "hNorm": 0.560832791151594,
+        "coordinateSpace": "normalized-image"
+      },
+      "pivotNormalized": {
+        "xNorm": 0.5,
+        "yNorm": 0.08004640371229699,
+        "coordinateSpace": "part-local-normalized"
+      },
+      "jointNormalized": {
+        "xNorm": 0.5,
+        "yNorm": 0.8805104408352669,
+        "coordinateSpace": "part-local-normalized"
+      },
+      "mask": {
+        "kind": "polygon",
+        "points": [
+          {
+            "x": 359,
+            "y": 861
+          },
+          {
+            "x": 422,
+            "y": 814
+          },
+          {
+            "x": 428,
+            "y": 760
+          },
+          {
+            "x": 450,
+            "y": 709
+          },
+          {
+            "x": 422,
+            "y": 654
+          },
+          {
+            "x": 398,
+            "y": 595
+          },
+          {
+            "x": 372,
+            "y": 582
+          },
+          {
+            "x": 338,
+            "y": 518
+          },
+          {
+            "x": 302,
+            "y": 409
+          },
+          {
+            "x": 226,
+            "y": 343
+          },
+          {
+            "x": 196,
+            "y": 240
+          },
+          {
+            "x": 145,
+            "y": 39
+          },
+          {
+            "x": 132,
+            "y": 0
+          },
+          {
+            "x": 15,
+            "y": 29
+          },
+          {
+            "x": 1,
+            "y": 174
+          },
+          {
+            "x": 35,
+            "y": 289
+          },
+          {
+            "x": 92,
+            "y": 289
+          },
+          {
+            "x": 177,
+            "y": 404
+          },
+          {
+            "x": 213,
+            "y": 470
+          },
+          {
+            "x": 277,
+            "y": 528
+          },
+          {
+            "x": 322,
+            "y": 611
+          },
+          {
+            "x": 319,
+            "y": 636
+          },
+          {
+            "x": 334,
+            "y": 688
+          },
+          {
+            "x": 305,
+            "y": 794
+          },
+          {
+            "x": 300,
+            "y": 848
+          }
+        ]
+      },
+      "maskVerticesNormalized": [
+        {
+          "xNorm": 0.7977777777777778,
+          "yNorm": 0.9988399071925754,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.9377777777777778,
+          "yNorm": 0.9443155452436195,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.9511111111111111,
+          "yNorm": 0.8816705336426914,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 1,
+          "yNorm": 0.8225058004640371,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.9377777777777778,
+          "yNorm": 0.7587006960556845,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.8844444444444445,
+          "yNorm": 0.6902552204176334,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.8266666666666667,
+          "yNorm": 0.6751740139211136,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.7511111111111111,
+          "yNorm": 0.6009280742459396,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.6711111111111111,
+          "yNorm": 0.47447795823665895,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.5022222222222222,
+          "yNorm": 0.39791183294663574,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.43555555555555553,
+          "yNorm": 0.27842227378190254,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.32222222222222224,
+          "yNorm": 0.04524361948955916,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.29333333333333333,
+          "yNorm": 0,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.03333333333333333,
+          "yNorm": 0.033642691415313224,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.0022222222222222222,
+          "yNorm": 0.20185614849187936,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.07777777777777778,
+          "yNorm": 0.3352668213457077,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.20444444444444446,
+          "yNorm": 0.3352668213457077,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.3933333333333333,
+          "yNorm": 0.46867749419953597,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.47333333333333333,
+          "yNorm": 0.5452436194895591,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.6155555555555555,
+          "yNorm": 0.6125290023201856,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.7155555555555555,
+          "yNorm": 0.7088167053364269,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.7088888888888889,
+          "yNorm": 0.7378190255220418,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.7422222222222222,
+          "yNorm": 0.7981438515081206,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.6777777777777778,
+          "yNorm": 0.9211136890951276,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.6666666666666666,
+          "yNorm": 0.9837587006960556,
+          "coordinateSpace": "part-local-normalized"
+        }
+      ],
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      "sourceRect": {
+        "x": 433,
+        "y": 622,
+        "w": 450,
+        "h": 862
+      },
+      "motionSettings": {
+        "x": 0,
+        "y": 0,
+        "rotate": 0,
+        "scaleY": 0,
+        "jointX": 0,
+        "jointY": 0,
+        "phase": 0
+      },
+      "keyframes": []
+    },
+    {
+      "id": "8c66d9f9-9958-416f-8c17-140b8f06b6d4",
+      "name": "leg_02",
+      "type": "leg",
+      "humanRole": null,
+      "assetId": "asset-8c66d9f9-9958-416f-8c17-140b8f06b6d4",
+      "sourceAssetId": "source-image",
+      "parentId": null,
+      "parentPartId": null,
+      "attachPointSelf": "none",
+      "attachPointParent": "none",
+      "rotationPivot": {
+        "x": 167.5,
+        "y": 55.52
+      },
+      "followStrength": 1,
+      "layerIndex": 3,
+      "visible": true,
+      "opacity": 1,
+      "pivot": {
+        "x": 168,
+        "y": 56
+      },
+      "joint": {
+        "x": 168,
+        "y": 611
+      },
+      "sourceRectNormalized": {
+        "xNorm": 0.10557184750733138,
+        "yNorm": 0.40793754066363047,
+        "wNorm": 0.32746823069403713,
+        "hNorm": 0.4515289525048796,
+        "coordinateSpace": "normalized-image"
+      },
+      "pivotNormalized": {
+        "xNorm": 0.5014925373134328,
+        "yNorm": 0.08069164265129683,
+        "coordinateSpace": "part-local-normalized"
+      },
+      "jointNormalized": {
+        "xNorm": 0.5014925373134328,
+        "yNorm": 0.8804034582132565,
+        "coordinateSpace": "part-local-normalized"
+      },
+      "mask": {
+        "kind": "polygon",
+        "points": [
+          {
+            "x": 0,
+            "y": 669
+          },
+          {
+            "x": 31,
+            "y": 693
+          },
+          {
+            "x": 67,
+            "y": 693
+          },
+          {
+            "x": 112,
+            "y": 675
+          },
+          {
+            "x": 143,
+            "y": 640
+          },
+          {
+            "x": 175,
+            "y": 636
+          },
+          {
+            "x": 214,
+            "y": 612
+          },
+          {
+            "x": 204,
+            "y": 559
+          },
+          {
+            "x": 187,
+            "y": 494
+          },
+          {
+            "x": 181,
+            "y": 465
+          },
+          {
+            "x": 194,
+            "y": 374
+          },
+          {
+            "x": 165,
+            "y": 306
+          },
+          {
+            "x": 218,
+            "y": 239
+          },
+          {
+            "x": 263,
+            "y": 251
+          },
+          {
+            "x": 318,
+            "y": 196
+          },
+          {
+            "x": 334,
+            "y": 27
+          },
+          {
+            "x": 244,
+            "y": 1
+          },
+          {
+            "x": 128,
+            "y": 168
+          },
+          {
+            "x": 69,
+            "y": 294
+          },
+          {
+            "x": 118,
+            "y": 480
+          },
+          {
+            "x": 106,
+            "y": 520
+          },
+          {
+            "x": 98,
+            "y": 577
+          }
+        ]
+      },
+      "maskVerticesNormalized": [
+        {
+          "xNorm": 0,
+          "yNorm": 0.9639769452449568,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.09253731343283582,
+          "yNorm": 0.9985590778097982,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.2,
+          "yNorm": 0.9985590778097982,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.33432835820895523,
+          "yNorm": 0.9726224783861671,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.42686567164179107,
+          "yNorm": 0.9221902017291066,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.5223880597014925,
+          "yNorm": 0.9164265129682997,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.6388059701492538,
+          "yNorm": 0.8818443804034583,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.608955223880597,
+          "yNorm": 0.8054755043227666,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.5582089552238806,
+          "yNorm": 0.7118155619596542,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.5402985074626866,
+          "yNorm": 0.670028818443804,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.5791044776119403,
+          "yNorm": 0.5389048991354467,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.4925373134328358,
+          "yNorm": 0.4409221902017291,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.6507462686567164,
+          "yNorm": 0.34438040345821325,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.7850746268656716,
+          "yNorm": 0.361671469740634,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.9492537313432836,
+          "yNorm": 0.2824207492795389,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.9970149253731343,
+          "yNorm": 0.03890489913544669,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.7283582089552239,
+          "yNorm": 0.001440922190201729,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.382089552238806,
+          "yNorm": 0.2420749279538905,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.20597014925373133,
+          "yNorm": 0.42363112391930835,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.3522388059701492,
+          "yNorm": 0.69164265129683,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.3164179104477612,
+          "yNorm": 0.7492795389048992,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.29253731343283584,
+          "yNorm": 0.8314121037463977,
+          "coordinateSpace": "part-local-normalized"
+        }
+      ],
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      "sourceRect": {
+        "x": 108,
+        "y": 627,
+        "w": 335,
+        "h": 694
+      },
+      "motionSettings": {
+        "x": 0,
+        "y": 0,
+        "rotate": 0,
+        "scaleY": 0,
+        "jointX": 0,
+        "jointY": 0,
+        "phase": 0
+      },
+      "keyframes": []
+    },
+    {
+      "id": "654fda4c-eaff-4f72-9b31-98652b76cdcb",
+      "name": "body_01",
+      "type": "body",
+      "humanRole": null,
+      "assetId": "asset-654fda4c-eaff-4f72-9b31-98652b76cdcb",
+      "sourceAssetId": "source-image",
+      "parentId": null,
+      "parentPartId": null,
+      "attachPointSelf": "none",
+      "attachPointParent": "none",
+      "rotationPivot": {
+        "x": 130,
+        "y": 194.5
+      },
+      "followStrength": 1,
+      "layerIndex": 4,
+      "visible": true,
+      "opacity": 1,
+      "pivot": {
+        "x": 130,
+        "y": 195
+      },
+      "joint": {
+        "x": 130,
+        "y": 195
+      },
+      "sourceRectNormalized": {
+        "xNorm": 0.3460410557184751,
+        "yNorm": 0.16916070266753416,
+        "wNorm": 0.2541544477028348,
+        "hNorm": 0.2530904359141184,
+        "coordinateSpace": "normalized-image"
+      },
+      "pivotNormalized": {
+        "xNorm": 0.5,
+        "yNorm": 0.5012853470437018,
+        "coordinateSpace": "part-local-normalized"
+      },
+      "jointNormalized": {
+        "xNorm": 0.5,
+        "yNorm": 0.5012853470437018,
+        "coordinateSpace": "part-local-normalized"
+      },
+      "mask": {
+        "kind": "polygon",
+        "points": [
+          {
+            "x": 90,
+            "y": 389
+          },
+          {
+            "x": 212,
+            "y": 361
+          },
+          {
+            "x": 205,
+            "y": 320
+          },
+          {
+            "x": 220,
+            "y": 291
+          },
+          {
+            "x": 212,
+            "y": 251
+          },
+          {
+            "x": 260,
+            "y": 130
+          },
+          {
+            "x": 222,
+            "y": 123
+          },
+          {
+            "x": 203,
+            "y": 149
+          },
+          {
+            "x": 185,
+            "y": 136
+          },
+          {
+            "x": 204,
+            "y": 37
+          },
+          {
+            "x": 186,
+            "y": 57
+          },
+          {
+            "x": 125,
+            "y": 29
+          },
+          {
+            "x": 112,
+            "y": 1
+          },
+          {
+            "x": 96,
+            "y": 4
+          },
+          {
+            "x": 82,
+            "y": 22
+          },
+          {
+            "x": 100,
+            "y": 45
+          },
+          {
+            "x": 107,
+            "y": 71
+          },
+          {
+            "x": 100,
+            "y": 111
+          },
+          {
+            "x": 76,
+            "y": 134
+          },
+          {
+            "x": 52,
+            "y": 138
+          },
+          {
+            "x": 7,
+            "y": 186
+          },
+          {
+            "x": 20,
+            "y": 268
+          },
+          {
+            "x": 3,
+            "y": 295
+          },
+          {
+            "x": 11,
+            "y": 321
+          },
+          {
+            "x": 0,
+            "y": 367
+          }
+        ]
+      },
+      "maskVerticesNormalized": [
+        {
+          "xNorm": 0.34615384615384615,
+          "yNorm": 1,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.8153846153846154,
+          "yNorm": 0.9280205655526992,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.7884615384615384,
+          "yNorm": 0.8226221079691517,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.8461538461538461,
+          "yNorm": 0.7480719794344473,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.8153846153846154,
+          "yNorm": 0.6452442159383034,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 1,
+          "yNorm": 0.3341902313624679,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.8538461538461538,
+          "yNorm": 0.3161953727506427,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.7807692307692308,
+          "yNorm": 0.38303341902313626,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.7115384615384616,
+          "yNorm": 0.3496143958868895,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.7846153846153846,
+          "yNorm": 0.09511568123393316,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.7153846153846154,
+          "yNorm": 0.14652956298200515,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.4807692307692308,
+          "yNorm": 0.07455012853470437,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.4307692307692308,
+          "yNorm": 0.002570694087403599,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.36923076923076925,
+          "yNorm": 0.010282776349614395,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.3153846153846154,
+          "yNorm": 0.056555269922879174,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.38461538461538464,
+          "yNorm": 0.11568123393316196,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.4115384615384615,
+          "yNorm": 0.18251928020565553,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.38461538461538464,
+          "yNorm": 0.2853470437017995,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.2923076923076923,
+          "yNorm": 0.3444730077120823,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.2,
+          "yNorm": 0.35475578406169667,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.026923076923076925,
+          "yNorm": 0.4781491002570694,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.07692307692307693,
+          "yNorm": 0.6889460154241646,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.011538461538461539,
+          "yNorm": 0.7583547557840618,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.04230769230769231,
+          "yNorm": 0.8251928020565553,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0,
+          "yNorm": 0.9434447300771208,
+          "coordinateSpace": "part-local-normalized"
+        }
+      ],
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      "sourceRect": {
+        "x": 354,
+        "y": 260,
+        "w": 260,
+        "h": 389
+      },
+      "motionSettings": {
+        "x": 0,
+        "y": 0,
+        "rotate": 0,
+        "scaleY": 0,
+        "jointX": 0,
+        "jointY": 0,
+        "phase": 0
+      },
+      "keyframes": []
+    },
+    {
+      "id": "362ff4e1-bf0b-476f-8f6d-868f7bf1db62",
+      "name": "head_01",
+      "type": "head",
+      "humanRole": null,
+      "assetId": "asset-362ff4e1-bf0b-476f-8f6d-868f7bf1db62",
+      "sourceAssetId": "source-image",
+      "parentId": "654fda4c-eaff-4f72-9b31-98652b76cdcb",
+      "parentPartId": "654fda4c-eaff-4f72-9b31-98652b76cdcb",
+      "attachPointSelf": "neck",
+      "attachPointParent": "neck",
+      "rotationPivot": {
+        "x": 136,
+        "y": 130
+      },
+      "followStrength": 1,
+      "layerIndex": 6,
+      "visible": true,
+      "opacity": 1,
+      "pivot": {
+        "x": 136,
+        "y": 130
+      },
+      "joint": {
+        "x": 136,
+        "y": 130
+      },
+      "sourceRectNormalized": {
+        "xNorm": 0.34506353861192574,
+        "yNorm": 0.038386467143786594,
+        "wNorm": 0.26588465298142716,
+        "hNorm": 0.16916070266753416,
+        "coordinateSpace": "normalized-image"
+      },
+      "pivotNormalized": {
+        "xNorm": 0.5,
+        "yNorm": 0.5,
+        "coordinateSpace": "part-local-normalized"
+      },
+      "jointNormalized": {
+        "xNorm": 0.5,
+        "yNorm": 0.5,
+        "coordinateSpace": "part-local-normalized"
+      },
+      "mask": {
+        "kind": "polygon",
+        "points": [
+          {
+            "x": 95,
+            "y": 201
+          },
+          {
+            "x": 112,
+            "y": 203
+          },
+          {
+            "x": 124,
+            "y": 226
+          },
+          {
+            "x": 173,
+            "y": 259
+          },
+          {
+            "x": 207,
+            "y": 237
+          },
+          {
+            "x": 211,
+            "y": 222
+          },
+          {
+            "x": 224,
+            "y": 212
+          },
+          {
+            "x": 220,
+            "y": 198
+          },
+          {
+            "x": 228,
+            "y": 185
+          },
+          {
+            "x": 245,
+            "y": 177
+          },
+          {
+            "x": 261,
+            "y": 158
+          },
+          {
+            "x": 272,
+            "y": 132
+          },
+          {
+            "x": 271,
+            "y": 81
+          },
+          {
+            "x": 250,
+            "y": 49
+          },
+          {
+            "x": 224,
+            "y": 19
+          },
+          {
+            "x": 175,
+            "y": 6
+          },
+          {
+            "x": 90,
+            "y": 1
+          },
+          {
+            "x": 48,
+            "y": 21
+          },
+          {
+            "x": 21,
+            "y": 59
+          },
+          {
+            "x": 0,
+            "y": 92
+          },
+          {
+            "x": 5,
+            "y": 126
+          },
+          {
+            "x": 13,
+            "y": 152
+          },
+          {
+            "x": 27,
+            "y": 174
+          },
+          {
+            "x": 46,
+            "y": 198
+          },
+          {
+            "x": 59,
+            "y": 208
+          },
+          {
+            "x": 80,
+            "y": 216
+          }
+        ]
+      },
+      "maskVerticesNormalized": [
+        {
+          "xNorm": 0.3492647058823529,
+          "yNorm": 0.7730769230769231,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.4117647058823529,
+          "yNorm": 0.7807692307692308,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.45588235294117646,
+          "yNorm": 0.8692307692307693,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.6360294117647058,
+          "yNorm": 0.9961538461538462,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.7610294117647058,
+          "yNorm": 0.9115384615384615,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.7757352941176471,
+          "yNorm": 0.8538461538461538,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.8235294117647058,
+          "yNorm": 0.8153846153846154,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.8088235294117647,
+          "yNorm": 0.7615384615384615,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.8382352941176471,
+          "yNorm": 0.7115384615384616,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.9007352941176471,
+          "yNorm": 0.6807692307692308,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.9595588235294118,
+          "yNorm": 0.6076923076923076,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 1,
+          "yNorm": 0.5076923076923077,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.9963235294117647,
+          "yNorm": 0.31153846153846154,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.9191176470588235,
+          "yNorm": 0.18846153846153846,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.8235294117647058,
+          "yNorm": 0.07307692307692308,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.6433823529411765,
+          "yNorm": 0.023076923076923078,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.33088235294117646,
+          "yNorm": 0.0038461538461538464,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.17647058823529413,
+          "yNorm": 0.08076923076923077,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.07720588235294118,
+          "yNorm": 0.22692307692307692,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0,
+          "yNorm": 0.35384615384615387,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.01838235294117647,
+          "yNorm": 0.4846153846153846,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.04779411764705882,
+          "yNorm": 0.5846153846153846,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.09926470588235294,
+          "yNorm": 0.6692307692307692,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.16911764705882354,
+          "yNorm": 0.7615384615384615,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.21691176470588236,
+          "yNorm": 0.8,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.29411764705882354,
+          "yNorm": 0.8307692307692308,
+          "coordinateSpace": "part-local-normalized"
+        }
+      ],
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      "sourceRect": {
+        "x": 353,
+        "y": 59,
+        "w": 272,
+        "h": 260
+      },
+      "motionSettings": {
+        "x": 0,
+        "y": 0,
+        "rotate": 0,
+        "scaleY": 0,
+        "jointX": 0,
+        "jointY": 0,
+        "phase": 0
+      },
+      "keyframes": []
+    },
+    {
+      "id": "316845c3-0e83-4880-94d7-df6d83852448",
+      "name": "hand",
+      "type": "arm",
+      "humanRole": "hand",
+      "assetId": "asset-316845c3-0e83-4880-94d7-df6d83852448",
+      "sourceAssetId": "source-image",
+      "parentId": "612d3ea0-7471-4649-8a61-7da9055cfc76",
+      "parentPartId": "612d3ea0-7471-4649-8a61-7da9055cfc76",
+      "attachPointSelf": "shoulder",
+      "attachPointParent": "shoulder",
+      "rotationPivot": {
+        "x": 40.75,
+        "y": 156.25
+      },
+      "followStrength": 1,
+      "layerIndex": 6,
+      "visible": true,
+      "opacity": 1,
+      "pivot": {
+        "x": 40.75,
+        "y": 156.25
+      },
+      "joint": {
+        "x": 21,
+        "y": 132.60000000000002
+      },
+      "handTip": {
+        "x": 186.94056373676062,
+        "y": -27.46541432159762
+      },
+      "handTipNormalized": {
+        "xNorm": 1.0685714285714285,
+        "yNorm": -0.13846153846153847,
+        "coordinateSpace": "part-local-normalized"
+      },
+      "sourceRectNormalized": {
+        "xNorm": 0.2825024437927664,
+        "yNorm": 0.17501626545217958,
+        "wNorm": 0.1710654936461388,
+        "hNorm": 0.12687052700065063,
+        "coordinateSpace": "normalized-image"
+      },
+      "pivotNormalized": {
+        "xNorm": 0.2342857142857143,
+        "yNorm": 0.8,
+        "coordinateSpace": "part-local-normalized"
+      },
+      "jointNormalized": {
+        "xNorm": 0.12,
+        "yNorm": 0.6820512820512821,
+        "coordinateSpace": "part-local-normalized"
+      },
+      "mask": {
+        "kind": "polygon",
+        "points": [
+          {
+            "x": 122.23210121878896,
+            "y": 0.7973833893819346
+          },
+          {
+            "x": 144.05189242866106,
+            "y": 11.707278994318017
+          },
+          {
+            "x": 161.3258383125446,
+            "y": 37.163688199852515
+          },
+          {
+            "x": 174.05410534223523,
+            "y": 63.529283117764294
+          },
+          {
+            "x": 164.0533122137786,
+            "y": 101.71391773504047
+          },
+          {
+            "x": 145.8701806175178,
+            "y": 124.44285303934095
+          },
+          {
+            "x": 117.68625589280032,
+            "y": 127.17032694057497
+          },
+          {
+            "x": 65.8642517693541,
+            "y": 186.26560867329493
+          },
+          {
+            "x": 51.31777978670459,
+            "y": 194.448030376997
+          },
+          {
+            "x": 28.588802864455147,
+            "y": 188.08389686215168
+          },
+          {
+            "x": 10.40567126819434,
+            "y": 175.35571306835885
+          },
+          {
+            "x": 0.40487813973771836,
+            "y": 143.5351703479791
+          },
+          {
+            "x": 30.407091053311888,
+            "y": 102.62306182946884
+          },
+          {
+            "x": 46.771934460715954,
+            "y": 50.80105770602256
+          },
+          {
+            "x": 61.31848967926334,
+            "y": 21.707988886876763
+          },
+          {
+            "x": 86.77494050274674,
+            "y": 4.434001385044326
+          }
+        ]
+      },
+      "maskVerticesNormalized": [
+        {
+          "xNorm": 0.6971428571428572,
+          "yNorm": 0.005128205128205128,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.8228571428571428,
+          "yNorm": 0.06153846153846154,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.92,
+          "yNorm": 0.18974358974358974,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.9942857142857143,
+          "yNorm": 0.3282051282051282,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.9371428571428572,
+          "yNorm": 0.5230769230769231,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.8342857142857143,
+          "yNorm": 0.6358974358974359,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.6742857142857143,
+          "yNorm": 0.6512820512820513,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.37714285714285717,
+          "yNorm": 0.9538461538461539,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.2914285714285714,
+          "yNorm": 0.9948717948717949,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.1657142857142857,
+          "yNorm": 0.9641025641025641,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.05714285714285714,
+          "yNorm": 0.8974358974358975,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0,
+          "yNorm": 0.7384615384615385,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.17142857142857143,
+          "yNorm": 0.5282051282051282,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.26857142857142857,
+          "yNorm": 0.26153846153846155,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.3485714285714286,
+          "yNorm": 0.11282051282051282,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.49714285714285716,
+          "yNorm": 0.020512820512820513,
+          "coordinateSpace": "part-local-normalized"
+        }
+      ],
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      "sourceRect": {
+        "x": 289,
+        "y": 269,
+        "w": 175,
+        "h": 195
+      },
+      "motionSettings": {
+        "x": 0,
+        "y": 0,
+        "rotate": 0,
+        "scaleY": 0,
+        "jointX": 0,
+        "jointY": 0,
+        "phase": 0
+      },
+      "keyframes": []
+    },
+    {
+      "id": "612d3ea0-7471-4649-8a61-7da9055cfc76",
+      "name": "forearm",
+      "type": "arm",
+      "humanRole": "forearm",
+      "assetId": "asset-612d3ea0-7471-4649-8a61-7da9055cfc76",
+      "sourceAssetId": "source-image",
+      "parentId": "344d68b5-da9a-4a05-ae0c-aef075518a3d",
+      "parentPartId": "344d68b5-da9a-4a05-ae0c-aef075518a3d",
+      "attachPointSelf": "elbow",
+      "attachPointParent": "elbow",
+      "rotationPivot": {
+        "x": 63.5,
+        "y": 6.75
+      },
+      "followStrength": 1,
+      "layerIndex": 7,
+      "visible": true,
+      "opacity": 1,
+      "pivot": {
+        "x": 63.5,
+        "y": 6.75
+      },
+      "joint": {
+        "x": 101.75,
+        "y": 7.25
+      },
+      "handTip": {
+        "x": 13.2,
+        "y": 116.16
+      },
+      "handTipNormalized": {
+        "xNorm": 0.11818181818181818,
+        "yNorm": 0.8787878787878788,
+        "coordinateSpace": "part-local-normalized"
+      },
+      "sourceRectNormalized": {
+        "xNorm": 0.22287390029325513,
+        "yNorm": 0.2719583604424203,
+        "wNorm": 0.10752688172043011,
+        "hNorm": 0.08588158750813273,
+        "coordinateSpace": "normalized-image"
+      },
+      "pivotNormalized": {
+        "xNorm": 0.5818181818181818,
+        "yNorm": 0.05303030303030303,
+        "coordinateSpace": "part-local-normalized"
+      },
+      "jointNormalized": {
+        "xNorm": 0.9272727272727272,
+        "yNorm": 0.05303030303030303,
+        "coordinateSpace": "part-local-normalized"
+      },
+      "mask": {
+        "kind": "polygon",
+        "points": [
+          {
+            "x": 59.586589950881034,
+            "y": 0.8992622448754446
+          },
+          {
+            "x": 76.86061907066238,
+            "y": 34.538134772060914
+          },
+          {
+            "x": 109.59030588547057,
+            "y": 46.35717447142531
+          },
+          {
+            "x": 84.13385506198716,
+            "y": 96.36084878806594
+          },
+          {
+            "x": 28.840947622401302,
+            "y": 131.85096660834517
+          },
+          {
+            "x": 0.657022897683845,
+            "y": 107.3037014972391
+          },
+          {
+            "x": 2.475394322438433,
+            "y": 87.30224009417265
+          },
+          {
+            "x": 4.293682511295174,
+            "y": 50.026749571324785
+          },
+          {
+            "x": 21.56771163107655,
+            "y": 28.206958361452678
+          }
+        ]
+      },
+      "maskVerticesNormalized": [
+        {
+          "xNorm": 0.5454545454545454,
+          "yNorm": 0.007575757575757576,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.7,
+          "yNorm": 0.26515151515151514,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 1,
+          "yNorm": 0.3484848484848485,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.7636363636363637,
+          "yNorm": 0.7272727272727273,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.2636363636363636,
+          "yNorm": 1,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.00909090909090909,
+          "yNorm": 0.8106060606060606,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.01818181818181818,
+          "yNorm": 0.6590909090909091,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.03636363636363636,
+          "yNorm": 0.3787878787878788,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.2,
+          "yNorm": 0.21212121212121213,
+          "coordinateSpace": "part-local-normalized"
+        }
+      ],
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      "sourceRect": {
+        "x": 228,
+        "y": 418,
+        "w": 110,
+        "h": 132
+      },
+      "motionSettings": {
+        "x": 0,
+        "y": 0,
+        "rotate": 0,
+        "scaleY": 0,
+        "jointX": 0,
+        "jointY": 0,
+        "phase": 0
+      },
+      "keyframes": []
+    },
+    {
+      "id": "344d68b5-da9a-4a05-ae0c-aef075518a3d",
+      "name": "upperarm",
+      "type": "arm",
+      "humanRole": "upperArm",
+      "assetId": "asset-344d68b5-da9a-4a05-ae0c-aef075518a3d",
+      "sourceAssetId": "source-image",
+      "parentId": "654fda4c-eaff-4f72-9b31-98652b76cdcb",
+      "parentPartId": "654fda4c-eaff-4f72-9b31-98652b76cdcb",
+      "attachPointSelf": "shoulder",
+      "attachPointParent": "shoulder",
+      "rotationPivot": {
+        "x": 98,
+        "y": 102.20108695652175
+      },
+      "followStrength": 1,
+      "layerIndex": 8,
+      "visible": true,
+      "opacity": 1,
+      "pivot": {
+        "x": 98,
+        "y": 102.20108695652175
+      },
+      "joint": {
+        "x": 40.5,
+        "y": 137.75
+      },
+      "handTip": {
+        "x": 11.76,
+        "y": 138.16
+      },
+      "handTipNormalized": {
+        "xNorm": 0.12244897959183673,
+        "yNorm": 0.8789808917197452,
+        "coordinateSpace": "part-local-normalized"
+      },
+      "sourceRectNormalized": {
+        "xNorm": 0.24535679374389052,
+        "yNorm": 0.1867273910214704,
+        "wNorm": 0.09579667644183773,
+        "hNorm": 0.10214703968770332,
+        "coordinateSpace": "normalized-image"
+      },
+      "pivotNormalized": {
+        "xNorm": 1,
+        "yNorm": 0.6496815286624203,
+        "coordinateSpace": "part-local-normalized"
+      },
+      "jointNormalized": {
+        "xNorm": 0.41836734693877553,
+        "yNorm": 0.8789808917197452,
+        "coordinateSpace": "part-local-normalized"
+      },
+      "mask": {
+        "kind": "polygon",
+        "points": [
+          {
+            "x": 0.8069837350507783,
+            "y": 156.52603311684902
+          },
+          {
+            "x": 36.62971820305057,
+            "y": 87.76947816922944
+          },
+          {
+            "x": 55.11891584285257,
+            "y": 28.835273100436098
+          },
+          {
+            "x": 76.49697457311663,
+            "y": 6.879383964369879
+          },
+          {
+            "x": 97.87508620129864,
+            "y": 0.5237255818078097
+          },
+          {
+            "x": 85.1637694361745,
+            "y": 35.768708990882374
+          },
+          {
+            "x": 72.45250556896826,
+            "y": 73.90260638833689
+          },
+          {
+            "x": 53.385556870240976,
+            "y": 105.10306789534513
+          },
+          {
+            "x": 36.62971820305057,
+            "y": 131.10345248451864
+          }
+        ]
+      },
+      "maskVerticesNormalized": [
+        {
+          "xNorm": 0.01020408163265306,
+          "yNorm": 1,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.37755102040816324,
+          "yNorm": 0.5605095541401274,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.5612244897959183,
+          "yNorm": 0.18471337579617833,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.7755102040816326,
+          "yNorm": 0.044585987261146494,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 1,
+          "yNorm": 0.006369426751592357,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.8673469387755102,
+          "yNorm": 0.22929936305732485,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.7346938775510204,
+          "yNorm": 0.4713375796178344,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.5408163265306123,
+          "yNorm": 0.6687898089171974,
+          "coordinateSpace": "part-local-normalized"
+        },
+        {
+          "xNorm": 0.37755102040816324,
+          "yNorm": 0.8343949044585988,
+          "coordinateSpace": "part-local-normalized"
+        }
+      ],
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      "sourceRect": {
+        "x": 251,
+        "y": 287,
+        "w": 98,
+        "h": 157
+      },
+      "motionSettings": {
+        "x": 0,
+        "y": 0,
+        "rotate": 0,
+        "scaleY": 0,
+        "jointX": 0,
+        "jointY": 0,
+        "phase": 0
+      },
+      "keyframes": []
+    }
+  ],
+  "proxies": [],
+  "rigs": [
+    {
+      "id": "main-rig",
+      "name": "Main Rig",
+      "rootPartId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+      "bones": [
+        {
+          "id": "bone-28ac7708-598e-4a9b-8f42-606b372fe259",
+          "name": "arm_01 bone",
+          "partId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+          "start": {
+            "x": 539,
+            "y": 340
+          },
+          "end": {
+            "x": 744,
+            "y": 354
+          }
+        },
+        {
+          "id": "bone-b865c290-9823-4ec7-b913-3971fc4dc966",
+          "name": "leg_01 bone",
+          "partId": "b865c290-9823-4ec7-b913-3971fc4dc966",
+          "start": {
+            "x": 658,
+            "y": 691
+          },
+          "end": {
+            "x": 658,
+            "y": 1381
+          }
+        },
+        {
+          "id": "bone-8c66d9f9-9958-416f-8c17-140b8f06b6d4",
+          "name": "leg_02 bone",
+          "partId": "8c66d9f9-9958-416f-8c17-140b8f06b6d4",
+          "start": {
+            "x": 276,
+            "y": 683
+          },
+          "end": {
+            "x": 276,
+            "y": 1238
+          }
+        },
+        {
+          "id": "bone-654fda4c-eaff-4f72-9b31-98652b76cdcb",
+          "name": "body_01 bone",
+          "partId": "654fda4c-eaff-4f72-9b31-98652b76cdcb",
+          "start": {
+            "x": 484,
+            "y": 455
+          },
+          "end": {
+            "x": 484,
+            "y": 455
+          }
+        },
+        {
+          "id": "bone-362ff4e1-bf0b-476f-8f6d-868f7bf1db62",
+          "name": "head_01 bone",
+          "parentBoneId": "bone-654fda4c-eaff-4f72-9b31-98652b76cdcb",
+          "partId": "362ff4e1-bf0b-476f-8f6d-868f7bf1db62",
+          "start": {
+            "x": 489,
+            "y": 189
+          },
+          "end": {
+            "x": 489,
+            "y": 189
+          }
+        },
+        {
+          "id": "bone-316845c3-0e83-4880-94d7-df6d83852448",
+          "name": "hand bone",
+          "parentBoneId": "bone-612d3ea0-7471-4649-8a61-7da9055cfc76",
+          "partId": "316845c3-0e83-4880-94d7-df6d83852448",
+          "start": {
+            "x": 329.75,
+            "y": 425.25
+          },
+          "end": {
+            "x": 310,
+            "y": 401.6
+          }
+        },
+        {
+          "id": "bone-612d3ea0-7471-4649-8a61-7da9055cfc76",
+          "name": "forearm bone",
+          "parentBoneId": "bone-344d68b5-da9a-4a05-ae0c-aef075518a3d",
+          "partId": "612d3ea0-7471-4649-8a61-7da9055cfc76",
+          "start": {
+            "x": 291.5,
+            "y": 424.75
+          },
+          "end": {
+            "x": 329.75,
+            "y": 425.25
+          }
+        },
+        {
+          "id": "bone-344d68b5-da9a-4a05-ae0c-aef075518a3d",
+          "name": "upperarm bone",
+          "parentBoneId": "bone-654fda4c-eaff-4f72-9b31-98652b76cdcb",
+          "partId": "344d68b5-da9a-4a05-ae0c-aef075518a3d",
+          "start": {
+            "x": 349,
+            "y": 389.20108695652175
+          },
+          "end": {
+            "x": 291.5,
+            "y": 424.75
+          }
+        }
+      ]
+    }
+  ],
+  "motions": [
+    {
+      "id": "motion-28ac7708-598e-4a9b-8f42-606b372fe259",
+      "name": "arm_01 motion",
+      "durationFrames": 18,
+      "keyframes": [
+        {
+          "frame": 1,
+          "targetId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+          "targetType": "part",
+          "property": "customMotion",
+          "value": {
+            "x": 0,
+            "y": 0,
+            "rotate": 0,
+            "scaleY": 0,
+            "jointX": 0,
+            "jointY": 0,
+            "phase": 0
+          },
+          "easing": "linear"
+        },
+        {
+          "frame": 4,
+          "targetId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+          "targetType": "part",
+          "property": "customMotion",
+          "value": {
+            "x": 0,
+            "y": 0,
+            "rotate": 0,
+            "scaleY": 0,
+            "jointX": -7,
+            "jointY": -1,
+            "phase": 0
+          },
+          "easing": "linear"
+        },
+        {
+          "frame": 8,
+          "targetId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+          "targetType": "part",
+          "property": "customMotion",
+          "value": {
+            "x": 0,
+            "y": 0,
+            "rotate": 0,
+            "scaleY": 0,
+            "jointX": 89,
+            "jointY": -20,
+            "phase": 0
+          },
+          "easing": "linear"
+        },
+        {
+          "frame": 12,
+          "targetId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+          "targetType": "part",
+          "property": "customMotion",
+          "value": {
+            "x": 0,
+            "y": 0,
+            "rotate": 0,
+            "scaleY": 0,
+            "jointX": 138,
+            "jointY": -27,
+            "phase": 0
+          },
+          "easing": "linear"
+        },
+        {
+          "frame": 15,
+          "targetId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+          "targetType": "part",
+          "property": "customMotion",
+          "value": {
+            "x": 0,
+            "y": 0,
+            "rotate": 0,
+            "scaleY": 0,
+            "jointX": 120,
+            "jointY": -30,
+            "phase": 0
+          },
+          "easing": "linear"
+        },
+        {
+          "frame": 18,
+          "targetId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+          "targetType": "part",
+          "property": "customMotion",
+          "value": {
+            "x": 0,
+            "y": 0,
+            "rotate": 0,
+            "scaleY": 0,
+            "jointX": 30,
+            "jointY": -6,
+            "phase": 0
+          },
+          "easing": "linear"
+        }
+      ]
+    },
+    {
+      "id": "motion-b865c290-9823-4ec7-b913-3971fc4dc966",
+      "name": "leg_01 motion",
+      "durationFrames": 18,
+      "keyframes": []
+    },
+    {
+      "id": "motion-8c66d9f9-9958-416f-8c17-140b8f06b6d4",
+      "name": "leg_02 motion",
+      "durationFrames": 18,
+      "keyframes": []
+    },
+    {
+      "id": "motion-654fda4c-eaff-4f72-9b31-98652b76cdcb",
+      "name": "body_01 motion",
+      "durationFrames": 18,
+      "keyframes": []
+    },
+    {
+      "id": "motion-362ff4e1-bf0b-476f-8f6d-868f7bf1db62",
+      "name": "head_01 motion",
+      "durationFrames": 18,
+      "keyframes": []
+    },
+    {
+      "id": "motion-316845c3-0e83-4880-94d7-df6d83852448",
+      "name": "hand motion",
+      "durationFrames": 18,
+      "keyframes": []
+    },
+    {
+      "id": "motion-612d3ea0-7471-4649-8a61-7da9055cfc76",
+      "name": "forearm motion",
+      "durationFrames": 18,
+      "keyframes": []
+    },
+    {
+      "id": "motion-344d68b5-da9a-4a05-ae0c-aef075518a3d",
+      "name": "upperarm motion",
+      "durationFrames": 18,
+      "keyframes": []
+    }
+  ],
+  "effects": [
+    {
+      "id": "cutscene-bridge",
+      "type": "impact",
+      "name": "Cutscene Bridge",
+      "visible": true,
+      "params": {
+        "primaryPartId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+        "durationFrames": 18,
+        "impactFrame": 15,
+        "effectDirection": {
+          "x": 0.9701425001453319,
+          "y": -0.24253562503633297
+        },
+        "effectStrength": 1,
+        "sourceX": 0,
+        "sourceY": 0,
+        "sourceScale": 1,
+        "impactX": 0,
+        "impactY": 0,
+        "impactScale": 1,
+        "sourceMotionEnabled": false,
+        "bodyAssistEnabled": true,
+        "ghostEnabled": true,
+        "jointAction": {
+          "source": "motion-planner-punch-anchors-v1",
+          "focusKey": "rHand",
+          "actionTimeline": {
+            "template": "punch",
+            "id": "punch",
+            "label": "펀치",
+            "durationFrames": 18,
+            "impactFrame": 15,
+            "primaryPartRole": "forearm",
+            "rootMotionHint": {
+              "motionScope": "body-follow"
+            },
+            "beats": [
+              {
+                "id": "guard",
+                "phase": 0,
+                "at": 1,
+                "recoil": 0,
+                "lift": 0,
+                "reach": 0
+              },
+              {
+                "id": "windup",
+                "phase": 0.2,
+                "at": 4,
+                "recoil": -0.24,
+                "lift": 0.06,
+                "reach": 0.1
+              },
+              {
+                "id": "drive",
+                "phase": 0.52,
+                "at": 8,
+                "recoil": 0.18,
+                "lift": -0.03,
+                "reach": 0.62
+              },
+              {
+                "id": "extension",
+                "phase": 0.78,
+                "at": 12,
+                "recoil": 0.38,
+                "lift": -0.01,
+                "reach": 0.9
+              },
+              {
+                "id": "impact",
+                "phase": 1,
+                "at": 15,
+                "recoil": 0,
+                "lift": 0,
+                "reach": 1
+              },
+              {
+                "id": "recover",
+                "phase": 1,
+                "at": 18,
+                "recoil": 0.04,
+                "lift": 0.02,
+                "reach": 0.22
+              }
+            ]
+          },
+          "impactExaggeration": {
+            "kind": "impactExaggeration",
+            "enabled": true,
+            "frame": 15,
+            "holdFrames": 2,
+            "strength": 1,
+            "targetPartIds": [
+              "28ac7708-598e-4a9b-8f42-606b372fe259"
+            ],
+            "scaleHints": [
+              {
+                "partId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+                "scaleX": 1.06,
+                "scaleY": 0.96
+              }
+            ],
+            "stretchHints": [
+              {
+                "partId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+                "axis": "x",
+                "amount": 0.1
+              }
+            ]
+          },
+          "anchors": [
+            {
+              "key": "rHand",
+              "partId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+              "role": "primary",
+              "point": {
+                "x": 864,
+                "y": 324
+              },
+              "pointNormalized": {
+                "xNorm": 0.844574780058651,
+                "yNorm": 0.21080026024723486,
+                "coordinateSpace": "normalized-image"
+              },
+              "locked": true
+            },
+            {
+              "key": "rElbow",
+              "partId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+              "role": "bendHint",
+              "point": {
+                "x": 678,
+                "y": 341
+              },
+              "pointNormalized": {
+                "xNorm": 0.6627565982404692,
+                "yNorm": 0.22186076772934288,
+                "coordinateSpace": "normalized-image"
+              },
+              "locked": false
+            },
+            {
+              "key": "hip",
+              "partId": null,
+              "role": "root",
+              "point": {
+                "x": 744,
+                "y": 385
+              },
+              "pointNormalized": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.2504879635653871,
+                "coordinateSpace": "normalized-image"
+              },
+              "locked": false
+            },
+            {
+              "key": "chest",
+              "partId": null,
+              "role": "balance",
+              "point": {
+                "x": 744,
+                "y": 266
+              },
+              "pointNormalized": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.1730644111906311,
+                "coordinateSpace": "normalized-image"
+              },
+              "locked": false
+            }
+          ],
+          "beats": [
+            {
+              "id": "guard",
+              "at": 1,
+              "pose": {
+                "hip": [
+                  744,
+                  385
+                ],
+                "chest": [
+                  744,
+                  266
+                ],
+                "head": [
+                  744,
+                  322
+                ],
+                "lShoulder": [
+                  539,
+                  340
+                ],
+                "lElbow": [
+                  654,
+                  348
+                ],
+                "lHand": [
+                  744,
+                  354
+                ],
+                "rShoulder": [
+                  539,
+                  340
+                ],
+                "rElbow": [
+                  654,
+                  348
+                ],
+                "rHand": [
+                  744,
+                  354
+                ],
+                "lKnee": [
+                  654,
+                  392
+                ],
+                "lFoot": [
+                  654,
+                  392
+                ],
+                "rKnee": [
+                  833,
+                  392
+                ],
+                "rFoot": [
+                  833,
+                  392
+                ]
+              },
+              "poseNormalized": {
+                "hip": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.2504879635653871,
+                  "coordinateSpace": "normalized-image"
+                },
+                "chest": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.1730644111906311,
+                  "coordinateSpace": "normalized-image"
+                },
+                "head": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.20949902407286922,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lShoulder": {
+                  "xNorm": 0.5268817204301075,
+                  "yNorm": 0.22121014964216004,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lElbow": {
+                  "xNorm": 0.6392961876832844,
+                  "yNorm": 0.22641509433962265,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lHand": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.23031880286271958,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rShoulder": {
+                  "xNorm": 0.5268817204301075,
+                  "yNorm": 0.22121014964216004,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rElbow": {
+                  "xNorm": 0.6392961876832844,
+                  "yNorm": 0.22641509433962265,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rHand": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.23031880286271958,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lKnee": {
+                  "xNorm": 0.6392961876832844,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lFoot": {
+                  "xNorm": 0.6392961876832844,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rKnee": {
+                  "xNorm": 0.8142717497556208,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rFoot": {
+                  "xNorm": 0.8142717497556208,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                }
+              }
+            },
+            {
+              "id": "windup",
+              "at": 4,
+              "pose": {
+                "hip": [
+                  744,
+                  385
+                ],
+                "chest": [
+                  744,
+                  266
+                ],
+                "head": [
+                  749,
+                  322
+                ],
+                "lShoulder": [
+                  539,
+                  340
+                ],
+                "lElbow": [
+                  654,
+                  348
+                ],
+                "lHand": [
+                  744,
+                  354
+                ],
+                "rShoulder": [
+                  539,
+                  340
+                ],
+                "rElbow": [
+                  656,
+                  347
+                ],
+                "rHand": [
+                  737,
+                  353
+                ],
+                "lKnee": [
+                  654,
+                  392
+                ],
+                "lFoot": [
+                  654,
+                  392
+                ],
+                "rKnee": [
+                  833,
+                  392
+                ],
+                "rFoot": [
+                  833,
+                  392
+                ]
+              },
+              "poseNormalized": {
+                "hip": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.2504879635653871,
+                  "coordinateSpace": "normalized-image"
+                },
+                "chest": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.1730644111906311,
+                  "coordinateSpace": "normalized-image"
+                },
+                "head": {
+                  "xNorm": 0.7321603128054741,
+                  "yNorm": 0.20949902407286922,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lShoulder": {
+                  "xNorm": 0.5268817204301075,
+                  "yNorm": 0.22121014964216004,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lElbow": {
+                  "xNorm": 0.6392961876832844,
+                  "yNorm": 0.22641509433962265,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lHand": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.23031880286271958,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rShoulder": {
+                  "xNorm": 0.5268817204301075,
+                  "yNorm": 0.22121014964216004,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rElbow": {
+                  "xNorm": 0.6412512218963832,
+                  "yNorm": 0.2257644762524398,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rHand": {
+                  "xNorm": 0.7204301075268817,
+                  "yNorm": 0.22966818477553677,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lKnee": {
+                  "xNorm": 0.6392961876832844,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lFoot": {
+                  "xNorm": 0.6392961876832844,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rKnee": {
+                  "xNorm": 0.8142717497556208,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rFoot": {
+                  "xNorm": 0.8142717497556208,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                }
+              }
+            },
+            {
+              "id": "drive",
+              "at": 8,
+              "pose": {
+                "hip": [
+                  744,
+                  385
+                ],
+                "chest": [
+                  744,
+                  266
+                ],
+                "head": [
+                  740,
+                  322
+                ],
+                "lShoulder": [
+                  539,
+                  340
+                ],
+                "lElbow": [
+                  654,
+                  348
+                ],
+                "lHand": [
+                  744,
+                  354
+                ],
+                "rShoulder": [
+                  539,
+                  340
+                ],
+                "rElbow": [
+                  669,
+                  344
+                ],
+                "rHand": [
+                  833,
+                  334
+                ],
+                "lKnee": [
+                  654,
+                  392
+                ],
+                "lFoot": [
+                  654,
+                  392
+                ],
+                "rKnee": [
+                  833,
+                  392
+                ],
+                "rFoot": [
+                  833,
+                  392
+                ]
+              },
+              "poseNormalized": {
+                "hip": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.2504879635653871,
+                  "coordinateSpace": "normalized-image"
+                },
+                "chest": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.1730644111906311,
+                  "coordinateSpace": "normalized-image"
+                },
+                "head": {
+                  "xNorm": 0.7233626588465298,
+                  "yNorm": 0.20949902407286922,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lShoulder": {
+                  "xNorm": 0.5268817204301075,
+                  "yNorm": 0.22121014964216004,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lElbow": {
+                  "xNorm": 0.6392961876832844,
+                  "yNorm": 0.22641509433962265,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lHand": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.23031880286271958,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rShoulder": {
+                  "xNorm": 0.5268817204301075,
+                  "yNorm": 0.22121014964216004,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rElbow": {
+                  "xNorm": 0.6539589442815249,
+                  "yNorm": 0.22381262199089136,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rHand": {
+                  "xNorm": 0.8142717497556208,
+                  "yNorm": 0.2173064411190631,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lKnee": {
+                  "xNorm": 0.6392961876832844,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lFoot": {
+                  "xNorm": 0.6392961876832844,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rKnee": {
+                  "xNorm": 0.8142717497556208,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rFoot": {
+                  "xNorm": 0.8142717497556208,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                }
+              }
+            },
+            {
+              "id": "extension",
+              "at": 12,
+              "pose": {
+                "hip": [
+                  744,
+                  385
+                ],
+                "chest": [
+                  744,
+                  266
+                ],
+                "head": [
+                  736,
+                  322
+                ],
+                "lShoulder": [
+                  539,
+                  340
+                ],
+                "lElbow": [
+                  654,
+                  348
+                ],
+                "lHand": [
+                  744,
+                  354
+                ],
+                "rShoulder": [
+                  539,
+                  340
+                ],
+                "rElbow": [
+                  676,
+                  342
+                ],
+                "rHand": [
+                  882,
+                  327
+                ],
+                "lKnee": [
+                  654,
+                  392
+                ],
+                "lFoot": [
+                  654,
+                  392
+                ],
+                "rKnee": [
+                  833,
+                  392
+                ],
+                "rFoot": [
+                  833,
+                  392
+                ]
+              },
+              "poseNormalized": {
+                "hip": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.2504879635653871,
+                  "coordinateSpace": "normalized-image"
+                },
+                "chest": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.1730644111906311,
+                  "coordinateSpace": "normalized-image"
+                },
+                "head": {
+                  "xNorm": 0.7194525904203324,
+                  "yNorm": 0.20949902407286922,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lShoulder": {
+                  "xNorm": 0.5268817204301075,
+                  "yNorm": 0.22121014964216004,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lElbow": {
+                  "xNorm": 0.6392961876832844,
+                  "yNorm": 0.22641509433962265,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lHand": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.23031880286271958,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rShoulder": {
+                  "xNorm": 0.5268817204301075,
+                  "yNorm": 0.22121014964216004,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rElbow": {
+                  "xNorm": 0.6608015640273704,
+                  "yNorm": 0.2225113858165257,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rHand": {
+                  "xNorm": 0.8621700879765396,
+                  "yNorm": 0.21275211450878334,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lKnee": {
+                  "xNorm": 0.6392961876832844,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lFoot": {
+                  "xNorm": 0.6392961876832844,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rKnee": {
+                  "xNorm": 0.8142717497556208,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rFoot": {
+                  "xNorm": 0.8142717497556208,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                }
+              }
+            },
+            {
+              "id": "impact",
+              "at": 15,
+              "pose": {
+                "hip": [
+                  744,
+                  385
+                ],
+                "chest": [
+                  744,
+                  266
+                ],
+                "head": [
+                  744,
+                  322
+                ],
+                "lShoulder": [
+                  539,
+                  340
+                ],
+                "lElbow": [
+                  654,
+                  348
+                ],
+                "lHand": [
+                  744,
+                  354
+                ],
+                "rShoulder": [
+                  539,
+                  340
+                ],
+                "rElbow": [
+                  678,
+                  341
+                ],
+                "rHand": [
+                  864,
+                  324
+                ],
+                "lKnee": [
+                  654,
+                  392
+                ],
+                "lFoot": [
+                  654,
+                  392
+                ],
+                "rKnee": [
+                  833,
+                  392
+                ],
+                "rFoot": [
+                  833,
+                  392
+                ]
+              },
+              "poseNormalized": {
+                "hip": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.2504879635653871,
+                  "coordinateSpace": "normalized-image"
+                },
+                "chest": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.1730644111906311,
+                  "coordinateSpace": "normalized-image"
+                },
+                "head": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.20949902407286922,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lShoulder": {
+                  "xNorm": 0.5268817204301075,
+                  "yNorm": 0.22121014964216004,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lElbow": {
+                  "xNorm": 0.6392961876832844,
+                  "yNorm": 0.22641509433962265,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lHand": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.23031880286271958,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rShoulder": {
+                  "xNorm": 0.5268817204301075,
+                  "yNorm": 0.22121014964216004,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rElbow": {
+                  "xNorm": 0.6627565982404692,
+                  "yNorm": 0.22186076772934288,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rHand": {
+                  "xNorm": 0.844574780058651,
+                  "yNorm": 0.21080026024723486,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lKnee": {
+                  "xNorm": 0.6392961876832844,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lFoot": {
+                  "xNorm": 0.6392961876832844,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rKnee": {
+                  "xNorm": 0.8142717497556208,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rFoot": {
+                  "xNorm": 0.8142717497556208,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                }
+              }
+            },
+            {
+              "id": "recover",
+              "at": 18,
+              "pose": {
+                "hip": [
+                  744,
+                  385
+                ],
+                "chest": [
+                  744,
+                  266
+                ],
+                "head": [
+                  743,
+                  322
+                ],
+                "lShoulder": [
+                  539,
+                  340
+                ],
+                "lElbow": [
+                  654,
+                  348
+                ],
+                "lHand": [
+                  744,
+                  354
+                ],
+                "rShoulder": [
+                  539,
+                  340
+                ],
+                "rElbow": [
+                  659,
+                  346
+                ],
+                "rHand": [
+                  774,
+                  348
+                ],
+                "lKnee": [
+                  654,
+                  392
+                ],
+                "lFoot": [
+                  654,
+                  392
+                ],
+                "rKnee": [
+                  833,
+                  392
+                ],
+                "rFoot": [
+                  833,
+                  392
+                ]
+              },
+              "poseNormalized": {
+                "hip": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.2504879635653871,
+                  "coordinateSpace": "normalized-image"
+                },
+                "chest": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.1730644111906311,
+                  "coordinateSpace": "normalized-image"
+                },
+                "head": {
+                  "xNorm": 0.7262952101661779,
+                  "yNorm": 0.20949902407286922,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lShoulder": {
+                  "xNorm": 0.5268817204301075,
+                  "yNorm": 0.22121014964216004,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lElbow": {
+                  "xNorm": 0.6392961876832844,
+                  "yNorm": 0.22641509433962265,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lHand": {
+                  "xNorm": 0.7272727272727273,
+                  "yNorm": 0.23031880286271958,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rShoulder": {
+                  "xNorm": 0.5268817204301075,
+                  "yNorm": 0.22121014964216004,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rElbow": {
+                  "xNorm": 0.6441837732160313,
+                  "yNorm": 0.225113858165257,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rHand": {
+                  "xNorm": 0.7565982404692082,
+                  "yNorm": 0.22641509433962265,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lKnee": {
+                  "xNorm": 0.6392961876832844,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                },
+                "lFoot": {
+                  "xNorm": 0.6392961876832844,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rKnee": {
+                  "xNorm": 0.8142717497556208,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                },
+                "rFoot": {
+                  "xNorm": 0.8142717497556208,
+                  "yNorm": 0.2550422901756669,
+                  "coordinateSpace": "normalized-image"
+                }
+              }
+            }
+          ],
+          "targetDebug": {
+            "convertedTarget": {
+              "x": 864,
+              "y": 324,
+              "coordinateSpace": "sourceImage"
+            },
+            "selectedPartCurrentPosition": {
+              "x": 744,
+              "y": 354,
+              "coordinateSpace": "sourceImage"
+            },
+            "delta": {
+              "x": 120,
+              "y": -30,
+              "coordinateSpace": "sourceImage"
+            },
+            "computedDistance": 123.69,
+            "distanceThreshold": 174.66,
+            "requestedMotionScope": "body-follow",
+            "chosenMotionScope": "limb-only",
+            "rootMotionTuning": {
+              "bodyFollowStrength": 1,
+              "maxRootDeltaRatio": 0.55,
+              "primaryLeadStrength": 1,
+              "secondaryFollowStrength": 1
+            },
+            "coordinateSpace": "sourceImage",
+            "activeMotionTarget": {
+              "source": "generated",
+              "point": {
+                "x": 864,
+                "y": 324
+              },
+              "coordinateSpace": "sourceImage",
+              "bReferenceUsedForMotion": false
+            },
+            "rootDelta": {
+              "x": 0,
+              "y": 0,
+              "coordinateSpace": "sourceImage"
+            },
+            "characterRootDelta": {
+              "x": 0,
+              "y": 0,
+              "coordinateSpace": "sourceImage"
+            },
+            "bodyFollowStrength": 0,
+            "primaryPartId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+            "bodyRootPartId": null,
+            "rootDeltaPartIds": []
+          },
+          "activeMotionTarget": {
+            "point": {
+              "x": 864,
+              "y": 324
+            },
+            "source": "generated",
+            "coordinateSpace": "sourceImage"
+          },
+          "trajectoryPoints": [
+            {
+              "id": "sample-0",
+              "kind": "sample",
+              "editable": false,
+              "point": {
+                "x": 744,
+                "y": 354
+              }
+            },
+            {
+              "id": "sample-1",
+              "kind": "sample",
+              "editable": false,
+              "point": {
+                "x": 737,
+                "y": 353
+              }
+            },
+            {
+              "id": "sample-2",
+              "kind": "sample",
+              "editable": false,
+              "point": {
+                "x": 833,
+                "y": 334
+              }
+            },
+            {
+              "id": "sample-3",
+              "kind": "sample",
+              "editable": false,
+              "point": {
+                "x": 882,
+                "y": 327
+              }
+            },
+            {
+              "id": "sample-4",
+              "kind": "sample",
+              "editable": false,
+              "point": {
+                "x": 864,
+                "y": 324
+              }
+            },
+            {
+              "id": "sample-5",
+              "kind": "sample",
+              "editable": false,
+              "point": {
+                "x": 774,
+                "y": 348
+              }
+            }
+          ],
+          "motionHints": {
+            "source": "manual",
+            "occlusion": "unknown",
+            "depthOrder": "unknown",
+            "hiddenCompletion": "none",
+            "warnings": []
+          }
+        }
+      }
+    }
+  ],
+  "timeline": {
+    "currentFrame": 1,
+    "durationFrames": 18,
+    "tracks": [
+      {
+        "id": "track-motion-28ac7708-598e-4a9b-8f42-606b372fe259",
+        "targetId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+        "targetType": "part",
+        "keyframeIds": [
+          "motion-28ac7708-598e-4a9b-8f42-606b372fe259:0",
+          "motion-28ac7708-598e-4a9b-8f42-606b372fe259:1",
+          "motion-28ac7708-598e-4a9b-8f42-606b372fe259:2",
+          "motion-28ac7708-598e-4a9b-8f42-606b372fe259:3",
+          "motion-28ac7708-598e-4a9b-8f42-606b372fe259:4",
+          "motion-28ac7708-598e-4a9b-8f42-606b372fe259:5"
+        ]
+      },
+      {
+        "id": "track-motion-b865c290-9823-4ec7-b913-3971fc4dc966",
+        "targetId": "b865c290-9823-4ec7-b913-3971fc4dc966",
+        "targetType": "part",
+        "keyframeIds": []
+      },
+      {
+        "id": "track-motion-8c66d9f9-9958-416f-8c17-140b8f06b6d4",
+        "targetId": "8c66d9f9-9958-416f-8c17-140b8f06b6d4",
+        "targetType": "part",
+        "keyframeIds": []
+      },
+      {
+        "id": "track-motion-654fda4c-eaff-4f72-9b31-98652b76cdcb",
+        "targetId": "654fda4c-eaff-4f72-9b31-98652b76cdcb",
+        "targetType": "part",
+        "keyframeIds": []
+      },
+      {
+        "id": "track-motion-362ff4e1-bf0b-476f-8f6d-868f7bf1db62",
+        "targetId": "362ff4e1-bf0b-476f-8f6d-868f7bf1db62",
+        "targetType": "part",
+        "keyframeIds": []
+      },
+      {
+        "id": "track-motion-316845c3-0e83-4880-94d7-df6d83852448",
+        "targetId": "316845c3-0e83-4880-94d7-df6d83852448",
+        "targetType": "part",
+        "keyframeIds": []
+      },
+      {
+        "id": "track-motion-612d3ea0-7471-4649-8a61-7da9055cfc76",
+        "targetId": "612d3ea0-7471-4649-8a61-7da9055cfc76",
+        "targetType": "part",
+        "keyframeIds": []
+      },
+      {
+        "id": "track-motion-344d68b5-da9a-4a05-ae0c-aef075518a3d",
+        "targetId": "344d68b5-da9a-4a05-ae0c-aef075518a3d",
+        "targetType": "part",
+        "keyframeIds": []
+      }
+    ]
+  },
+  "editor": {
+    "imageName": "ig_05fecb2bce92183a016a0ea5a3aab48191825d5073910496ac.png",
+    "nextImageName": "",
+    "separateCharacter": false,
+    "cutsceneBridge": {
+      "primaryPartId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+      "durationFrames": 18,
+      "impactFrame": 15,
+      "effectDirection": {
+        "x": 0.9701425001453319,
+        "y": -0.24253562503633297
+      },
+      "effectStrength": 1,
+      "sourceX": 0,
+      "sourceY": 0,
+      "sourceScale": 1,
+      "impactX": 0,
+      "impactY": 0,
+      "impactScale": 1,
+      "sourceMotionEnabled": false,
+      "bodyAssistEnabled": true,
+      "ghostEnabled": true,
+      "jointAction": {
+        "source": "motion-planner-punch-anchors-v1",
+        "focusKey": "rHand",
+        "actionTimeline": {
+          "template": "punch",
+          "id": "punch",
+          "label": "펀치",
+          "durationFrames": 18,
+          "impactFrame": 15,
+          "primaryPartRole": "forearm",
+          "rootMotionHint": {
+            "motionScope": "body-follow"
+          },
+          "beats": [
+            {
+              "id": "guard",
+              "phase": 0,
+              "at": 1,
+              "recoil": 0,
+              "lift": 0,
+              "reach": 0
+            },
+            {
+              "id": "windup",
+              "phase": 0.2,
+              "at": 4,
+              "recoil": -0.24,
+              "lift": 0.06,
+              "reach": 0.1
+            },
+            {
+              "id": "drive",
+              "phase": 0.52,
+              "at": 8,
+              "recoil": 0.18,
+              "lift": -0.03,
+              "reach": 0.62
+            },
+            {
+              "id": "extension",
+              "phase": 0.78,
+              "at": 12,
+              "recoil": 0.38,
+              "lift": -0.01,
+              "reach": 0.9
+            },
+            {
+              "id": "impact",
+              "phase": 1,
+              "at": 15,
+              "recoil": 0,
+              "lift": 0,
+              "reach": 1
+            },
+            {
+              "id": "recover",
+              "phase": 1,
+              "at": 18,
+              "recoil": 0.04,
+              "lift": 0.02,
+              "reach": 0.22
+            }
+          ]
+        },
+        "impactExaggeration": {
+          "kind": "impactExaggeration",
+          "enabled": true,
+          "frame": 15,
+          "holdFrames": 2,
+          "strength": 1,
+          "targetPartIds": [
+            "28ac7708-598e-4a9b-8f42-606b372fe259"
+          ],
+          "scaleHints": [
+            {
+              "partId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+              "scaleX": 1.06,
+              "scaleY": 0.96
+            }
+          ],
+          "stretchHints": [
+            {
+              "partId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+              "axis": "x",
+              "amount": 0.1
+            }
+          ]
+        },
+        "anchors": [
+          {
+            "key": "rHand",
+            "partId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+            "role": "primary",
+            "point": {
+              "x": 864,
+              "y": 324
+            },
+            "pointNormalized": {
+              "xNorm": 0.844574780058651,
+              "yNorm": 0.21080026024723486,
+              "coordinateSpace": "normalized-image"
+            },
+            "locked": true
+          },
+          {
+            "key": "rElbow",
+            "partId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+            "role": "bendHint",
+            "point": {
+              "x": 678,
+              "y": 341
+            },
+            "pointNormalized": {
+              "xNorm": 0.6627565982404692,
+              "yNorm": 0.22186076772934288,
+              "coordinateSpace": "normalized-image"
+            },
+            "locked": false
+          },
+          {
+            "key": "hip",
+            "partId": null,
+            "role": "root",
+            "point": {
+              "x": 744,
+              "y": 385
+            },
+            "pointNormalized": {
+              "xNorm": 0.7272727272727273,
+              "yNorm": 0.2504879635653871,
+              "coordinateSpace": "normalized-image"
+            },
+            "locked": false
+          },
+          {
+            "key": "chest",
+            "partId": null,
+            "role": "balance",
+            "point": {
+              "x": 744,
+              "y": 266
+            },
+            "pointNormalized": {
+              "xNorm": 0.7272727272727273,
+              "yNorm": 0.1730644111906311,
+              "coordinateSpace": "normalized-image"
+            },
+            "locked": false
+          }
+        ],
+        "beats": [
+          {
+            "id": "guard",
+            "at": 1,
+            "pose": {
+              "hip": [
+                744,
+                385
+              ],
+              "chest": [
+                744,
+                266
+              ],
+              "head": [
+                744,
+                322
+              ],
+              "lShoulder": [
+                539,
+                340
+              ],
+              "lElbow": [
+                654,
+                348
+              ],
+              "lHand": [
+                744,
+                354
+              ],
+              "rShoulder": [
+                539,
+                340
+              ],
+              "rElbow": [
+                654,
+                348
+              ],
+              "rHand": [
+                744,
+                354
+              ],
+              "lKnee": [
+                654,
+                392
+              ],
+              "lFoot": [
+                654,
+                392
+              ],
+              "rKnee": [
+                833,
+                392
+              ],
+              "rFoot": [
+                833,
+                392
+              ]
+            },
+            "poseNormalized": {
+              "hip": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.2504879635653871,
+                "coordinateSpace": "normalized-image"
+              },
+              "chest": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.1730644111906311,
+                "coordinateSpace": "normalized-image"
+              },
+              "head": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.20949902407286922,
+                "coordinateSpace": "normalized-image"
+              },
+              "lShoulder": {
+                "xNorm": 0.5268817204301075,
+                "yNorm": 0.22121014964216004,
+                "coordinateSpace": "normalized-image"
+              },
+              "lElbow": {
+                "xNorm": 0.6392961876832844,
+                "yNorm": 0.22641509433962265,
+                "coordinateSpace": "normalized-image"
+              },
+              "lHand": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.23031880286271958,
+                "coordinateSpace": "normalized-image"
+              },
+              "rShoulder": {
+                "xNorm": 0.5268817204301075,
+                "yNorm": 0.22121014964216004,
+                "coordinateSpace": "normalized-image"
+              },
+              "rElbow": {
+                "xNorm": 0.6392961876832844,
+                "yNorm": 0.22641509433962265,
+                "coordinateSpace": "normalized-image"
+              },
+              "rHand": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.23031880286271958,
+                "coordinateSpace": "normalized-image"
+              },
+              "lKnee": {
+                "xNorm": 0.6392961876832844,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              },
+              "lFoot": {
+                "xNorm": 0.6392961876832844,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              },
+              "rKnee": {
+                "xNorm": 0.8142717497556208,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              },
+              "rFoot": {
+                "xNorm": 0.8142717497556208,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              }
+            }
+          },
+          {
+            "id": "windup",
+            "at": 4,
+            "pose": {
+              "hip": [
+                744,
+                385
+              ],
+              "chest": [
+                744,
+                266
+              ],
+              "head": [
+                749,
+                322
+              ],
+              "lShoulder": [
+                539,
+                340
+              ],
+              "lElbow": [
+                654,
+                348
+              ],
+              "lHand": [
+                744,
+                354
+              ],
+              "rShoulder": [
+                539,
+                340
+              ],
+              "rElbow": [
+                656,
+                347
+              ],
+              "rHand": [
+                737,
+                353
+              ],
+              "lKnee": [
+                654,
+                392
+              ],
+              "lFoot": [
+                654,
+                392
+              ],
+              "rKnee": [
+                833,
+                392
+              ],
+              "rFoot": [
+                833,
+                392
+              ]
+            },
+            "poseNormalized": {
+              "hip": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.2504879635653871,
+                "coordinateSpace": "normalized-image"
+              },
+              "chest": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.1730644111906311,
+                "coordinateSpace": "normalized-image"
+              },
+              "head": {
+                "xNorm": 0.7321603128054741,
+                "yNorm": 0.20949902407286922,
+                "coordinateSpace": "normalized-image"
+              },
+              "lShoulder": {
+                "xNorm": 0.5268817204301075,
+                "yNorm": 0.22121014964216004,
+                "coordinateSpace": "normalized-image"
+              },
+              "lElbow": {
+                "xNorm": 0.6392961876832844,
+                "yNorm": 0.22641509433962265,
+                "coordinateSpace": "normalized-image"
+              },
+              "lHand": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.23031880286271958,
+                "coordinateSpace": "normalized-image"
+              },
+              "rShoulder": {
+                "xNorm": 0.5268817204301075,
+                "yNorm": 0.22121014964216004,
+                "coordinateSpace": "normalized-image"
+              },
+              "rElbow": {
+                "xNorm": 0.6412512218963832,
+                "yNorm": 0.2257644762524398,
+                "coordinateSpace": "normalized-image"
+              },
+              "rHand": {
+                "xNorm": 0.7204301075268817,
+                "yNorm": 0.22966818477553677,
+                "coordinateSpace": "normalized-image"
+              },
+              "lKnee": {
+                "xNorm": 0.6392961876832844,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              },
+              "lFoot": {
+                "xNorm": 0.6392961876832844,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              },
+              "rKnee": {
+                "xNorm": 0.8142717497556208,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              },
+              "rFoot": {
+                "xNorm": 0.8142717497556208,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              }
+            }
+          },
+          {
+            "id": "drive",
+            "at": 8,
+            "pose": {
+              "hip": [
+                744,
+                385
+              ],
+              "chest": [
+                744,
+                266
+              ],
+              "head": [
+                740,
+                322
+              ],
+              "lShoulder": [
+                539,
+                340
+              ],
+              "lElbow": [
+                654,
+                348
+              ],
+              "lHand": [
+                744,
+                354
+              ],
+              "rShoulder": [
+                539,
+                340
+              ],
+              "rElbow": [
+                669,
+                344
+              ],
+              "rHand": [
+                833,
+                334
+              ],
+              "lKnee": [
+                654,
+                392
+              ],
+              "lFoot": [
+                654,
+                392
+              ],
+              "rKnee": [
+                833,
+                392
+              ],
+              "rFoot": [
+                833,
+                392
+              ]
+            },
+            "poseNormalized": {
+              "hip": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.2504879635653871,
+                "coordinateSpace": "normalized-image"
+              },
+              "chest": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.1730644111906311,
+                "coordinateSpace": "normalized-image"
+              },
+              "head": {
+                "xNorm": 0.7233626588465298,
+                "yNorm": 0.20949902407286922,
+                "coordinateSpace": "normalized-image"
+              },
+              "lShoulder": {
+                "xNorm": 0.5268817204301075,
+                "yNorm": 0.22121014964216004,
+                "coordinateSpace": "normalized-image"
+              },
+              "lElbow": {
+                "xNorm": 0.6392961876832844,
+                "yNorm": 0.22641509433962265,
+                "coordinateSpace": "normalized-image"
+              },
+              "lHand": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.23031880286271958,
+                "coordinateSpace": "normalized-image"
+              },
+              "rShoulder": {
+                "xNorm": 0.5268817204301075,
+                "yNorm": 0.22121014964216004,
+                "coordinateSpace": "normalized-image"
+              },
+              "rElbow": {
+                "xNorm": 0.6539589442815249,
+                "yNorm": 0.22381262199089136,
+                "coordinateSpace": "normalized-image"
+              },
+              "rHand": {
+                "xNorm": 0.8142717497556208,
+                "yNorm": 0.2173064411190631,
+                "coordinateSpace": "normalized-image"
+              },
+              "lKnee": {
+                "xNorm": 0.6392961876832844,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              },
+              "lFoot": {
+                "xNorm": 0.6392961876832844,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              },
+              "rKnee": {
+                "xNorm": 0.8142717497556208,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              },
+              "rFoot": {
+                "xNorm": 0.8142717497556208,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              }
+            }
+          },
+          {
+            "id": "extension",
+            "at": 12,
+            "pose": {
+              "hip": [
+                744,
+                385
+              ],
+              "chest": [
+                744,
+                266
+              ],
+              "head": [
+                736,
+                322
+              ],
+              "lShoulder": [
+                539,
+                340
+              ],
+              "lElbow": [
+                654,
+                348
+              ],
+              "lHand": [
+                744,
+                354
+              ],
+              "rShoulder": [
+                539,
+                340
+              ],
+              "rElbow": [
+                676,
+                342
+              ],
+              "rHand": [
+                882,
+                327
+              ],
+              "lKnee": [
+                654,
+                392
+              ],
+              "lFoot": [
+                654,
+                392
+              ],
+              "rKnee": [
+                833,
+                392
+              ],
+              "rFoot": [
+                833,
+                392
+              ]
+            },
+            "poseNormalized": {
+              "hip": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.2504879635653871,
+                "coordinateSpace": "normalized-image"
+              },
+              "chest": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.1730644111906311,
+                "coordinateSpace": "normalized-image"
+              },
+              "head": {
+                "xNorm": 0.7194525904203324,
+                "yNorm": 0.20949902407286922,
+                "coordinateSpace": "normalized-image"
+              },
+              "lShoulder": {
+                "xNorm": 0.5268817204301075,
+                "yNorm": 0.22121014964216004,
+                "coordinateSpace": "normalized-image"
+              },
+              "lElbow": {
+                "xNorm": 0.6392961876832844,
+                "yNorm": 0.22641509433962265,
+                "coordinateSpace": "normalized-image"
+              },
+              "lHand": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.23031880286271958,
+                "coordinateSpace": "normalized-image"
+              },
+              "rShoulder": {
+                "xNorm": 0.5268817204301075,
+                "yNorm": 0.22121014964216004,
+                "coordinateSpace": "normalized-image"
+              },
+              "rElbow": {
+                "xNorm": 0.6608015640273704,
+                "yNorm": 0.2225113858165257,
+                "coordinateSpace": "normalized-image"
+              },
+              "rHand": {
+                "xNorm": 0.8621700879765396,
+                "yNorm": 0.21275211450878334,
+                "coordinateSpace": "normalized-image"
+              },
+              "lKnee": {
+                "xNorm": 0.6392961876832844,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              },
+              "lFoot": {
+                "xNorm": 0.6392961876832844,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              },
+              "rKnee": {
+                "xNorm": 0.8142717497556208,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              },
+              "rFoot": {
+                "xNorm": 0.8142717497556208,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              }
+            }
+          },
+          {
+            "id": "impact",
+            "at": 15,
+            "pose": {
+              "hip": [
+                744,
+                385
+              ],
+              "chest": [
+                744,
+                266
+              ],
+              "head": [
+                744,
+                322
+              ],
+              "lShoulder": [
+                539,
+                340
+              ],
+              "lElbow": [
+                654,
+                348
+              ],
+              "lHand": [
+                744,
+                354
+              ],
+              "rShoulder": [
+                539,
+                340
+              ],
+              "rElbow": [
+                678,
+                341
+              ],
+              "rHand": [
+                864,
+                324
+              ],
+              "lKnee": [
+                654,
+                392
+              ],
+              "lFoot": [
+                654,
+                392
+              ],
+              "rKnee": [
+                833,
+                392
+              ],
+              "rFoot": [
+                833,
+                392
+              ]
+            },
+            "poseNormalized": {
+              "hip": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.2504879635653871,
+                "coordinateSpace": "normalized-image"
+              },
+              "chest": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.1730644111906311,
+                "coordinateSpace": "normalized-image"
+              },
+              "head": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.20949902407286922,
+                "coordinateSpace": "normalized-image"
+              },
+              "lShoulder": {
+                "xNorm": 0.5268817204301075,
+                "yNorm": 0.22121014964216004,
+                "coordinateSpace": "normalized-image"
+              },
+              "lElbow": {
+                "xNorm": 0.6392961876832844,
+                "yNorm": 0.22641509433962265,
+                "coordinateSpace": "normalized-image"
+              },
+              "lHand": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.23031880286271958,
+                "coordinateSpace": "normalized-image"
+              },
+              "rShoulder": {
+                "xNorm": 0.5268817204301075,
+                "yNorm": 0.22121014964216004,
+                "coordinateSpace": "normalized-image"
+              },
+              "rElbow": {
+                "xNorm": 0.6627565982404692,
+                "yNorm": 0.22186076772934288,
+                "coordinateSpace": "normalized-image"
+              },
+              "rHand": {
+                "xNorm": 0.844574780058651,
+                "yNorm": 0.21080026024723486,
+                "coordinateSpace": "normalized-image"
+              },
+              "lKnee": {
+                "xNorm": 0.6392961876832844,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              },
+              "lFoot": {
+                "xNorm": 0.6392961876832844,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              },
+              "rKnee": {
+                "xNorm": 0.8142717497556208,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              },
+              "rFoot": {
+                "xNorm": 0.8142717497556208,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              }
+            }
+          },
+          {
+            "id": "recover",
+            "at": 18,
+            "pose": {
+              "hip": [
+                744,
+                385
+              ],
+              "chest": [
+                744,
+                266
+              ],
+              "head": [
+                743,
+                322
+              ],
+              "lShoulder": [
+                539,
+                340
+              ],
+              "lElbow": [
+                654,
+                348
+              ],
+              "lHand": [
+                744,
+                354
+              ],
+              "rShoulder": [
+                539,
+                340
+              ],
+              "rElbow": [
+                659,
+                346
+              ],
+              "rHand": [
+                774,
+                348
+              ],
+              "lKnee": [
+                654,
+                392
+              ],
+              "lFoot": [
+                654,
+                392
+              ],
+              "rKnee": [
+                833,
+                392
+              ],
+              "rFoot": [
+                833,
+                392
+              ]
+            },
+            "poseNormalized": {
+              "hip": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.2504879635653871,
+                "coordinateSpace": "normalized-image"
+              },
+              "chest": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.1730644111906311,
+                "coordinateSpace": "normalized-image"
+              },
+              "head": {
+                "xNorm": 0.7262952101661779,
+                "yNorm": 0.20949902407286922,
+                "coordinateSpace": "normalized-image"
+              },
+              "lShoulder": {
+                "xNorm": 0.5268817204301075,
+                "yNorm": 0.22121014964216004,
+                "coordinateSpace": "normalized-image"
+              },
+              "lElbow": {
+                "xNorm": 0.6392961876832844,
+                "yNorm": 0.22641509433962265,
+                "coordinateSpace": "normalized-image"
+              },
+              "lHand": {
+                "xNorm": 0.7272727272727273,
+                "yNorm": 0.23031880286271958,
+                "coordinateSpace": "normalized-image"
+              },
+              "rShoulder": {
+                "xNorm": 0.5268817204301075,
+                "yNorm": 0.22121014964216004,
+                "coordinateSpace": "normalized-image"
+              },
+              "rElbow": {
+                "xNorm": 0.6441837732160313,
+                "yNorm": 0.225113858165257,
+                "coordinateSpace": "normalized-image"
+              },
+              "rHand": {
+                "xNorm": 0.7565982404692082,
+                "yNorm": 0.22641509433962265,
+                "coordinateSpace": "normalized-image"
+              },
+              "lKnee": {
+                "xNorm": 0.6392961876832844,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              },
+              "lFoot": {
+                "xNorm": 0.6392961876832844,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              },
+              "rKnee": {
+                "xNorm": 0.8142717497556208,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              },
+              "rFoot": {
+                "xNorm": 0.8142717497556208,
+                "yNorm": 0.2550422901756669,
+                "coordinateSpace": "normalized-image"
+              }
+            }
+          }
+        ],
+        "targetDebug": {
+          "convertedTarget": {
+            "x": 864,
+            "y": 324,
+            "coordinateSpace": "sourceImage"
+          },
+          "selectedPartCurrentPosition": {
+            "x": 744,
+            "y": 354,
+            "coordinateSpace": "sourceImage"
+          },
+          "delta": {
+            "x": 120,
+            "y": -30,
+            "coordinateSpace": "sourceImage"
+          },
+          "computedDistance": 123.69,
+          "distanceThreshold": 174.66,
+          "requestedMotionScope": "body-follow",
+          "chosenMotionScope": "limb-only",
+          "rootMotionTuning": {
+            "bodyFollowStrength": 1,
+            "maxRootDeltaRatio": 0.55,
+            "primaryLeadStrength": 1,
+            "secondaryFollowStrength": 1
+          },
+          "coordinateSpace": "sourceImage",
+          "activeMotionTarget": {
+            "source": "generated",
+            "point": {
+              "x": 864,
+              "y": 324
+            },
+            "coordinateSpace": "sourceImage",
+            "bReferenceUsedForMotion": false
+          },
+          "rootDelta": {
+            "x": 0,
+            "y": 0,
+            "coordinateSpace": "sourceImage"
+          },
+          "characterRootDelta": {
+            "x": 0,
+            "y": 0,
+            "coordinateSpace": "sourceImage"
+          },
+          "bodyFollowStrength": 0,
+          "primaryPartId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+          "bodyRootPartId": null,
+          "rootDeltaPartIds": []
+        },
+        "activeMotionTarget": {
+          "point": {
+            "x": 864,
+            "y": 324
+          },
+          "source": "generated",
+          "coordinateSpace": "sourceImage"
+        },
+        "trajectoryPoints": [
+          {
+            "id": "sample-0",
+            "kind": "sample",
+            "editable": false,
+            "point": {
+              "x": 744,
+              "y": 354
+            }
+          },
+          {
+            "id": "sample-1",
+            "kind": "sample",
+            "editable": false,
+            "point": {
+              "x": 737,
+              "y": 353
+            }
+          },
+          {
+            "id": "sample-2",
+            "kind": "sample",
+            "editable": false,
+            "point": {
+              "x": 833,
+              "y": 334
+            }
+          },
+          {
+            "id": "sample-3",
+            "kind": "sample",
+            "editable": false,
+            "point": {
+              "x": 882,
+              "y": 327
+            }
+          },
+          {
+            "id": "sample-4",
+            "kind": "sample",
+            "editable": false,
+            "point": {
+              "x": 864,
+              "y": 324
+            }
+          },
+          {
+            "id": "sample-5",
+            "kind": "sample",
+            "editable": false,
+            "point": {
+              "x": 774,
+              "y": 348
+            }
+          }
+        ],
+        "motionHints": {
+          "source": "manual",
+          "occlusion": "unknown",
+          "depthOrder": "unknown",
+          "hiddenCompletion": "none",
+          "warnings": []
+        }
+      }
+    },
+    "panelSetup": {
+      "source": {
+        "crop": null,
+        "characterMask": null
+      },
+      "impact": {
+        "crop": null,
+        "characterMask": null
+      }
+    },
+    "correspondences": [],
+    "motionPlan": {
+      "template": "punch",
+      "target": {
+        "x": 864,
+        "y": 324
+      },
+      "targetNormalized": {
+        "xNorm": 0.844574780058651,
+        "yNorm": 0.21080026024723486,
+        "coordinateSpace": "normalized-image"
+      },
+      "anchors": [
+        {
+          "key": "rHand",
+          "partId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+          "role": "primary",
+          "point": {
+            "x": 864,
+            "y": 324
+          },
+          "pointNormalized": {
+            "xNorm": 0.844574780058651,
+            "yNorm": 0.21080026024723486,
+            "coordinateSpace": "normalized-image"
+          },
+          "locked": true
+        },
+        {
+          "key": "rElbow",
+          "partId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+          "role": "bendHint",
+          "point": {
+            "x": 678,
+            "y": 341
+          },
+          "pointNormalized": {
+            "xNorm": 0.6627565982404692,
+            "yNorm": 0.22186076772934288,
+            "coordinateSpace": "normalized-image"
+          },
+          "locked": false
+        },
+        {
+          "key": "hip",
+          "partId": null,
+          "role": "root",
+          "point": {
+            "x": 744,
+            "y": 385
+          },
+          "pointNormalized": {
+            "xNorm": 0.7272727272727273,
+            "yNorm": 0.2504879635653871,
+            "coordinateSpace": "normalized-image"
+          },
+          "locked": false
+        },
+        {
+          "key": "chest",
+          "partId": null,
+          "role": "balance",
+          "point": {
+            "x": 744,
+            "y": 266
+          },
+          "pointNormalized": {
+            "xNorm": 0.7272727272727273,
+            "yNorm": 0.1730644111906311,
+            "coordinateSpace": "normalized-image"
+          },
+          "locked": false
+        }
+      ],
+      "targetMode": false,
+      "selectedBeatId": null,
+      "targetSource": {
+        "type": "manual"
+      },
+      "manualMotionTarget": {
+        "point": {
+          "x": 864,
+          "y": 324
+        },
+        "source": "manual",
+        "coordinateSpace": "sourceImage"
+      },
+      "correspondenceAnchor": null,
+      "activeMotionTarget": {
+        "point": {
+          "x": 864,
+          "y": 324
+        },
+        "source": "generated",
+        "coordinateSpace": "sourceImage"
+      },
+      "characterRootAnchor": null,
+      "trajectoryPoints": [
+        {
+          "id": "sample-0",
+          "kind": "sample",
+          "editable": false,
+          "point": {
+            "x": 744,
+            "y": 354
+          }
+        },
+        {
+          "id": "sample-1",
+          "kind": "sample",
+          "editable": false,
+          "point": {
+            "x": 737,
+            "y": 353
+          }
+        },
+        {
+          "id": "sample-2",
+          "kind": "sample",
+          "editable": false,
+          "point": {
+            "x": 833,
+            "y": 334
+          }
+        },
+        {
+          "id": "sample-3",
+          "kind": "sample",
+          "editable": false,
+          "point": {
+            "x": 882,
+            "y": 327
+          }
+        },
+        {
+          "id": "sample-4",
+          "kind": "sample",
+          "editable": false,
+          "point": {
+            "x": 864,
+            "y": 324
+          }
+        },
+        {
+          "id": "sample-5",
+          "kind": "sample",
+          "editable": false,
+          "point": {
+            "x": 774,
+            "y": 348
+          }
+        }
+      ],
+      "motionScope": "body-follow",
+      "rootMotionTuning": {
+        "bodyFollowStrength": 1,
+        "maxRootDeltaRatio": 0.55,
+        "primaryLeadStrength": 1,
+        "secondaryFollowStrength": 1
+      },
+      "targetDebug": {
+        "convertedTarget": {
+          "x": 864,
+          "y": 324,
+          "coordinateSpace": "sourceImage"
+        },
+        "selectedPartCurrentPosition": {
+          "x": 744,
+          "y": 354,
+          "coordinateSpace": "sourceImage"
+        },
+        "delta": {
+          "x": 120,
+          "y": -30,
+          "coordinateSpace": "sourceImage"
+        },
+        "computedDistance": 123.69,
+        "distanceThreshold": 174.66,
+        "requestedMotionScope": "body-follow",
+        "chosenMotionScope": "limb-only",
+        "rootMotionTuning": {
+          "bodyFollowStrength": 1,
+          "maxRootDeltaRatio": 0.55,
+          "primaryLeadStrength": 1,
+          "secondaryFollowStrength": 1
+        },
+        "coordinateSpace": "sourceImage",
+        "activeMotionTarget": {
+          "source": "generated",
+          "point": {
+            "x": 864,
+            "y": 324
+          },
+          "coordinateSpace": "sourceImage",
+          "bReferenceUsedForMotion": false
+        },
+        "rootDelta": {
+          "x": 0,
+          "y": 0,
+          "coordinateSpace": "sourceImage"
+        },
+        "characterRootDelta": {
+          "x": 0,
+          "y": 0,
+          "coordinateSpace": "sourceImage"
+        },
+        "bodyFollowStrength": 0,
+        "primaryPartId": "28ac7708-598e-4a9b-8f42-606b372fe259",
+        "bodyRootPartId": null,
+        "rootDeltaPartIds": []
+      },
+      "motionHints": {
+        "source": "manual",
+        "occlusion": "unknown",
+        "depthOrder": "unknown",
+        "hiddenCompletion": "none",
+        "warnings": []
+      },
+      "motionDraft": null
+    },
+    "selectedPartId": "316845c3-0e83-4880-94d7-df6d83852448"
+  }
+}

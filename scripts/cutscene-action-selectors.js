@@ -33,7 +33,7 @@
       action,
       timeline,
       template,
-      isPunch: template === "punch",
+      isPunch: isPunchTemplate(template),
       isKick: template === "kick",
       family: Animotion.actionSpecs?.specFor?.(template)?.family || null,
       selectedPartId: options.selectedPartId ?? stateOrBridge?.selectedPartId ?? null,
@@ -56,7 +56,11 @@
   }
 
   function isPunchAction(action = {}) {
-    return actionTemplate(action) === "punch";
+    return isPunchTemplate(actionTemplate(action));
+  }
+
+  function isPunchTemplate(template) {
+    return Animotion.actionSpecs?.isPunchLike?.(template) || template === "punch";
   }
 
   function timelineBeats(action = {}) {
@@ -112,6 +116,7 @@
     getCutsceneActionStatus,
     actionTemplate,
     isPunchAction,
+    isPunchTemplate,
     timelineBeats,
     rawActionTimeline,
     resetMotionStateForImageUpload,
