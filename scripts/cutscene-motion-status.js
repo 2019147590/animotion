@@ -234,7 +234,17 @@
   }
 
   function beatById(beats = [], id) {
-    return (Array.isArray(beats) ? beats : []).find((beat) => beat.id === id) || null;
+    const list = Array.isArray(beats) ? beats : [];
+    const exact = list.find((beat) => beat.id === id);
+    if (exact) return exact;
+    for (let index = list.length - 1; index >= 0; index -= 1) {
+      if (baseBeatId(list[index]?.id) === id) return list[index];
+    }
+    return null;
+  }
+
+  function baseBeatId(id) {
+    return String(id || "").split(":").pop().toLowerCase();
   }
 
   function compact(values) {

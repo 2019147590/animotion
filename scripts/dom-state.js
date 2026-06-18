@@ -42,6 +42,8 @@
     currentFrame: 1,
     cutsceneBridge: null,
     lookismPreset: null,
+    actionSequence: { steps: [] },
+    actionSequenceClips: [],
     panelEditTarget: "source",
     panelSetup: {
       source: { crop: null, characterMask: null },

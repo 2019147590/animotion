@@ -129,6 +129,33 @@ test("boxingStep generation exposes spec-defined action frames", () => {
   ]));
 });
 
+test("sequence-prefixed punch beats remain selectable action frames", () => {
+  const Animotion = loadAnimotion();
+  const bridge = {
+    primaryPartId: "arm",
+    jointAction: {
+      source: "motion-planner-sequence-v1",
+      focusKey: "rHand",
+      actionTimeline: {
+        template: "punch",
+        beats: [
+          { id: "s1:windup", at: 6 },
+          { id: "s1:impact", at: 15 },
+          { id: "s2:impact", at: 33 },
+        ],
+      },
+      beats: [
+        { id: "s1:windup", at: 6, pose: { rHand: [50, 30] } },
+        { id: "s1:impact", at: 15, pose: { rHand: [120, 30] } },
+        { id: "s2:impact", at: 33, pose: { rHand: [160, 30] } },
+      ],
+    },
+  };
+  const frames = Animotion.actionFrameEditor.framesForBridge(bridge);
+  assert.deepEqual(frames.map((frame) => frame.normalizedId), ["windup", "impact", "impact"]);
+  assert.deepEqual(frames.map((frame) => frame.label), ["1: Windup", "1: Impact", "2: Impact"]);
+});
+
 test("stale selected action frame is inactive after switching away from punch", () => {
   const Animotion = loadAnimotion();
   Animotion.state.cutsceneBridge = punchBridge(Animotion);

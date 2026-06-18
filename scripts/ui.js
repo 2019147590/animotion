@@ -27,6 +27,7 @@
     els.separateCharacter.checked = state.separateCharacter;
     Animotion.panelEditor?.refreshControls?.();
     Animotion.motionPlanner?.refreshControls?.();
+    Animotion.actionSequenceControls?.refreshControls?.();
     Animotion.armChainRebind?.refreshControls?.();
     Animotion.actionFrameEditor?.refreshControls?.();
     Animotion.motionAnchorPicker?.refreshControls?.();

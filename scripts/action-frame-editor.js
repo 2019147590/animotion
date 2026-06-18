@@ -123,7 +123,7 @@
     const frame = Math.round(Number(beat.at) || 0);
     if (!beat.id || frame < 1) return null;
     const normalizedId = normalizeBeatId(beat.id);
-    return { id: beat.id, normalizedId, label: BEAT_LABELS[normalizedId] || beat.id, frame };
+    return { id: beat.id, normalizedId, label: beatLabel(beat.id, normalizedId), frame };
   }
 
   function editableIds(template) {
@@ -152,7 +152,13 @@
   }
 
   function normalizeBeatId(id) {
-    return String(id || "").toLowerCase();
+    return String(id || "").split(":").pop().toLowerCase();
+  }
+
+  function beatLabel(id, normalizedId) {
+    const prefix = String(id || "").match(/^s([0-9]+):/i)?.[1];
+    const label = BEAT_LABELS[normalizedId] || id;
+    return prefix ? `${prefix}: ${label}` : label;
   }
 
   function hasPose(beat = {}) {

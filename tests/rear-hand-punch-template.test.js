@@ -42,6 +42,7 @@ function loadAnimotion() {
     "scripts/motion-planner.js",
     "scripts/motion-primary-selection.js",
     "scripts/motion-planner-commands.js",
+    "scripts/project-model.js",
   ]) runScript(context, path);
   const Animotion = context.window.Animotion;
   const parts = separateBoxerParts();
@@ -87,6 +88,48 @@ test("rearHandPunch01 command generates a distinct rear-cross punch template", (
   assert.equal(Animotion.dom.els.motionTemplate.value, "cutscene");
   assert.equal(Math.abs(leadPose.jointY) > 0, true);
 });
+
+test("rearHandPunch01 preserves the loaded animotion 17 rear-cross target", () => {
+  const Animotion = loadAnimotion();
+  const raw = JSON.parse(fs.readFileSync("animotion-project (17).json", "utf8"));
+  const project = Animotion.projectModel.normalizeProject(raw, { imageBounds: { width: raw.canvas.width, height: raw.canvas.height } });
+  const parts = Animotion.projectModel.editorPartsFromProject(project);
+  const imageBounds = { width: raw.canvas.width, height: raw.canvas.height };
+  const savedBridge = Animotion.cutsceneModel.normalizeBridge(project.editor.cutsceneBridge, { imageBounds });
+  const savedImpact = savedBridge.jointAction.beats.find((beat) => beat.id === "impact");
+  Object.assign(Animotion.state, {
+    image: { naturalWidth: raw.canvas.width, naturalHeight: raw.canvas.height },
+    parts,
+    selectedPartId: project.editor.selectedPartId,
+    currentFrame: 1,
+    running: false,
+    startTime: 1000,
+    cutsceneBridge: project.editor.cutsceneBridge,
+    motionPlan: { ...project.editor.motionPlan, template: "rearHandPunch01" },
+    project: { ...project, parts },
+  });
+  Animotion.parts = { selectedPart: () => Animotion.state.parts.find((part) => part.id === Animotion.state.selectedPartId) || null };
+
+  const result = Animotion.motionPlannerCommands.generateFromSelection();
+  const bridge = Animotion.state.cutsceneBridge;
+  const impact = bridge.jointAction.beats.find((beat) => beat.id === "impact");
+
+  assert.equal(result.generated, true);
+  assert.equal(bridge.primaryPartId, savedBridge.primaryPartId);
+  assert.equal(bridge.jointAction.actionTimeline.template, "rearHandPunch01");
+  assert.equal(bridge.jointAction.targetDebug.punchStyle, "rear-cross");
+  assert.equal(bridge.jointAction.targetDebug.convertedTarget.x, savedBridge.jointAction.targetDebug.convertedTarget.x);
+  assert.equal(bridge.jointAction.targetDebug.convertedTarget.y, savedBridge.jointAction.targetDebug.convertedTarget.y);
+  assert.equal(impact.pose[bridge.jointAction.focusKey][0], savedImpact.pose[savedBridge.jointAction.focusKey][0]);
+  assert.equal(impact.pose[bridge.jointAction.focusKey][1], savedImpact.pose[savedBridge.jointAction.focusKey][1]);
+  assert.equal(Math.sign(bridge.effectDirection.x), Math.sign(savedBridge.effectDirection.x));
+  assert.equal(primaryAnchor(bridge).point.x, primaryAnchor(savedBridge).point.x);
+  assert.equal(primaryAnchor(bridge).point.y, primaryAnchor(savedBridge).point.y);
+});
+
+function primaryAnchor(bridge) {
+  return bridge.jointAction.anchors.find((anchor) => anchor.role === "primary");
+}
 
 function separateBoxerParts() {
   return [

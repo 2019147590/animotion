@@ -41,6 +41,275 @@ The hardcoded demo genga cut remains available, but it should be treated as the 
 
 ## Current Implemented State
 
+### Latest 2026-06-18 Saved Cutscene Sequence Handoff
+
+This handoff captures the changed sequence approach: instead of uploading multiple JSON files directly into the sequence UI, the user loads one project JSON through the normal app flow, saves that loaded motion as `cutscene1`, `cutscene2`, and so on, clears only the loaded JSON project data, then loads the next JSON and builds a sequence from the saved cutscene clips.
+
+Clarification update:
+
+- The saved cutscene path now stores the loaded motion as a browser-recorded WebM video clip, not as JSON-derived motion data or sampled pose tracks.
+- `clipFromCurrentState()` records the current preview canvas through `canvas.captureStream()` and `MediaRecorder`, then stores the resulting `video/webm` Blob URL as `cutscene1`, `cutscene2`, etc.
+- When every sequence step is a saved video cutscene, `연속동작 생성` plays the saved WebM clips in array order through the preview canvas instead of compiling motion data or using an in-panel video player.
+
+Problem 1-pager:
+
+- Context: project JSON load already restores the intended motion for playback, but direct JSON-clip upload made it hard to use the same UI flow as normal project loading and did not give the user a clear "clear this loaded JSON, keep my saved clips" action.
+- Problem: after loading one motion JSON, the app needed a way to preserve that motion as a reusable clip while removing the current loaded project data so another JSON can be loaded cleanly.
+- Goal: add UI support for saving the current loaded cutscene as `cutsceneN`, preserving those clips across JSON reset, and generating a continuous sequence from the saved clip order.
+- Non-goals: no server-side encoding, no MP4 conversion, no broad project schema change, no unrelated rig retargeting solver, and no removal of the existing template sequence path.
+- Constraints: keep saved clip data exact for same-rig project JSON, keep generated sequence compatible with the existing cutscene/keyframe renderer, and keep new files under AGENTS.md limits.
+
+Options considered:
+
+- Continue direct multi-JSON upload into the sequence panel. Pro: fast to add several files at once. Con/risk: bypasses the normal project load/playback flow the user wants to use and leaves unclear reset semantics.
+- Save the currently loaded JSON playback as an in-memory WebM cutscene clip, then clear only current project motion data before loading the next JSON. Pro: matches the user's requested video-file model and preserves the exact preview result. Con/risk: depends on browser `MediaRecorder`/WebM support and clips are runtime helpers. Chosen.
+
+Implemented behavior:
+
+- Added `scripts/cutscene-clip-store.js`.
+  - `clipFromCurrentState()` records the preview canvas into a reusable `saved-video-cutscene` clip with `videoBlob`, `videoUrl`, `mimeType`, and duration metadata.
+  - `clearLoadedJsonState()` clears current loaded project parts, selected part, bridge, frame/debug/editor motion state, and command history while preserving `actionSequenceClips` and the current sequence array.
+  - `nextClipName()` names saved clips as `cutscene1`, `cutscene2`, etc.
+  - `playSequence()` plays saved video clips in sequence order using a hidden video element as the frame source.
+  - `drawPreviewPlayback()` draws the active video frame into the preview canvas while a saved-video sequence is playing.
+- Updated `scripts/action-sequence-controls.js`.
+  - Replaced the direct JSON file input with `현재 컷신 저장`, `JSON 초기화`, and saved-cutscene selection controls.
+  - `현재 컷신 저장` records a WebM clip asynchronously and reports unsupported browser/empty recording failures.
+  - Sequence generation remains enabled when all sequence steps are saved video cutscenes, even after JSON initialization clears current parts.
+  - Video-only sequences are replayed in the preview canvas; older template/JSON-motion sequence compilation still remains as a fallback path.
+- Updated `scripts/preview.js`.
+  - The preview render loop now lets `cutsceneClipStore.drawPreviewPlayback()` take over the canvas while video sequence playback is active.
+- Follow-up fix:
+  - The preview canvas no longer switches to video playback mode until the hidden video source has a drawable frame.
+  - Video recording waits one render frame after switching the app into cutscene playback state before starting `MediaRecorder`, reducing black/empty captured clips.
+  - Previously recorded black Blob clips must be saved again because in-memory Blob data cannot be repaired after capture.
+- Updated bootstrap order so the clip store loads between `action-sequence` and `action-sequence-controls`.
+
+Impact note:
+
+- `JSON 초기화` is intentionally narrower than new-image reset: it keeps the boxer image and saved `cutsceneN` clips so another project JSON can be loaded next.
+- Saved clips are in-memory Blob URL helpers. They are not automatically persisted into project JSON.
+- Exact visual transfer depends on what the preview canvas records, not on matching part IDs, when using the saved-video path.
+- Browsers without `canvas.captureStream()` or `MediaRecorder` cannot save video clips and receive a UI failure message.
+
+Regression tests added:
+
+- Added `tests/cutscene-clip-store.test.js`.
+  - Saves real `animotion-project (8).json` and `animotion-project (17).json` as WebM-backed `cutscene1`/`cutscene2` using a fake `MediaRecorder`.
+  - Replays `cutscene1 -> cutscene1 -> cutscene2` through a fake video player in order.
+  - Verifies the active video sequence is rendered through the preview canvas draw path.
+  - Verifies the preview canvas is not claimed before a saved video frame is drawable.
+  - Verifies `JSON 초기화` clears current project motion while preserving saved clips and sequence steps.
+
+Verification for this work:
+
+- `node --check scripts\cutscene-clip-store.js`
+- `node --check scripts\action-sequence-controls.js`
+- `node --check scripts\preview.js`
+- `node tests\cutscene-clip-store.test.js`
+- `node tests\action-sequence.test.js`
+- `node tests\cutscene-options.test.js`
+- `node tests\session-commands.test.js`
+- `node tests\cutscene-action-selectors.test.js`
+
+### Latest 2026-06-18 JSON Clip Action Sequence Handoff
+
+This handoff captures the additional action-sequence path where uploaded project JSON files can be used as reusable motion clips, including repeated use such as `(8) -> (8) -> (17)`.
+
+Button activation follow-up:
+
+- Fixed the sequence generate button staying disabled after JSON clip upload.
+- Previous condition required `state.image` and current `state.parts`, which was too strict for the JSON-clip path.
+- JSON clips now store the normalized source project parts as clip metadata.
+- `compileSequence()` can use the first referenced JSON clip's parts when current app parts are empty.
+- `actionSequenceControls` enables generation when the sequence has steps and either current parts or referenced JSON clip parts exist.
+- If generation starts with no current parts but a JSON clip has parts, the controls hydrate `state.parts` from that clip before applying generated tracks.
+- Added regression coverage for compiling a JSON clip sequence without preloaded app parts.
+
+Problem 1-pager:
+
+- Context: template-generated action sequences now work, but the desired boxer combo can also be represented by existing saved project JSON files: `animotion-project (8).json` for jab-like motion and `animotion-project (17).json` for the desired rear-hand punch.
+- Problem: loading each JSON as a whole project would replace the current rig/editor state, while the user needs the JSON files to act as ordered reusable motion sources inside the sequence UI.
+- Goal: let the sequence UI upload multiple JSON files, add any uploaded JSON motion clip to the sequence more than once, and compile the resulting order into one playable cutscene.
+- Non-goals: no project switching during sequence editing, no cross-rig retargeting solver, no new external file persistence schema, and no automatic semantic naming beyond the file/clip label.
+- Constraints: keep the current template sequence path working, preserve saved JSON keyframes/bridge data exactly for same-rig boxer files, and keep new code under AGENTS.md line limits.
+
+Options considered:
+
+- Restore each uploaded JSON into the app before generating the next sequence step. Pro: uses the existing project load path. Con/risk: destructive to the current editor state and awkward for repeated `(8)` use.
+- Extract only `cutsceneBridge` plus part keyframes from each project JSON as a reusable motion clip. Pro: non-destructive, repeatable, and preserves the saved motion authored in each JSON. Con/risk: assumes matching part IDs for exact motion transfer. Chosen.
+
+Implemented behavior:
+
+- Extended `scripts/action-sequence.js`.
+  - Added `clipFromProjectPayload(payload, options)` to normalize an Animotion project JSON and extract a reusable clip: bridge, joint action, duration/impact frames, primary part id, and per-part keyframe tracks.
+  - `normalizeSequence()` now preserves `{ clipId }` steps in addition to template steps.
+  - `compileSequence()` can now mix template-generated steps and uploaded JSON clip steps in the same ordered sequence.
+  - JSON clip steps are shifted and merged with the same beat/keyframe prefixing as template steps.
+- Extended `scripts/action-sequence-controls.js`.
+  - Added a multi-file JSON input inside the sequence panel.
+  - Uploaded JSON files appear in a clip selector.
+  - `JSON 추가` appends the selected uploaded clip to the sequence, and the same clip can be added repeatedly for `(8)-(8)-(17)`.
+- Added `state.actionSequenceClips` and clears it on new image/session reset.
+
+Impact note:
+
+- JSON clip motion is exact for same-rig/same-part-id project files. It is not a general retargeting system for unrelated rigs.
+- Existing template sequence generation remains available in the same UI.
+- `(8)-(8)-(17)` can be built by uploading `animotion-project (8).json` and `animotion-project (17).json`, adding the `(8)` clip twice, then adding the `(17)` clip once, then clicking sequence generation.
+- Existing unrelated dirty files and scratch artifacts remain excluded from this unit.
+
+Regression tests added or updated:
+
+- Updated `tests/action-sequence.test.js`.
+  - Loads the real `animotion-project (8).json` and `animotion-project (17).json`.
+  - Extracts both as JSON clips.
+  - Compiles `{ clipId: "jab8" }, { clipId: "jab8" }, { clipId: "rear17" }`.
+  - Verifies impact frames `15, 33, 51`, total duration `54`, and the final impact pose matches the loaded 17 rear-hand punch.
+
+Verification for this work:
+
+- `node --check scripts\action-sequence.js`
+- `node --check scripts\action-sequence-controls.js`
+- `node --check tests\action-sequence.test.js`
+- `node --check scripts\action-sequence-controls.js`
+- `node tests\action-sequence.test.js`
+- `node tests\rear-hand-punch-template.test.js`
+- `node tests\cutscene-action-selectors.test.js`
+- `node tests\action-frame-editor.test.js`
+- `node tests\motion-planner-commands.test.js`
+- `node tests\cutscene-options.test.js`
+
+### Latest 2026-06-18 Rear-Hand Punch 01 Reference Fix Handoff
+
+This handoff captures the fix for `rearHandPunch01` generating a motion that did not match the rear-cross punch stored in `animotion-project (17).json`.
+
+Problem 1-pager:
+
+- Context: `animotion-project (17).json` stores the desired rear-hand punch as a generic `punch` action, but its runtime data is clearly rear-cross: `targetDebug.punchStyle: "rear-cross"`, selected rear hand endpoint, saved target, anchors, and trajectory.
+- Problem: switching that loaded action to `rearHandPunch01` treated the template id change as a stale action context. The command path cleared the saved target/anchors and re-inferred bridge direction, so the punch could flip or target the wrong side.
+- Goal: make `rearHandPunch01` reproduce the loaded 17 rear-cross punch behavior by preserving the compatible rear-cross target, anchors, and direction.
+- Non-goals: no hardcoded 17-only coordinates in app code, no new motion solver, and no JSON fixture rewrite.
+- Constraints: keep stale target invalidation for genuinely different actions/parts, including kick/punch switches and front-jab to rear-cross changes.
+
+Options considered:
+
+- Hardcode the 17 target/anchor shape into the `rearHandPunch01` template. Pro: exact for one fixture. Con/risk: not reusable and breaks on other rigs/images.
+- Treat a loaded generic `punch` with `targetDebug.punchStyle: "rear-cross"` as compatible with `rearHandPunch01`. Pro: preserves user-authored/generated rear-cross data while keeping stale invalidation for unrelated contexts. Chosen.
+
+Implemented behavior:
+
+- Updated `scripts/motion-planner-commands.js`.
+  - `sameActionContext()` now recognizes punch-like template compatibility by rear-cross style.
+  - `shouldPreserveFacingDirection()` now preserves bridge direction when switching a compatible loaded rear-cross punch to `rearHandPunch01`.
+- Added a regression in `tests/rear-hand-punch-template.test.js` that loads `animotion-project (17).json`, switches the plan to `rearHandPunch01`, regenerates, and verifies the saved target, impact endpoint, primary anchor, direction sign, primary part, and distinct template id are preserved.
+- Cleaned `scripts/action-sequence.js` to read action timelines through `cutsceneActionSelectors.rawActionTimeline()` so selector-boundary tests remain valid.
+
+Verification for this fix:
+
+- `node --check scripts\motion-planner-commands.js`
+- `node --check tests\rear-hand-punch-template.test.js`
+- `node --check scripts\action-sequence.js`
+- `node tests\rear-hand-punch-template.test.js`
+- `node tests\motion-planner-commands.test.js`
+- `node tests\action-sequence.test.js`
+- `node tests\action-frame-editor.test.js`
+- `node tests\action-specs.test.js`
+- `node tests\cutscene-action-selectors.test.js`
+- `node tests\cutscene-motion-status.test.js`
+- `node tests\rear-cross-lead-hand-retract.test.js`
+
+Impact note:
+
+- This fix does not make every generic punch preserve into `rearHandPunch01`; it preserves only when the loaded action is already rear-cross.
+- The intended 17 behavior is now covered by a direct fixture regression.
+- Existing unrelated dirty files and scratch artifacts are still excluded from this unit.
+
+### Latest 2026-06-18 Action Sequence Combo Handoff
+
+This handoff captures the new UI/runtime path for generating ordered action sequences such as jab -> jab -> rear-hand punch 01 as one playable cutscene motion.
+
+Problem 1-pager:
+
+- Context: the app already generated one action template at a time through `motionPlanner.createPlan()` and stored the result as a cutscene bridge plus generated part keyframes.
+- Problem: a boxer workflow needs quick chained actions, but adding a separate playback engine would touch save/load, preview, action-frame editing, and status paths at once.
+- Goal: let the UI hold an ordered action array and compile that array into one normal generated cutscene/keyframe result.
+- Non-goals: no per-step manual target editor, no blending/IK solver, no broad save schema rewrite, and no retiming of existing saved projects.
+- Constraints: preserve existing single-action generation, keep new files under 300 LOC, reuse current preview/keyframe/cutscene playback, and keep unrelated local artifacts out of the change.
+
+Options considered:
+
+- Add a persistent sequence-player schema that switches actions during playback. Pro: semantically explicit sequence data. Con/risk: broad playback/save/load/editor changes and higher regression risk.
+- Compile selected templates into one shifted `jointAction` plus merged part keyframes. Pro: reuses existing renderer, playback speed, action-frame buttons, and project save behavior. Con/risk: sequence edits are generated drafts and per-step targets are not separately editable yet. Chosen.
+
+Implemented behavior:
+
+- Added `scripts/action-sequence.js`.
+  - Normalizes ordered steps and caps sequences at 6 steps / 120 frames.
+  - Treats `punch` in a sequence as jab-oriented by selecting the front/jab arm when available.
+  - Selects the rear hand for `rearHandPunch01` by classifying available arm chains with the existing punch logic.
+  - Compiles every step through the existing motion planner, then shifts beat/keyframe frames into one cutscene.
+  - Stores generated sequence evidence in `jointAction.targetDebug.actionSequence`.
+- Added `scripts/action-sequence-controls.js`.
+  - Adds a sequence panel under the Action generator UI.
+  - Supports adding attack templates, moving steps up/down, removing steps, clearing the list, generating the sequence, and applying a `jab-jab-rearHandPunch01` preset.
+- Added `state.actionSequence` and resets it on new image/session reset.
+- Updated action-frame/status handling so prefixed sequence beats such as `s1:impact` and `s2:impact` still show as selectable punch action frames.
+- Updated bootstrap order and UI refresh wiring for the new controls.
+
+Impact note:
+
+- Generated combo playback is saved as ordinary cutscene bridge/keyframes; the sequence editor list itself is a runtime draft helper.
+- The first implementation intentionally uses automatic per-step targets. Users can still edit generated action frames after generation.
+- Existing single-action `Punch`, `rearHandPunch01`, `Kick`, playback-speed, and cutscene status behavior should remain unchanged.
+- The pre-existing local modification to `scripts/motion-draft-editor.js` remains unrelated and should not be mixed into this feature unless separately reviewed.
+
+Regression tests added or updated:
+
+- Added `tests/action-sequence.test.js` for sequence normalization, jab-jab-rear generation, front/rear hand assignment, shifted frames, merged tracks, and empty-sequence failure.
+- Updated `tests/action-frame-editor.test.js` for sequence-prefixed beat frame labels.
+- Updated `tests/cutscene-options.test.js` for bootstrap order.
+
+Verification for this work:
+
+- `node --check scripts\action-sequence.js`
+- `node --check scripts\action-sequence-controls.js`
+- `node --check tests\action-sequence.test.js`
+- `node --check scripts\action-frame-editor.js`
+- `node --check scripts\cutscene-motion-status.js`
+- `node tests\action-sequence.test.js`
+- `node tests\action-frame-editor.test.js`
+- `node tests\cutscene-motion-status.test.js`
+- `node tests\cutscene-options.test.js`
+- `node tests\motion-planner-commands.test.js`
+- `node tests\rear-hand-punch-template.test.js`
+- `node tests\action-specs.test.js`
+
+Upload scope for the next GitHub push:
+
+- Include:
+  - `scripts/action-sequence.js`
+  - `scripts/action-sequence-controls.js`
+  - `scripts/bootstrap.js`
+  - `scripts/dom-state.js`
+  - `scripts/cutscene-action-selectors.js`
+  - `scripts/ui.js`
+  - `scripts/action-frame-editor.js`
+  - `scripts/cutscene-motion-status.js`
+  - `tests/action-sequence.test.js`
+  - `tests/action-frame-editor.test.js`
+  - `tests/cutscene-options.test.js`
+  - `HANDOFF.md`
+- Exclude unrelated local artifacts and pre-existing dirty changes unless explicitly requested:
+  - `scripts/motion-draft-editor.js`
+  - `_analysis_frames/`
+  - `recording/`
+  - screenshots
+  - `animotion-project (10).json`
+  - `animotion-project (11).json`
+  - `tests/motion-draft-billing-controls.test.js`
+  - planning scratch files
+
 ### Latest 2026-06-18 Runtime Playback Speed Control Handoff
 
 This handoff captures the non-destructive playback speed control added to increase the perceived speed of animations without retiming saved keyframes or project JSON.

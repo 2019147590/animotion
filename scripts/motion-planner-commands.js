@@ -91,14 +91,28 @@
   }
 
   function shouldPreserveFacingDirection(previousBridge, template, primary) {
-    if (!isPunchTemplate(template) || !isPunchTemplate(actionTemplate(previousBridge?.jointAction))) return false;
+    const previousAction = previousBridge?.jointAction;
+    if (!isPunchTemplate(template) || !isPunchTemplate(actionTemplate(previousAction))) return false;
+    if (samePunchStyleContext(previousAction, template)) return true;
     const previousId = previousBridge?.primaryPartId || previousBridge?.jointAction?.targetDebug?.primaryPartId;
     return !samePartReference(previousId, primary?.id, primary?.id);
   }
 
   function sameActionContext(previousBridge, previousAction, template, selectedPartId, primaryPartId) {
     const previousPartId = previousBridge?.primaryPartId;
-    return actionTemplate(previousAction) === template && samePartReference(previousPartId, selectedPartId, primaryPartId);
+    return compatibleActionTemplate(previousAction, template) && samePartReference(previousPartId, selectedPartId, primaryPartId);
+  }
+
+  function compatibleActionTemplate(previousAction, template) {
+    if (actionTemplate(previousAction) === template) return true;
+    return samePunchStyleContext(previousAction, template);
+  }
+
+  function samePunchStyleContext(previousAction, template) {
+    if (!isPunchTemplate(template) || !isPunchTemplate(actionTemplate(previousAction))) return false;
+    const nextStyle = Animotion.actionSpecs?.punchStyleFor?.(template) || null;
+    if (!nextStyle) return false;
+    return previousAction?.targetDebug?.punchStyle === nextStyle;
   }
 
   function samePartReference(previousPartId, selectedPartId, primaryPartId) {

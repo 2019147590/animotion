@@ -87,6 +87,8 @@
       hoveredEditPoint: null,
       previewDrag: null,
       previewDrawSequenceDebug: null,
+      actionSequence: { steps: [] },
+      actionSequenceClips: [],
       motionEvaluationDebug: null,
       motionRegenerationDebug: null,
       renderedPointDebug: [],

@@ -13,6 +13,10 @@
     previewCtx.save();
     previewCtx.scale(size.dpr, size.dpr);
     previewCtx.clearRect(0, 0, size.w, size.h);
+    if (Animotion.cutsceneClipStore?.drawPreviewPlayback?.(previewCtx, size)) {
+      previewCtx.restore();
+      return;
+    }
     if (!state.image) return drawEmptyPreview(drawEmpty);
     if (drawLookismPreview(size, now)) return;
 
