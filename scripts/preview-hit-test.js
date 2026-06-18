@@ -88,7 +88,7 @@
 
   function currentPartMatrix(part) {
     const state = Animotion.state;
-    const t = state.running ? (performance.now() - state.startTime) / 1000 : state.pausedTime;
+    const t = Animotion.playbackSpeed.playbackSeconds(state, performance.now());
     return Animotion.preview.worldMatrix(part, t, new Map());
   }
 

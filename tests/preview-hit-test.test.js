@@ -16,6 +16,7 @@ globalThis.DOMPoint = class {
 };
 
 const geometry = require("../scripts/geometry.js");
+const playbackSpeed = require("../scripts/playback-speed.js");
 const motionModel = require("../scripts/motion-model.js");
 const armRoleSemantics = require("../scripts/arm-role-semantics.js");
 const rigConnection = require("../scripts/rig-connection.js");
@@ -35,6 +36,7 @@ function test(name, fn) {
 function setup(part) {
   Object.assign(globalThis.Animotion, {
     geometry,
+    playbackSpeed,
     motionModel,
     armRoleSemantics,
     rigConnection,

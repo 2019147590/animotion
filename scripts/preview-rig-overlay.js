@@ -8,7 +8,7 @@
     const part = Animotion.parts.selectedPart();
     if (!context.editingLayerVisible() || !part) return;
     state.renderedPointDebug = [];
-    const t = state.running ? (context.now - state.startTime) / 1000 : state.pausedTime;
+    const t = Animotion.playbackSpeed.playbackSeconds(state, context.now);
     const matrix = context.worldMatrix(part, t, matrixCache);
     for (const point of rigPointsFor(part, context.parentPart)) drawRigPoint(part, point, matrix, context, drawPivot);
     const root = Animotion.rigConnection?.bodyRootPoint?.(state.parts);

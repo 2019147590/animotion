@@ -86,17 +86,19 @@
   function togglePlayback() {
     state.running = !state.running;
     if (state.running) {
-      state.startTime = keyframeStartTime();
+      state.startTime = keyframeStartTime(performance.now());
       els.playPause.textContent = "일시정지";
       return;
     }
-    state.pausedTime = (performance.now() - state.startTime) / 1000;
+    Animotion.playbackSpeed.pauseAtNow(state);
     els.playPause.textContent = "재생";
   }
 
-  function keyframeStartTime() {
-    if (!timelineLikeMode()) return performance.now() - state.pausedTime * 1000;
-    return performance.now() - ((state.currentFrame - 1) / Animotion.config.timelineFps) * 1000;
+  function keyframeStartTime(now) {
+    const seconds = timelineLikeMode()
+      ? Animotion.playbackSpeed.secondsForFrame(state.currentFrame, Animotion.config.timelineFps)
+      : state.pausedTime;
+    return Animotion.playbackSpeed.startTimeForPlaybackSeconds(seconds, now, state.playbackSpeed);
   }
 
   function onMotionTemplateChange() {

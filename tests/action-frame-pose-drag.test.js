@@ -17,6 +17,7 @@ function loadAnimotion() {
   vm.createContext(context);
   for (const path of [
     "scripts/geometry.js",
+    "scripts/playback-speed.js",
     "scripts/coordinate-spaces.js",
     "scripts/motion-model.js",
     "scripts/motion-hints.js",

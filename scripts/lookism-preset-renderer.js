@@ -19,7 +19,7 @@
 
   function currentTime(now) {
     if (state.running && state.exporting) return exportTime(now);
-    if (state.running) return (((now - state.startTime) / 1000) % data.DURATION + data.DURATION) % data.DURATION;
+    if (state.running) return (Animotion.playbackSpeed.playbackSeconds(state, now) % data.DURATION + data.DURATION) % data.DURATION;
     const frameCount = Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge).durationFrames;
     return ((state.currentFrame - 1) / Math.max(1, frameCount - 1)) * data.DURATION;
   }

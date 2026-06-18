@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 
 globalThis.Animotion = {};
+const playbackSpeed = require("../scripts/playback-speed.js");
 const previewPartDrag = require("../scripts/preview-part-drag.js");
 
 function test(name, fn) {
@@ -34,6 +35,7 @@ function setup() {
       pausedTime: 0,
       running: false,
     },
+    playbackSpeed,
     dom: { previewCanvas: canvas, els: { playPause: { textContent: "" } } },
     parts: { selectedPart: () => child },
     rigConnection: { parentIdFor: (part) => part.parentId || null },

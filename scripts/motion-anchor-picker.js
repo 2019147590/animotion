@@ -132,7 +132,7 @@
 
   function freezePlayback() {
     if (!Animotion.state?.running) return;
-    Animotion.state.pausedTime = (performance.now() - Animotion.state.startTime) / 1000;
+    Animotion.playbackSpeed?.pauseAtNow?.(Animotion.state);
     Animotion.state.running = false;
     Animotion.dom.els.playPause.textContent = "재생";
   }

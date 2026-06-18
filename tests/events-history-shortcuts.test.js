@@ -48,6 +48,7 @@ function loadAnimotion() {
   };
   vm.createContext(context);
   runScript(context, "scripts/config.js");
+  runScript(context, "scripts/playback-speed.js");
   runScript(context, "scripts/command-history.js");
   runScript(context, "scripts/history-shortcuts.js");
   const Animotion = context.window.Animotion;

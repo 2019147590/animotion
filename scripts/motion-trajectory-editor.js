@@ -297,8 +297,7 @@
   function freezePlayback() {
     const state = Animotion.state;
     if (!state.running) return;
-    state.pausedTime = (performance.now() - state.startTime) / 1000;
-    state.running = false;
+    Animotion.playbackSpeed?.pauseAtNow?.(state);
     Animotion.dom.els.playPause.textContent = "재생";
   }
 

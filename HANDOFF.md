@@ -41,6 +41,107 @@ The hardcoded demo genga cut remains available, but it should be treated as the 
 
 ## Current Implemented State
 
+### Latest 2026-06-18 Runtime Playback Speed Control Handoff
+
+This handoff captures the non-destructive playback speed control added to increase the perceived speed of animations without retiming saved keyframes or project JSON.
+
+Problem 1-pager:
+
+- Context: preview playback was driven by `state.startTime`, `state.pausedTime`, `state.currentFrame`, `timeline.frameFromTime()`, and `cutsceneModel.bridgeFrameFromTime()`. The boxer punch workflow needs a quick way to make action playback feel faster while preserving editable beat/keyframe data.
+- Problem: directly compressing keyframe frames or changing cutscene duration would alter saved motion data, impact timing, hidden-completion timing, and undo/edit expectations. A speed control must affect preview playback without damaging authored timing.
+- Goal: add a UI control for runtime playback speed and route preview/cutscene/keyframe time evaluation through one normalized speed helper.
+- Non-goals: no persisted JSON schema change, no keyframe retiming command, no WebM duration policy change, no motion quality retuning, and no broad playback/render rewrite.
+- Constraints: keep the change small, preserve manual frame scrubbing, preserve pause/resume frame continuity, and keep pre-existing unrelated local changes out of this feature.
+
+Options considered:
+
+- Runtime playback speed multiplier. Pro: non-destructive, immediate, works for keyframe and cutscene preview. Con/risk: all pause/resume and preview hit-test time paths must use the same scaled time helper. Chosen.
+- Saved keyframe/frame compression. Pro: exported project itself would be faster. Con/risk: mutates user-authored timing and broadens the change into schema/history/cutscene retiming.
+
+Implemented behavior:
+
+- Added `scripts/playback-speed.js`.
+  - Normalizes speed to `0.25x` through `3x`.
+  - Computes scaled playback seconds from `startTime`, `pausedTime`, and `playbackSpeed`.
+  - Preserves current playback position when speed changes while running.
+  - Stores paused time as scaled playback seconds.
+- Added `scripts/playback-speed-controls.js`.
+  - Inserts a `재생 배속` range control into the motion panel above the playback buttons.
+  - Supports `0.25x`, `0.5x`, `0.75x`, `1x`, `1.25x`, `1.5x`, `1.75x`, `2x`, `2.25x`, `2.5x`, `2.75x`, and `3x`.
+- Added `state.playbackSpeed = 1`.
+- Updated preview/cutscene/lookism/runtime draw paths to evaluate motion using scaled playback seconds.
+- Updated playback pause/resume and preview picker/drag freeze paths so stopping playback at higher speeds preserves the currently evaluated frame.
+- Kept saved project keyframes, cutscene duration, impact frame, and project serialization unchanged.
+
+Impact note:
+
+- This is a runtime preview feature. Saved JSON still records original keyframes and current frame only.
+- Manual frame scrubbing still pauses playback and selects exact authored frames.
+- WebM export records the current runtime playback behavior, but this upload does not change the export duration policy.
+- The pre-existing local modification to `scripts/motion-draft-editor.js` remains unrelated and should not be mixed into this feature unless separately reviewed.
+
+Regression tests added or updated:
+
+- Added `tests/playback-speed.test.js` for speed normalization, scaled elapsed seconds, speed-change continuity, pause behavior, one-based frame seconds, bootstrap order, and control range.
+- Updated preview/drag test loaders so they include `scripts/playback-speed.js` when exercising runtime preview scripts directly.
+
+Verification for this upload:
+
+- `node --check scripts\playback-speed.js`
+- `node --check scripts\playback-speed-controls.js`
+- `node --check scripts\events.js`
+- `node --check scripts\preview-part-renderer.js`
+- `node --check tests\playback-speed.test.js`
+- `node tests\playback-speed.test.js`
+- `node tests\preview-render-order.test.js`
+- `node tests\preview-hit-test.test.js`
+- `node tests\preview-part-drag.test.js`
+- `node tests\action-frame-pose-drag.test.js`
+- `node tests\preview-pose-drag.test.js`
+- `node tests\events-history-shortcuts.test.js`
+- `node tests\cutscene-options.test.js`
+- `node tests\geometry.test.js`
+- `node tests\motion-target-state.test.js`
+
+Upload scope:
+
+- Include runtime playback speed implementation and tests:
+  - `scripts/playback-speed.js`
+  - `scripts/playback-speed-controls.js`
+  - `scripts/bootstrap.js`
+  - `scripts/dom-state.js`
+  - `scripts/events.js`
+  - `scripts/preview-part-renderer.js`
+  - `scripts/preview-scene.js`
+  - `scripts/preview-rig-overlay.js`
+  - `scripts/preview-events.js`
+  - `scripts/preview-hit-test.js`
+  - `scripts/preview-part-drag.js`
+  - `scripts/lookism-preset-renderer.js`
+  - `scripts/correspondence-editor.js`
+  - `scripts/motion-anchor-picker.js`
+  - `scripts/motion-planner-controls.js`
+  - `scripts/motion-trajectory-editor.js`
+  - `scripts/hidden-completion-guide-editor.js`
+  - `scripts/hidden-completion-supplemental-warp-editor.js`
+  - `tests/playback-speed.test.js`
+  - `tests/action-frame-pose-drag.test.js`
+  - `tests/events-history-shortcuts.test.js`
+  - `tests/preview-hit-test.test.js`
+  - `tests/preview-part-drag.test.js`
+  - `tests/preview-pose-drag.test.js`
+  - `tests/preview-render-order-fixture.js`
+  - `HANDOFF.md`
+- Exclude unrelated local artifacts and pre-existing local changes unless explicitly requested:
+  - `scripts/motion-draft-editor.js`
+  - `_analysis_frames/`
+  - `recording/`
+  - screenshots
+  - `animotion-project (10).json`
+  - `animotion-project (11).json`
+  - `tests/motion-draft-billing-controls.test.js`
+  - planning scratch files
+
 ### Latest 2026-06-18 README Boxer Fixture Usage Handoff
 
 This handoff captures the README update that explains how a person can use the included boxer image and saved project JSON fixtures to experience the rear-hand punch motion workflow.

@@ -93,7 +93,7 @@
 
   function worldMatrix(part) {
     const state = Animotion.state || {};
-    const t = state.running ? (performance.now() - state.startTime) / 1000 : state.pausedTime;
+    const t = Animotion.playbackSpeed.playbackSeconds(state, performance.now());
     return Animotion.preview.worldMatrix(part, t, new Map());
   }
 
@@ -181,8 +181,7 @@
   function freezePlayback() {
     const state = Animotion.state || {};
     if (!state.running) return;
-    state.pausedTime = (performance.now() - state.startTime) / 1000;
-    state.running = false;
+    Animotion.playbackSpeed.pauseAtNow(state);
     if (Animotion.dom?.els?.playPause) Animotion.dom.els.playPause.textContent = "재생";
   }
 

@@ -105,10 +105,10 @@
   }
 
   function drawDepthTopUp(context) {
-    const frame = state.running ? context.currentMotionFrame((context.now - state.startTime) / 1000) : state.currentFrame;
+    const frame = state.running ? context.currentMotionFrame(Animotion.playbackSpeed.playbackSeconds(state, context.now)) : state.currentFrame;
     const part = Animotion.cutsceneDepth?.postPassLiftPart?.(state.parts, { bridge: context.cutscene?.bridge, frame, parts: state.parts, selectedPartId: state.selectedPartId });
     if (!part || part.hidden) return;
-    const t = state.running ? (context.now - state.startTime) / 1000 : state.pausedTime;
+    const t = Animotion.playbackSpeed.playbackSeconds(state, context.now);
     previewCtx.save();
     Animotion.previewTransform.applySourceFrame(previewCtx, context.view, state.previewSourceFrame, state.previewSourceTransform);
     Animotion.previewPartRenderer.drawPart(part, { ...context, t, matrixCache: new Map(), alpha: 1, pass: "depth-top-up", drawSupplementals: false });
@@ -118,7 +118,7 @@
   function cutsceneValues(now) {
     if (els.motionTemplate.value !== "cutscene") return { active: false, shake: 0 };
     const bridge = Animotion.cutsceneModel.normalizeBridge(state.cutsceneBridge || Animotion.cutsceneModel.createBridge(state.parts, state.selectedPartId));
-    const t = state.running ? (now - state.startTime) / 1000 : state.pausedTime;
+    const t = Animotion.playbackSpeed.playbackSeconds(state, now);
     const values = Animotion.cutsceneModel.bridgeValues(t, bridge, Animotion.config.timelineFps);
     return { active: true, bridge, values, shake: values.shake, time: t };
   }

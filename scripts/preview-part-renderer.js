@@ -5,7 +5,7 @@
   const state = Animotion.state;
 
   function drawParts(baseContext) {
-    const t = state.running ? (baseContext.now - state.startTime) / 1000 : state.pausedTime;
+    const t = Animotion.playbackSpeed.playbackSeconds(state, baseContext.now);
     syncTimelineFrame(t, baseContext.currentMotionFrame);
     const matrixCache = new Map();
     const drawnSupplementalIds = new Set();

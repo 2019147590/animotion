@@ -123,7 +123,7 @@
   }
 
   function currentMatrix(part) {
-    const t = Animotion.state.running ? (performance.now() - Animotion.state.startTime) / 1000 : Animotion.state.pausedTime;
+    const t = Animotion.playbackSpeed.playbackSeconds(Animotion.state, performance.now());
     return Animotion.preview.worldMatrix(part, t, new Map());
   }
 
@@ -191,8 +191,7 @@
 
   function freezePlayback() {
     if (!Animotion.state.running) return;
-    Animotion.state.pausedTime = (performance.now() - Animotion.state.startTime) / 1000;
-    Animotion.state.running = false;
+    Animotion.playbackSpeed.pauseAtNow(Animotion.state);
     Animotion.dom.els.playPause.textContent = "재생";
   }
 

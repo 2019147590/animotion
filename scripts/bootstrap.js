@@ -1,6 +1,7 @@
 {
   const scripts = [
     "config",
+    "playback-speed",
     "geometry",
     "coordinate-spaces",
     "hidden-completion-coverage-bounds",
@@ -102,6 +103,7 @@
     "motion-command-history",
     "motion-track-upgrade-commands",
     "session-commands",
+    "playback-speed-controls",
     "motion",
     "cutscene-effects",
     "cutscene-controls",

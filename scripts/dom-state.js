@@ -38,6 +38,7 @@
     running: true,
     startTime: performance.now(),
     pausedTime: 0,
+    playbackSpeed: 1,
     currentFrame: 1,
     cutsceneBridge: null,
     lookismPreset: null,

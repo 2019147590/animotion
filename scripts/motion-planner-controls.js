@@ -120,7 +120,7 @@
   }
 
   function pausePlayback() {
-    Object.assign(Animotion.state, { pausedTime: (performance.now() - Animotion.state.startTime) / 1000, running: false });
+    Animotion.playbackSpeed?.pauseAtNow?.(Animotion.state);
     if (Animotion.dom?.els?.playPause) Animotion.dom.els.playPause.textContent = "play";
   }
 
