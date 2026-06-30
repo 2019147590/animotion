@@ -68,6 +68,7 @@
     "motion-replacement-render",
     "motion-panel-mapper",
     "lead-arm-composite",
+    "action-part-visibility",
     "motion-track-builder",
     "boxing-step-locomotion",
     "motion-planner",

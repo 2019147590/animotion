@@ -66,7 +66,8 @@
     const ctx = plate.getContext("2d");
     ctx.globalCompositeOperation = "destination-out";
     const action = state.cutsceneBridge?.jointAction || null;
-    for (const part of state.parts) if (!part.hidden && runtimeVisible(part, action)) ctx.fill(pathFromShape(geometry.absoluteShapeFromPart(part), -crop.x, -crop.y));
+    const frame = state.currentFrame || 1;
+    for (const part of state.parts) if (!part.hidden && runtimeVisible(part, action, frame)) ctx.fill(pathFromShape(geometry.absoluteShapeFromPart(part), -crop.x, -crop.y));
     ctx.globalCompositeOperation = "source-over";
   }
 
@@ -108,7 +109,7 @@
   function drawDepthTopUp(context) {
     const frame = state.running ? context.currentMotionFrame(Animotion.playbackSpeed.playbackSeconds(state, context.now)) : state.currentFrame;
     const part = Animotion.cutsceneDepth?.postPassLiftPart?.(state.parts, { bridge: context.cutscene?.bridge, frame, parts: state.parts, selectedPartId: state.selectedPartId });
-    if (!part || part.hidden || !runtimeVisible(part, context.cutscene?.bridge?.jointAction)) return;
+    if (!part || part.hidden || !runtimeVisible(part, context.cutscene?.bridge?.jointAction, frame)) return;
     const t = Animotion.playbackSpeed.playbackSeconds(state, context.now);
     previewCtx.save();
     Animotion.previewTransform.applySourceFrame(previewCtx, context.view, state.previewSourceFrame, state.previewSourceTransform);
@@ -140,8 +141,14 @@
     return { x: values.impactX, y: values.impactY, scale: values.impactScale, rotation: values.impactRotation };
   }
 
-  function visiblePartIds() { const action = state.cutsceneBridge?.jointAction || null; return state.parts.filter((part) => !part.hidden && runtimeVisible(part, action)).map((part) => part.id); }
-  function runtimeVisible(part, action) { return Animotion.leadArmComposite?.runtimeVisible?.(part, { action }) !== false; }
+  function visiblePartIds() {
+    const action = state.cutsceneBridge?.jointAction || null;
+    const frame = state.currentFrame || 1;
+    return state.parts.filter((part) => !part.hidden && runtimeVisible(part, action, frame)).map((part) => part.id);
+  }
+  function runtimeVisible(part, action, frame) {
+    return Animotion.actionPartVisibility?.runtimeVisible?.(part, { action, frame }) !== false;
+  }
   function impactPanelImage() { return Animotion.panelEditor?.createPanelCanvas("impact") || state.nextImage; }
   Animotion.previewScene = { drawBackground, drawCutsceneEffects, drawImpactLayers, cutsceneValues, sourceTransformFor, impactPanelImage };
 }

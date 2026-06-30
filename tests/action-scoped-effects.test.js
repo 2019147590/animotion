@@ -27,6 +27,7 @@ function loadAnimotion() {
     "scripts/cutscene-action-selectors.js",
     "scripts/motion-draft-action-store.js",
     "scripts/action-scoped-effects.js",
+    "scripts/action-part-visibility.js",
     "scripts/part-visibility-masks.js",
     "scripts/cutscene-model.js",
   ]) runScript(context, path);
@@ -103,4 +104,20 @@ test("visibility masks respect current action and local frame", () => {
   assert.equal(Animotion.partVisibilityMasks.activeMasks(part, 8, { action: { targetDebug: { punchStyle: "rear-cross" } } }).length, 1);
   assert.equal(Animotion.partVisibilityMasks.activeMasks(part, 8, { action: comboAction }).length, 0);
   assert.equal(Animotion.partVisibilityMasks.activeMasks(part, 49, { action: comboAction }).length, 1);
+});
+
+test("visibility mask owner fields do not apply across actions", () => {
+  const Animotion = loadAnimotion();
+  const part = {
+    id: "rearUpper",
+    visibilityMasks: [{
+      id: "rear-mask",
+      ownerActionId: "rearCross",
+      mask: { kind: "polygon", points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }] },
+      keyframes: [{ frame: 8, strength: 1 }],
+    }],
+  };
+
+  assert.equal(Animotion.partVisibilityMasks.activeMasks(part, 8, { action: { targetDebug: { punchStyle: "jab" } } }).length, 0);
+  assert.equal(Animotion.partVisibilityMasks.activeMasks(part, 8, { action: { targetDebug: { punchStyle: "rear-cross" } } }).length, 1);
 });

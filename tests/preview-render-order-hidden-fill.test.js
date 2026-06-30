@@ -135,6 +135,53 @@ test("whole-arm jab proxy draws instead of segmented lead chain members", () => 
   assert.equal(sequence.some((entry) => entry.partId === hand.id && entry.pass === "main-part"), false);
 });
 
+test("rearCross hidden fill parts are hidden during jab", () => {
+  const Animotion = loadPreview();
+  const bodyFill = {
+    ...part("body_01 copy", "body", 9001, { x: 50, y: 42, w: 35, h: 76 }),
+    usage: "rearCrossHiddenFill",
+    createdForActionId: "rearCross",
+  };
+  const upperFill = {
+    ...part("front_upperarm copy", "arm", 9002, { x: 88, y: 44, w: 30, h: 48 }),
+    usage: "rearCrossHiddenFill",
+    createdForActionId: "rearCross",
+  };
+  Animotion.state.parts.push(bodyFill, upperFill);
+  Animotion.state.cutsceneBridge.jointAction.targetDebug = { punchStyle: "jab" };
+
+  Animotion.preview.drawPreview(0, () => {}, () => {});
+  const drawnIds = Animotion.state.previewDrawSequenceDebug.sequence.map((entry) => entry.partId);
+
+  assert.equal(drawnIds.includes(bodyFill.id), false);
+  assert.equal(drawnIds.includes(upperFill.id), false);
+});
+
+test("rearCross hidden fill parts are visible during rearCross", () => {
+  const Animotion = loadPreview();
+  const bodyFill = {
+    ...part("body_01 copy", "body", 9001, { x: 50, y: 42, w: 35, h: 76 }),
+    usage: "rearCrossHiddenFill",
+    createdForActionId: "rearCross",
+  };
+  const upperFill = {
+    ...part("front_upperarm copy", "arm", 9002, { x: 88, y: 44, w: 30, h: 48 }),
+    usage: "rearCrossHiddenFill",
+    createdForActionId: "rearCross",
+  };
+  Animotion.state.parts.push(bodyFill, upperFill);
+  Animotion.state.currentFrame = 15;
+  Animotion.state.cutsceneBridge.jointAction.targetDebug = { punchStyle: "rear-cross" };
+
+  Animotion.preview.drawPreview(0, () => {}, () => {});
+  const normalDraws = Animotion.state.previewDrawSequenceDebug.sequence
+    .filter((entry) => entry.drawPath === "normal-part")
+    .map((entry) => entry.partId);
+
+  assert.equal(normalDraws.includes(bodyFill.id), true);
+  assert.equal(normalDraws.includes(upperFill.id), true);
+});
+
 test("rear upperArm direct ready patch draws before earlier same-chain forearm and hand", () => {
   const Animotion = loadPreview();
   const { upper, fore, hand, counterpart } = installUpperArmScenario(Animotion);

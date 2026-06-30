@@ -6,7 +6,7 @@
   function requests(cutscene) {
     const items = [];
     for (const source of state.parts) {
-      if (!source || source.hidden || !runtimeVisible(source, cutscene) || isSupplementalPart(source)) continue;
+      if (!source || source.hidden || !runtimeVisible(source, cutscene, state.currentFrame || 1) || isSupplementalPart(source)) continue;
       const direct = directFillRequest(source);
       if (direct) items.push(direct);
       for (const supplemental of state.parts) {
@@ -113,7 +113,8 @@
 
   function shouldDrawSupplementalPart(part, source, cutscene) {
     if (!isSupplementalPart(part) || part.hidden || part.sourcePartId !== source.id || !part.canvas) return false;
-    if (!runtimeVisible(source, cutscene)) return false;
+    if (!runtimeVisible(source, cutscene, state.currentFrame || 1)) return false;
+    if (!runtimeVisible(part, cutscene, state.currentFrame || 1)) return false;
     const action = cutscene?.bridge?.jointAction || null;
     const frame = state.currentFrame || 1;
     return Animotion.actionScopedEffects?.supplementalAllowed?.(part, action, frame) !== false;
@@ -135,7 +136,9 @@
   }
 
   function isSupplementalPart(part) { return part?.isSupplementalPart === true; }
-  function runtimeVisible(part, cutscene) { return Animotion.leadArmComposite?.runtimeVisible?.(part, { action: cutscene?.bridge?.jointAction }) !== false; }
+  function runtimeVisible(part, cutscene, frame) {
+    return Animotion.actionPartVisibility?.runtimeVisible?.(part, { action: cutscene?.bridge?.jointAction || null, frame }) !== false;
+  }
 
   Animotion.previewHiddenFill = { requests, drawDueBefore, drawRemaining, hiddenFillDebug, shouldDrawSupplementalPart, isSupplementalPart };
 }

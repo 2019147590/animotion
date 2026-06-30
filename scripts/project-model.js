@@ -63,6 +63,7 @@
     const storedRect = normalizeRect(part.rect || part.sourceRect);
     const rect = rectForCurrentImage(part, imageBounds);
     const layerIndex = intOrDefault(part.order, intOrDefault(part.layerIndex, index + 1));
+    const actionMigration = hiddenFillActionMetadata(part);
     const pivot = localPointForCurrentRect(part.pivotNormalized, part.pivot, rect);
     const joint = localPointForCurrentRect(part.jointNormalized, part.joint, rect);
     const handTip = localPointForCurrentRect(part.handTipNormalized, part.handTip, rect);
@@ -72,10 +73,11 @@
       name: stringOrDefault(part.name, `part_${index + 1}`),
       type: PART_TYPES.has(part.type) ? part.type : "prop",
       humanRole: Animotion.humanRigSchema?.normalizeRole?.(part.humanRole) || null,
-      ...(part.usage ? { usage: String(part.usage) } : {}),
+      ...actionPartFields(part, actionMigration),
       ...(part.splitFromPartId ? { splitFromPartId: String(part.splitFromPartId) } : {}), ...(part.originalSourcePartId ? { originalSourcePartId: String(part.originalSourcePartId) } : {}), ...(part.splitMethod ? { splitMethod: String(part.splitMethod) } : {}), ...(part.sourceArmOnlyPartId ? { sourceArmOnlyPartId: String(part.sourceArmOnlyPartId) } : {}),
       assetId: stringOrDefault(part.assetId, `asset-${id}`),
       sourceAssetId: stringOrDefault(part.sourceAssetId, "source-image"),
+      ...(part.sourcePatchAssetId ? { sourcePatchAssetId: String(part.sourcePatchAssetId) } : {}),
       parentId: connection.parentPartId,
       parentPartId: connection.parentPartId,
       attachPointSelf: connection.attachPointSelf,
@@ -210,6 +212,30 @@
 
   function normalizedMaskVertices(mask, rect) {
     return Animotion.coordinateSpaces?.normalizedLocalPointsFromPoints?.(mask?.points, rect) || [];
+  }
+
+  function actionPartFields(part, migration = {}) {
+    const fields = {
+      usage: part.usage || migration.usage,
+      ownerActionId: part.ownerActionId || migration.ownerActionId,
+      createdForActionId: part.createdForActionId || migration.createdForActionId,
+      createdFromJointActionId: part.createdFromJointActionId || migration.createdFromJointActionId,
+      visibleForActionId: part.visibleForActionId || migration.visibleForActionId,
+    };
+    return Object.fromEntries(Object.entries(fields).filter(([, value]) => value).map(([key, value]) => [key, String(value)]));
+  }
+
+  function hiddenFillActionMetadata(part = {}) {
+    if (part.usage || part.ownerActionId || part.createdForActionId || part.createdFromJointActionId || part.visibleForActionId) return {};
+    if (!looksLikeRearCrossHiddenFill(part)) return {};
+    return { usage: "rearCrossHiddenFill", createdForActionId: "rearCross", ownerActionId: "rearCross" };
+  }
+
+  function looksLikeRearCrossHiddenFill(part = {}) {
+    const name = String(part.name || part.id || "").toLowerCase();
+    const knownCopyName = name.includes("copy") && (name.includes("body_01") || name.includes("front_upperarm") || name.includes("frontupperarm"));
+    if (!knownCopyName) return false;
+    return Boolean(part.sourcePatchAssetId || part.isSupplementalPart === true || (Array.isArray(part.visibilityMasks) && part.visibilityMasks.length));
   }
 
   function normalizeTransform(transform = {}) {

@@ -16,6 +16,7 @@
       name: stringOrDefault(mask.name, "visibility mask"),
       kind: KIND,
       enabled: mask.enabled !== false,
+      ...ownerFields(mask),
       mask: { kind: mask.mask?.kind || mask.shapeKind || "polygon", points: points.map(point) },
       keyframes: keyframes.length ? keyframes : [{ frame: 1, strength: 1 }],
     };
@@ -69,8 +70,8 @@
     const action = options.action || null;
     if (!action || !Animotion.actionScopedEffects?.frameContext) return true;
     const context = Animotion.actionScopedEffects.frameContext(action, frame);
-    const owner = mask.ownerActionId || mask.sourceActionId || mask.actionId;
-    if (owner) return String(owner) === context.actionId;
+    const owner = actionOwner(mask);
+    if (owner) return owner === normalizeActionId(context.actionId);
     const effects = Animotion.actionScopedEffects.effectsForFrame?.(action, frame, "visibilityMask") || [];
     if (effects.length) return effects.some((effect) => (!effect.maskId || effect.maskId === mask.id) && (!effect.partId || effect.partId === part?.id));
     return context.actionId !== "jab";
@@ -88,6 +89,21 @@
 
   function normalizeStrength(value) {
     return Math.min(1, Math.max(0, Number(value) || 0));
+  }
+
+  function ownerFields(mask = {}) {
+    return ["ownerActionId", "sourceActionId", "actionId", "createdForActionId", "createdFromJointActionId", "visibleForActionId"]
+      .reduce((result, key) => (mask[key] ? { ...result, [key]: normalizeActionId(mask[key]) || String(mask[key]) } : result), {});
+  }
+
+  function actionOwner(mask = {}) {
+    return normalizeActionId(mask.ownerActionId || mask.visibleForActionId || mask.sourceActionId || mask.actionId || mask.createdForActionId || mask.createdFromJointActionId);
+  }
+
+  function normalizeActionId(value) {
+    return Animotion.actionPartVisibility?.normalizeActionId?.(value)
+      || Animotion.actionScopedEffects?.actionIdFor?.({ actionId: value })
+      || (value ? String(value) : null);
   }
 
   function point(value = {}) {

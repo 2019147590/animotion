@@ -10,12 +10,13 @@
     const matrixCache = new Map();
     const drawnSupplementalIds = new Set();
     const drawnHiddenCompletionAssetIds = new Set();
+    const frame = state.running ? baseContext.currentMotionFrame(t) : state.currentFrame;
     const hiddenFillRequests = Animotion.previewHiddenFill.requests(baseContext.cutscene);
     const context = { ...baseContext, t, matrixCache, alpha: 1, drawPass: "main-part", hiddenFillRequests };
     previewCtx.save();
     Animotion.previewTransform.applySourceFrame(previewCtx, context.view, state.previewSourceFrame, state.previewSourceTransform);
     for (const part of baseContext.orderedPartsForFrame(t, baseContext.cutscene)) {
-      if (!runtimeVisible(part, baseContext.cutscene)) continue;
+      if (!runtimeVisible(part, baseContext.cutscene, frame)) continue;
       Animotion.previewHiddenFill.drawDueBefore(part, context, hiddenFillRequests, drawnHiddenCompletionAssetIds, drawnSupplementalIds);
       if (part.hidden || Animotion.previewHiddenFill.isSupplementalPart(part)) continue;
       Animotion.previewSupplementalRenderer.drawDueSupplementalsBefore(part, context, drawnSupplementalIds, hiddenFillRequests);
@@ -42,14 +43,14 @@
     if (t < 0) return;
     const matrixCache = new Map();
     for (const part of baseContext.orderedPartsForFrame(t, baseContext.cutscene)) {
-      if (!part.hidden && runtimeVisible(part, baseContext.cutscene) && !Animotion.previewHiddenFill.isSupplementalPart(part)) drawPart(part, { ...baseContext, t, matrixCache, alpha, drawPass: "ghost-part" });
+      if (!part.hidden && runtimeVisible(part, baseContext.cutscene, baseContext.currentMotionFrame(t)) && !Animotion.previewHiddenFill.isSupplementalPart(part)) drawPart(part, { ...baseContext, t, matrixCache, alpha, drawPass: "ghost-part" });
     }
   }
 
   function drawPart(part, context) {
-    if (!runtimeVisible(part, context.cutscene)) return;
     const drawPass = context.pass || context.drawPass || (context.alpha === 1 ? "main-part" : "ghost-part");
     const frame = state.running ? context.currentMotionFrame(context.t) : state.currentFrame;
+    if (!runtimeVisible(part, context.cutscene, frame)) return;
     const planContext = { parts: state.parts, bridge: context.cutscene?.bridge, frame, selectedPartId: state.selectedPartId };
     const replacementPlan = Animotion.motionReplacementLayer?.planForPart?.(part, planContext);
     const replacement = replacementFor(part, replacementPlan, context.alpha);
@@ -160,7 +161,9 @@
   }
 
   function timelineLikeMode() { return els.motionTemplate.value === "keyframes" || els.motionTemplate.value === "cutscene"; }
-  function runtimeVisible(part, cutscene) { return Animotion.leadArmComposite?.runtimeVisible?.(part, { action: cutscene?.bridge?.jointAction }) !== false; }
+  function runtimeVisible(part, cutscene, frame) {
+    return Animotion.actionPartVisibility?.runtimeVisible?.(part, { action: cutscene?.bridge?.jointAction || null, frame }) !== false;
+  }
 
   Animotion.previewPartRenderer = { drawParts, drawGhostParts, drawPart, drawHiddenCompletionPatch };
 }

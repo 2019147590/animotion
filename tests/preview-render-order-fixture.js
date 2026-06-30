@@ -51,6 +51,7 @@ function previewScripts() {
     "scripts/rig-connection.js", "scripts/arm-chain-resolver.js", "scripts/render-layer-utils.js",
     "scripts/render-order-debug.js", "scripts/arm-extension-controls.js", "scripts/arm-extension.js",
     "scripts/lead-arm-composite.js",
+    "scripts/action-part-visibility.js",
     "scripts/arm-extension-render.js", "scripts/motion-replacement-layer.js", "scripts/motion-replacement-render.js",
     "scripts/cutscene-depth.js", "scripts/hidden-completion-render.js", "scripts/hidden-completion-supplemental-coverage.js",
     "scripts/hidden-completion-supplemental-part.js", "scripts/hidden-completion-supplemental-warp.js",
