@@ -167,6 +167,33 @@ test("motion command applies a planner result as one state change", () => {
   assert.equal(part.keyframes[0].pose.x, 9);
 });
 
+test("motion plan result applies combo tracks for non-primary parts", () => {
+  const Animotion = loadAnimotion();
+  const proxy = partFixture({ id: "lead_whole_arm" });
+  const rear = partFixture({ id: "rear_hand" });
+  Animotion.state.parts = [proxy, rear];
+  Animotion.motionCommands.applyMotionPlanResult(
+    { primaryPartId: "rear_hand", durationFrames: 59, impactFrame: 56 },
+    { template: "rearHandPunch01" },
+    {
+      jointAction: {
+        source: "combo-timeline-v1",
+        beats: [{ id: "c3:impact", at: 56, pose: { lHand: [1, 2] } }],
+        comboTimeline: { id: "jab_jab_cross", steps: [] },
+      },
+      partTracks: [
+        { partId: "lead_whole_arm", keyframes: [{ frame: 8, pose: { jointX: 42, jointY: -6 } }] },
+        { partId: "rear_hand", keyframes: [{ frame: 56, pose: { x: 9 } }] },
+      ],
+    }
+  );
+
+  assert.equal(Animotion.state.cutsceneBridge.primaryPartId, "rear_hand");
+  assert.equal(proxy.keyframes[0].frame, 8);
+  assert.equal(proxy.keyframes[0].pose.jointX, 42);
+  assert.equal(rear.keyframes[0].frame, 56);
+});
+
 test("planner result records undo and redo for bridge, plan, and tracks", () => {
   const Animotion = loadAnimotion();
   const part = partFixture({ id: "leg" });

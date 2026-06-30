@@ -30,6 +30,7 @@ function loadAnimotion() {
     "scripts/action-timeline-model.js",
     "scripts/cutscene-action-selectors.js",
     "scripts/action-scoped-effects.js",
+    "scripts/action-part-visibility.js",
     "scripts/impact-exaggeration-layer.js",
     "scripts/rig-connection.js",
     "scripts/arm-chain-resolver.js",
@@ -45,6 +46,7 @@ function loadAnimotion() {
     "scripts/boxing-step-locomotion.js",
     "scripts/motion-planner.js",
     "scripts/motion-primary-selection.js",
+    "scripts/legacy-action-clips.js",
     "scripts/combo-timeline.js",
     "scripts/motion-trajectory-tracks.js",
     "scripts/cutscene-depth.js",
@@ -76,7 +78,7 @@ test("jab_jab_cross builds a combo timeline from action ids", () => {
   const Animotion = loadAnimotion();
   const built = Animotion.comboTimeline.buildComboTimeline(
     Animotion.comboTimeline.specFor("jab_jab_cross"),
-    { parts: Animotion.state.parts, selectedPartId: "front_forearm", plan: Animotion.state.motionPlan }
+    { parts: Animotion.state.parts, selectedPartId: "front_forearm", plan: Animotion.state.motionPlan, legacyClips: null }
   );
   const action = built.bridge.jointAction;
   const combo = action.comboTimeline;
@@ -102,6 +104,7 @@ test("combo status reports current action and impact at the global frame", () =>
     parts: Animotion.state.parts,
     selectedPartId: "front_forearm",
     plan: Animotion.state.motionPlan,
+    legacyClips: null,
   });
   const bridge = Animotion.cutsceneModel.normalizeBridge(built.bridge);
   const status = Animotion.cutsceneMotionStatus.statusForBridge(bridge, { parts: Animotion.state.parts, currentFrame: 35 });

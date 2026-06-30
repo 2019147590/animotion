@@ -75,6 +75,7 @@
     "motion-planner-controls",
     "motion-primary-selection",
     "motion-planner-commands",
+    "legacy-action-clips",
     "combo-timeline",
     "combo-timeline-controls",
     "action-sequence",

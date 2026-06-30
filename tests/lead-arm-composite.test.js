@@ -34,6 +34,7 @@ function loadAnimotion() {
     "scripts/action-specs.js",
     "scripts/action-timeline-model.js",
     "scripts/cutscene-action-selectors.js",
+    "scripts/action-scoped-effects.js",
     "scripts/impact-exaggeration-layer.js",
     "scripts/pose-assist.js",
     "scripts/joint-coordinates.js",
@@ -43,10 +44,12 @@ function loadAnimotion() {
     "scripts/arm-extension-controls.js",
     "scripts/arm-extension.js",
     "scripts/lead-arm-composite.js",
+    "scripts/action-part-visibility.js",
     "scripts/motion-track-builder.js",
     "scripts/boxing-step-locomotion.js",
     "scripts/motion-planner.js",
     "scripts/motion-primary-selection.js",
+    "scripts/legacy-action-clips.js",
     "scripts/combo-timeline.js",
     "scripts/cutscene-motion-status.js",
   ]) runScript(context, path);
@@ -220,9 +223,87 @@ test("jab_jab_cross uses lead whole-arm proxy for jab steps when available", () 
 
   assert.equal(poseMagnitude(poseAtTrack(built.result.partTracks, "leadWholeArmJabProxy", 15)) > 0, true);
   assert.equal(poseMagnitude(poseAtTrack(built.result.partTracks, "leadWholeArmJabProxy", 35)) > 0, true);
+  assert.equal(built.bridge.jointAction.comboTimeline.steps[0].bindingProfile.leadArm.mode, "wholeArmProxy");
+  assert.equal(built.bridge.jointAction.comboTimeline.steps[1].bindingProfile.leadArm.mode, "wholeArmProxy");
   assert.deepEqual(poseAtTrack(built.result.partTracks, front.upper, 15), Animotion.motionModel.defaultCustomMotion());
   assert.deepEqual(poseAtTrack(built.result.partTracks, front.hand, 35), Animotion.motionModel.defaultCustomMotion());
   assert.equal(poseMagnitude(poseAtTrack(built.result.partTracks, rear.forearm, 56)) > 0, true);
+});
+
+test("jab_jab_cross applies proxy jab tracks and step visibility before rearCross", () => {
+  const Animotion = loadAnimotion();
+  const parts = withLeadProxy(projectParts(Animotion, "animotion-project (17).json"));
+  const front = frontChainIds(), rear = rearChainIds();
+  const built = Animotion.comboTimeline.buildComboTimeline(Animotion.comboTimeline.specFor("jab_jab_cross"), {
+    parts,
+    selectedPartId: front.forearm,
+    plan: { template: "punch", targetMode: false },
+  });
+  const action = built.bridge.jointAction;
+  const hiddenFill = { id: "body_01 copy", usage: "rearCrossHiddenFill", createdForActionId: "rearCross" };
+  const proxyFrame8 = evaluatedPose(Animotion, built.result.partTracks, "leadWholeArmJabProxy", 8);
+  const proxyFrame26 = evaluatedPose(Animotion, built.result.partTracks, "leadWholeArmJabProxy", 26);
+
+  assert.equal(Math.hypot(proxyFrame8.jointX, proxyFrame8.jointY) > 0, true);
+  assert.equal(Math.hypot(proxyFrame26.jointX, proxyFrame26.jointY) > 0, true);
+  assert.equal(Animotion.actionPartVisibility.runtimeVisible(parts.find((part) => part.id === "leadWholeArmJabProxy"), { action, frame: 8 }), true);
+  assert.equal(Animotion.actionPartVisibility.runtimeVisible(parts.find((part) => part.id === front.upper), { action, frame: 8 }), false);
+  assert.equal(Animotion.actionPartVisibility.runtimeVisible(hiddenFill, { action, frame: 8 }), false);
+  assert.equal(Animotion.actionPartVisibility.runtimeVisible(hiddenFill, { action, frame: 26 }), false);
+  assert.equal(Animotion.actionPartVisibility.runtimeVisible(hiddenFill, { action, frame: 45 }), true);
+  for (const partId of [rear.upper, rear.forearm, rear.hand]) {
+    assert.deepEqual(evaluatedPose(Animotion, built.result.partTracks, partId, 8), Animotion.motionModel.defaultCustomMotion());
+    assert.deepEqual(evaluatedPose(Animotion, built.result.partTracks, partId, 26), Animotion.motionModel.defaultCustomMotion());
+  }
+});
+
+test("jab_jab_cross uses legacy rearCross17 clip without calling rear generator", () => {
+  const Animotion = loadAnimotion();
+  const parts = withLeadProxy(projectParts(Animotion, "animotion-project (17).json"));
+  const front = frontChainIds(), rear = rearChainIds();
+  let rearGeneratorCalls = 0;
+  const built = Animotion.comboTimeline.buildComboTimeline(Animotion.comboTimeline.specFor("jab_jab_cross"), {
+    parts,
+    selectedPartId: front.forearm,
+    plan: { template: "punch", targetMode: false },
+    actionFrameGenerator(partsArg, primaryId, bridge, plan, item) {
+      if (plan.template === "rearHandPunch01") rearGeneratorCalls += 1;
+      return Animotion.motionPlanner.createPlan(partsArg, primaryId, bridge, plan, item);
+    },
+  });
+  const rearStep = built.bridge.jointAction.comboTimeline.steps[2];
+  const legacy = Animotion.legacyActionClips.clipFor("legacyRearCross17");
+
+  assert.equal(rearGeneratorCalls, 0);
+  assert.equal(rearStep.source, "legacyClip");
+  assert.equal(rearStep.clipId, "legacyRearCross17");
+  assert.equal(rearStep.primaryPartId, rear.hand);
+  assert.equal(rearStep.targetDebug.resolvedArmChain.handOrGloveId, rear.hand);
+  for (const partId of [rear.hand, rear.forearm, rear.upper, Animotion.legacyActionClips.IDS.bodyFill]) {
+    assert.deepEqual(poseAtTrack(built.result.partTracks, partId, 56), poseAtTrack(legacy.partTracks, partId, 15));
+  }
+});
+
+test("rearCross generator fallback runs only when legacy rearCross17 clip is missing", () => {
+  const Animotion = loadAnimotion();
+  const parts = withLeadProxy(projectParts(Animotion, "animotion-project (17).json"));
+  const front = frontChainIds();
+  let rearGeneratorCalls = 0;
+  const built = Animotion.comboTimeline.buildComboTimeline(Animotion.comboTimeline.specFor("jab_jab_cross"), {
+    parts,
+    selectedPartId: front.forearm,
+    plan: { template: "punch", targetMode: false },
+    legacyClips: null,
+    actionFrameGenerator(partsArg, primaryId, bridge, plan, item) {
+      if (plan.template === "rearHandPunch01") rearGeneratorCalls += 1;
+      return Animotion.motionPlanner.createPlan(partsArg, primaryId, bridge, plan, item);
+    },
+  });
+  const rearStep = built.bridge.jointAction.comboTimeline.steps[2];
+
+  assert.equal(rearGeneratorCalls, 1);
+  assert.equal(rearStep.source, "generator");
+  assert.equal(rearStep.template, "rearHandPunch01");
 });
 
 test("project model preserves leadWholeArmJabProxy usage metadata", () => {
@@ -281,6 +362,10 @@ function poseAt(plan, partId, frame) {
 
 function poseAtTrack(tracks, partId, frame) {
   return tracks.find((track) => track.partId === partId).keyframes.find((keyframe) => keyframe.frame === frame).pose;
+}
+
+function evaluatedPose(Animotion, tracks, partId, frame) {
+  return Animotion.timeline.evaluatePartAtFrame({ keyframes: trackFor(tracks, partId).keyframes }, frame);
 }
 
 function trackFor(tracks, partId) {

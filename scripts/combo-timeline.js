@@ -4,6 +4,10 @@
   const MAX_ACTIONS = 8;
   const MAX_TOTAL_FRAMES = 120;
   const ACTION_ALIASES = Object.freeze({ jab: "punch", rearCross: "rearHandPunch01" });
+  const ACTION_SOURCES = Object.freeze({
+    jab: { source: "generator", template: "punch" },
+    rearCross: { source: "legacyClip", clipId: "legacyRearCross17", fallbackTemplate: "rearHandPunch01" },
+  });
   const DEFAULT_COMBOS = Object.freeze({
     jab_jab_cross: comboSpec("jab_jab_cross", [
       { actionId: "jab", gapAfterFrames: 2 },
@@ -66,11 +70,17 @@
       { assets: Animotion.state?.project?.assets || null }
     ) || {};
     const plan = Animotion.motionPlanner?.normalizePlan?.(input.plan || Animotion.state?.motionPlan || {}) || {};
-    return { ok: true, parts, selectedPartId, basePrimary, baseBridge, plan, actionFrameGenerator: input.actionFrameGenerator || defaultActionFrameGenerator };
+    const legacyClips = input.legacyClips === undefined ? Animotion.legacyActionClips : input.legacyClips;
+    return { ok: true, parts, selectedPartId, basePrimary, baseBridge, plan, legacyClips, actionFrameGenerator: input.actionFrameGenerator || defaultActionFrameGenerator };
   }
 
   function buildActionStep(context, item, stepNumber) {
-    const template = templateForActionId(item.actionId);
+    const source = actionSourceFor(item.actionId);
+    if (source?.source === "legacyClip") {
+      const clip = legacyClipFor(context, item.actionId, source.clipId);
+      if (clip) return buildLegacyClipStep(context, item, stepNumber, source, clip);
+    }
+    const template = source?.fallbackTemplate || source?.template || templateForActionId(item.actionId);
     const primary = primaryForAction(context, template);
     if (!template || !primary) return inactive("missing-primary", { actionId: item.actionId });
     const bridge = bridgeForAction(context, primary, template);
@@ -80,7 +90,52 @@
     const timeline = Animotion.cutsceneActionSelectors?.rawActionTimeline?.(generated.jointAction)
       || Animotion.actionTimelineModel?.timelineForTemplate?.(template, bridge) || {};
     const durationFrames = scaledFrame(maxFrame(generated.jointAction.beats), item.tempo);
-    return { ok: true, item, stepNumber, template, primaryPartId: generated.primaryPartId || generated.effectivePrimaryPartId || primary.id, bridge, plan, generated, timeline, durationFrames, totalFrames: durationFrames + item.gapAfterFrames };
+    return { ok: true, item, stepNumber, source: "generator", template, primaryPartId: generated.primaryPartId || generated.effectivePrimaryPartId || primary.id, bridge, plan, generated, timeline, durationFrames, totalFrames: durationFrames + item.gapAfterFrames };
+  }
+
+  function buildLegacyClipStep(context, item, stepNumber, source, clip) {
+    Animotion.legacyActionClips?.applyPartMetadata?.(context.parts, clip);
+    const bridge = clip.bridge || {};
+    const action = {
+      ...(bridge.jointAction || {}),
+      source: "legacyClip",
+      actionId: item.actionId,
+      legacyClipId: clip.id,
+      targetDebug: {
+        ...(bridge.jointAction?.targetDebug || {}),
+        punchStyle: "rear-cross",
+        primaryPartId: clip.primaryPartId || bridge.primaryPartId,
+        resolvedArmChain: clip.resolvedArmChain || bridge.jointAction?.targetDebug?.resolvedArmChain || null,
+        legacyClipId: clip.id,
+      },
+    };
+    const generated = {
+      jointAction: action,
+      partTracks: clip.partTracks || [],
+      anchors: action.anchors || [],
+      targetDebug: action.targetDebug,
+      activeMotionTarget: action.activeMotionTarget || null,
+      trajectoryPoints: action.trajectoryPoints || [],
+      primaryPartId: clip.primaryPartId || bridge.primaryPartId,
+      effectivePrimaryPartId: clip.primaryPartId || bridge.primaryPartId,
+    };
+    const timeline = Animotion.cutsceneActionSelectors?.rawActionTimeline?.(action) || action.actionTimeline || {};
+    const durationFrames = scaledFrame(clip.durationFrames || bridge.durationFrames || maxFrame(action.beats), item.tempo);
+    return {
+      ok: true,
+      item,
+      stepNumber,
+      source: "legacyClip",
+      clipId: clip.id,
+      template: source.fallbackTemplate || "rearHandPunch01",
+      primaryPartId: clip.primaryPartId || bridge.primaryPartId,
+      bridge,
+      plan: { ...context.plan, template: source.fallbackTemplate || "rearHandPunch01", source: "legacyClip", clipId: clip.id },
+      generated,
+      timeline,
+      durationFrames,
+      totalFrames: durationFrames + item.gapAfterFrames,
+    };
   }
 
   function comboResult(context, spec, merged, lastStep, totalFrames) {
@@ -158,7 +213,39 @@
   }
 
   function stepDebug(step, offset) {
-    return { index: step.stepNumber - 1, actionId: step.item.actionId, template: step.template, primaryPartId: step.primaryPartId, focusKey: step.generated.jointAction.focusKey || null, startFrame: offset + 1, endFrame: offset + step.durationFrames, holdEndFrame: offset + step.totalFrames, gapAfterFrames: step.item.gapAfterFrames, impactFrame: impactFrameFor(step, offset), tempo: step.item.tempo, variant: step.item.variant, options: step.item.options };
+    const action = step.generated.jointAction || {};
+    return {
+      index: step.stepNumber - 1,
+      actionId: step.item.actionId,
+      template: step.template,
+      source: step.source || "generator",
+      clipId: step.clipId || null,
+      primaryPartId: step.primaryPartId,
+      focusKey: action.focusKey || null,
+      startFrame: offset + 1,
+      endFrame: offset + step.durationFrames,
+      holdEndFrame: offset + step.totalFrames,
+      gapAfterFrames: step.item.gapAfterFrames,
+      impactFrame: impactFrameFor(step, offset),
+      tempo: step.item.tempo,
+      variant: step.item.variant,
+      options: step.item.options,
+      ...(action.bindingProfile ? { bindingProfile: clonePlain(action.bindingProfile) } : {}),
+      ...(action.targetDebug ? { targetDebug: stepTargetDebug(action.targetDebug) } : {}),
+    };
+  }
+
+  function stepTargetDebug(debug = {}) {
+    return {
+      punchStyle: debug.punchStyle || null,
+      leadArmComposite: debug.leadArmComposite || null,
+      segmentedLeadLocked: debug.segmentedLeadLocked === true,
+      proxyPartId: debug.proxyPartId || null,
+      effectivePrimaryPartId: debug.effectivePrimaryPartId || null,
+      originalSelectedPartId: debug.originalSelectedPartId || null,
+      resolvedArmChain: debug.resolvedArmChain || null,
+      legacyClipId: debug.legacyClipId || null,
+    };
   }
 
   function impactFrameFor(step, offset) {
@@ -181,7 +268,7 @@
 
   function normalizeActionItem(item = {}) {
     const actionId = String(item.actionId || "");
-    if (!templateForActionId(actionId)) return null;
+    if (!actionSourceFor(actionId) && !templateForActionId(actionId)) return null;
     return { actionId, gapAfterFrames: clampInt(item.gapAfterFrames, 0, 24, 0), tempo: clampNumber(item.tempo, 0.25, 4, 1), variant: objectOrNull(item.variant), options: objectOrNull(item.options) };
   }
 
@@ -195,6 +282,13 @@
   function frameKey(key) { return /^(at|frame|startFrame|endFrame|impactFrame)$/.test(key); }
   function scaledFrame(frame, tempo = 1) { return Math.max(1, Math.round(1 + (Math.round(Number(frame) || 1) - 1) / tempo)); }
   function emptyMerge(parts) { const tracks = parts.map((part) => ({ partId: part.id, keyframes: [] })); return { beats: [], timelineBeats: [], tracks, trackMap: new Map(tracks.map((track) => [track.partId, track])), events: [], impacts: [], patchSchedule: [], maskSchedule: [], effectTracks: [], steps: [], lastImpactFrame: null }; }
+  function actionSourceFor(actionId) { return ACTION_SOURCES[actionId] || null; }
+  function legacyClipFor(context, actionId, clipId) {
+    if (!context.legacyClips) return null;
+    if (typeof context.legacyClips.clipFor === "function") return context.legacyClips.clipFor(clipId) || context.legacyClips.clipForAction?.(actionId) || null;
+    if (context.legacyClips instanceof Map) return context.legacyClips.get(clipId) || null;
+    return context.legacyClips[clipId] || null;
+  }
   function templateForActionId(actionId) { return ACTION_ALIASES[actionId] || (Animotion.actionSpecs?.hasSpec?.(actionId) ? actionId : null); }
   function terminalArmParts(parts) { const seen = new Set(); return parts.map((part) => Animotion.armChainResolver?.resolve?.(parts, part)?.terminalPart || (isArmPart(part) ? part : null)).filter(Boolean).filter((part) => !seen.has(part.id) && seen.add(part.id)); }
   function selectedPrimary(parts, selectedPartId) { return Animotion.motionPrimarySelection?.selectedPrimary?.(parts, selectedPartId, "punch") || parts.find((part) => part.id === selectedPartId) || null; }
@@ -204,11 +298,12 @@
   function maxFrame(beats = []) { return beats.reduce((max, beat) => Math.max(max, Math.round(Number(beat.at) || 1)), 1); }
   function baseId(id) { return String(id || "beat").split(":").pop(); }
   function objectOrNull(value) { return value && typeof value === "object" && !Array.isArray(value) ? JSON.parse(JSON.stringify(value)) : null; }
+  function clonePlain(value) { return JSON.parse(JSON.stringify(value)); }
   function clampInt(value, min, max, fallback) { return Math.round(clampNumber(value, min, max, fallback)); }
   function clampNumber(value, min, max, fallback) { const number = Number(value); return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback; }
   function uniquePart() { const seen = new Set(); return (part) => !seen.has(part.id) && seen.add(part.id); }
   function inactive(reason, extras = {}) { return { handled: true, generated: false, reason, ...extras }; }
 
-  Animotion.comboTimeline = { MAX_ACTIONS, MAX_TOTAL_FRAMES, ACTION_ALIASES, DEFAULT_COMBOS, specFor, optionSpecs, normalizeComboSpec, buildComboTimeline };
+  Animotion.comboTimeline = { MAX_ACTIONS, MAX_TOTAL_FRAMES, ACTION_ALIASES, ACTION_SOURCES, DEFAULT_COMBOS, specFor, optionSpecs, normalizeComboSpec, buildComboTimeline };
   if (typeof module !== "undefined") module.exports = Animotion.comboTimeline;
 }
