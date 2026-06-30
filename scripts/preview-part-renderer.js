@@ -15,6 +15,7 @@
     previewCtx.save();
     Animotion.previewTransform.applySourceFrame(previewCtx, context.view, state.previewSourceFrame, state.previewSourceTransform);
     for (const part of baseContext.orderedPartsForFrame(t, baseContext.cutscene)) {
+      if (!runtimeVisible(part, baseContext.cutscene)) continue;
       Animotion.previewHiddenFill.drawDueBefore(part, context, hiddenFillRequests, drawnHiddenCompletionAssetIds, drawnSupplementalIds);
       if (part.hidden || Animotion.previewHiddenFill.isSupplementalPart(part)) continue;
       Animotion.previewSupplementalRenderer.drawDueSupplementalsBefore(part, context, drawnSupplementalIds, hiddenFillRequests);
@@ -41,11 +42,12 @@
     if (t < 0) return;
     const matrixCache = new Map();
     for (const part of baseContext.orderedPartsForFrame(t, baseContext.cutscene)) {
-      if (!part.hidden && !Animotion.previewHiddenFill.isSupplementalPart(part)) drawPart(part, { ...baseContext, t, matrixCache, alpha, drawPass: "ghost-part" });
+      if (!part.hidden && runtimeVisible(part, baseContext.cutscene) && !Animotion.previewHiddenFill.isSupplementalPart(part)) drawPart(part, { ...baseContext, t, matrixCache, alpha, drawPass: "ghost-part" });
     }
   }
 
   function drawPart(part, context) {
+    if (!runtimeVisible(part, context.cutscene)) return;
     const drawPass = context.pass || context.drawPass || (context.alpha === 1 ? "main-part" : "ghost-part");
     const frame = state.running ? context.currentMotionFrame(context.t) : state.currentFrame;
     const planContext = { parts: state.parts, bridge: context.cutscene?.bridge, frame, selectedPartId: state.selectedPartId };
@@ -114,7 +116,7 @@
   }
 
   function drawPartImage(part, frame, context) {
-    if (Animotion.partVisibilityMaskRender?.drawPartImage) return Animotion.partVisibilityMaskRender.drawPartImage(previewCtx, part, frame, context.pathFromShape);
+    if (Animotion.partVisibilityMaskRender?.drawPartImage) return Animotion.partVisibilityMaskRender.drawPartImage(previewCtx, part, frame, context.pathFromShape, { action: context.cutscene?.bridge?.jointAction || null });
     previewCtx.drawImage(part.canvas, part.rect.x, part.rect.y, part.rect.w, part.rect.h);
     return null;
   }
@@ -158,6 +160,7 @@
   }
 
   function timelineLikeMode() { return els.motionTemplate.value === "keyframes" || els.motionTemplate.value === "cutscene"; }
+  function runtimeVisible(part, cutscene) { return Animotion.leadArmComposite?.runtimeVisible?.(part, { action: cutscene?.bridge?.jointAction }) !== false; }
 
   Animotion.previewPartRenderer = { drawParts, drawGhostParts, drawPart, drawHiddenCompletionPatch };
 }

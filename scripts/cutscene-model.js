@@ -164,16 +164,24 @@
     if (!action?.beats?.length) return null;
     const timeline = Animotion.cutsceneActionSelectors?.rawActionTimeline?.(action) || null;
     const hiddenCompletionDrafts = Animotion.motionDraftActionStore?.normalizeList?.(action.hiddenCompletionDrafts, { assets: options.assets }) || [];
+    const effectTracks = Animotion.actionScopedEffects?.migratedEffectTracks?.(action, { durationFrames: options.durationFrames }) || [];
     return {
       source: String(action.source || "part-pivots-v1"),
       focusKey: action.focusKey ? String(action.focusKey) : null,
       ...(timeline ? { actionTimeline: Animotion.actionTimelineModel?.normalizeTimeline?.(timeline, options) || clonePlain(timeline) } : {}),
+      ...(action.bindingProfile ? { bindingProfile: clonePlain(action.bindingProfile) } : {}),
       ...(action.impactExaggeration ? { impactExaggeration: Animotion.impactExaggerationLayer?.normalizeImpactExaggerationLayer?.(action.impactExaggeration) || clonePlain(action.impactExaggeration) } : {}),
       anchors: Animotion.motionAnchors?.normalizeAnchors?.(action.anchors, options) || [],
       beats: action.beats.map((beat) => normalizeBeat(beat, options)).filter(Boolean),
       ...(action.targetDebug ? { targetDebug: clonePlain(action.targetDebug) } : {}),
       ...(action.activeMotionTarget ? { activeMotionTarget: clonePlain(action.activeMotionTarget) } : {}),
       ...(action.trajectoryPoints ? { trajectoryPoints: clonePlain(action.trajectoryPoints) } : {}),
+      ...(action.comboTimeline ? { comboTimeline: clonePlain(action.comboTimeline) } : {}),
+      ...(action.events ? { events: clonePlain(action.events) } : {}),
+      ...(action.impact ? { impact: clonePlain(action.impact) } : {}),
+      ...(action.patchSchedule ? { patchSchedule: clonePlain(action.patchSchedule) } : {}),
+      ...(action.maskSchedule ? { maskSchedule: clonePlain(action.maskSchedule) } : {}),
+      ...(effectTracks.length ? { effectTracks } : {}),
       ...(action.motionHints ? { motionHints: Animotion.motionHints?.normalize?.(action.motionHints) || action.motionHints } : {}),
       ...(action.motionDraft ? { motionDraft: Animotion.motionDrafts?.normalize?.(action.motionDraft, { assets: options.assets }) || action.motionDraft } : {}),
       ...(hiddenCompletionDrafts.length ? { hiddenCompletionDrafts } : {}),

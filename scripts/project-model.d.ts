@@ -50,6 +50,7 @@ export type Part = {
   name: string;
   type: "head" | "body" | "spine" | "arm" | "leg" | "hand" | "hair" | "eye" | "mouth" | "clothes" | "prop" | "background";
   humanRole?: HumanRole | null;
+  usage?: "leadWholeArmJabProxy" | string;
   splitFromPartId?: string;
   originalSourcePartId?: string;
   splitMethod?: "manual" | string;

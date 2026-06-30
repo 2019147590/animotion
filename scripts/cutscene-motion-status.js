@@ -15,9 +15,11 @@
     const timeline = status.timeline || null;
     const timelineBeats = Array.isArray(timeline?.beats) ? timeline.beats : [];
     const runtime = runtimeDebug(safe, action, options);
+    const combo = comboStatus(action, options.currentFrame || 1);
     return {
       active: true,
       actionType,
+      combo,
       currentBeatId: currentBeat?.id || null,
       currentBeatFrame: currentBeat?.at || null,
       impactFrame: safe.impactFrame || timeline?.impactFrame || impactBeat?.at || null,
@@ -41,6 +43,7 @@
     const target = status.primaryImpactTarget ? `${status.primaryImpactTarget.key} ${status.primaryImpactTarget.x},${status.primaryImpactTarget.y}` : "none";
     return compact([
       `motion ${status.actionType}`,
+      comboText(status.combo),
       status.currentBeatId ? `${status.currentBeatId}@${status.currentBeatFrame}` : null,
       actionFrameText(status.actionFrame),
       `impact ${status.impactFrame}`,
@@ -62,7 +65,8 @@
     const target = targetGenerationDebug(action, parts, selectedId);
     const regeneration = normalizeRegenerationDebug(options.regenerationDebug);
     const hiddenCompletion = Animotion.hiddenCompletionDiagnostics?.analyze?.({ parts, assets: options.assets || [], imageBounds: options.imageBounds || null, previewDrawSequence: options.previewDrawSequence }) || { status: "unknown", evidence: "hidden-completion-diagnostics-unavailable", items: [] };
-    const debug = { ...extension, ...replacement, ...draw, regeneration, hiddenCompletion, roleDecision: action.targetDebug?.roleDecision || null, target, targetGenerationFailure: Boolean(target.targetInsideHeadFaceBounds || target.targetNearHeadFaceBounds), sourcePanelOverlapFailure: draw.sourcePanelConflictRisk === true, actualDrawOrderFailure: draw.selectedAfterCoveringParts === false, segmentedRenderFailure: draw.segmentedRenderFailure === true, replacementRenderOk: draw.replacementRenderOk === true, replacementRenderFailure: draw.replacementRenderFailure === true, skippedNormalArmDraw: draw.skippedNormalArmDraw === true, fallbackToNormalArm: draw.fallbackToNormalArm === true, replacementRenderReason: draw.replacementRenderReason || replacement.replacementReason || null, sourceEraseWithoutReplacement: draw.sourceEraseWithoutReplacement === true, punchStyleSource: draw.punchStyleSource || extension.punchStyleSource, legacyDepthCompat: Boolean(draw.legacyDepthCompat || extension.legacyDepthCompat), cutsceneDepthActive: depthBias > 0, evaluatedDepthBias: depthBias, renderOrder: ordered.map((part) => part.id), coveringOrderChecks: covering.map((part) => ({ partId: part.id, selectedAfter: selectedIndex > ordered.findIndex((item) => item.id === part.id) })), selectedAboveCoveringParts: covering.length ? covering.every((part) => selectedIndex > ordered.findIndex((item) => item.id === part.id)) : null, motionMode: options.motionTemplate || "unknown", punchStyle: action.targetDebug?.punchStyle || "none", selectedPartId: action.targetDebug?.selectedPartId || options.selectedPartId || null, resolvedArmChain: action.targetDebug?.resolvedArmChain || null, terminalPunchPartId: action.targetDebug?.terminalPunchPartId || null, terminalPunchPointSource: action.targetDebug?.terminalPunchPointSource || null, punchSide: action.targetDebug?.punchSide || null, classificationBasis: action.targetDebug?.classificationBasis || null, separateRigPath: action.targetDebug?.separateRigPath === true, armOnlyFallback: action.targetDebug?.armOnlyFallback === true, handParentIsForearm: action.targetDebug?.handParentIsForearm === true, forearmParentIsUpperArm: action.targetDebug?.forearmParentIsUpperArm === true, elbowConnectionValid: action.targetDebug?.elbowConnectionValid === true, wristConnectionValid: action.targetDebug?.wristConnectionValid === true, chainParentingValid: action.targetDebug?.chainParentingValid === true, chainParentingWarning: action.targetDebug?.chainParentingWarning || null, chainWarnings: action.targetDebug?.chainWarnings || [], replacementLayerUsed: action.targetDebug?.separateRigPath === true ? false : replacement.replacementActive === true, wristOverlapHandled: action.targetDebug?.wristOverlapHandled === true, hiddenCompletionCandidate: action.targetDebug?.hiddenCompletionCandidate === true, selectedToEndpointText: action.targetDebug?.selectedToEndpointText || null };
+    const leadArm = action.bindingProfile?.leadArm || action.targetDebug?.leadArmComposite || null;
+    const debug = { ...extension, ...replacement, ...draw, regeneration, hiddenCompletion, roleDecision: action.targetDebug?.roleDecision || null, target, targetGenerationFailure: Boolean(target.targetInsideHeadFaceBounds || target.targetNearHeadFaceBounds), sourcePanelOverlapFailure: draw.sourcePanelConflictRisk === true, actualDrawOrderFailure: draw.selectedAfterCoveringParts === false, segmentedRenderFailure: draw.segmentedRenderFailure === true, replacementRenderOk: draw.replacementRenderOk === true, replacementRenderFailure: draw.replacementRenderFailure === true, skippedNormalArmDraw: draw.skippedNormalArmDraw === true, fallbackToNormalArm: draw.fallbackToNormalArm === true, replacementRenderReason: draw.replacementRenderReason || replacement.replacementReason || null, sourceEraseWithoutReplacement: draw.sourceEraseWithoutReplacement === true, punchStyleSource: draw.punchStyleSource || extension.punchStyleSource, legacyDepthCompat: Boolean(draw.legacyDepthCompat || extension.legacyDepthCompat), cutsceneDepthActive: depthBias > 0, evaluatedDepthBias: depthBias, renderOrder: ordered.map((part) => part.id), coveringOrderChecks: covering.map((part) => ({ partId: part.id, selectedAfter: selectedIndex > ordered.findIndex((item) => item.id === part.id) })), selectedAboveCoveringParts: covering.length ? covering.every((part) => selectedIndex > ordered.findIndex((item) => item.id === part.id)) : null, motionMode: options.motionTemplate || "unknown", punchStyle: action.targetDebug?.punchStyle || "none", leadArmMode: leadArm?.mode || null, proxyPartId: leadArm?.proxyPartId || null, selectedPartId: action.targetDebug?.selectedPartId || options.selectedPartId || null, resolvedArmChain: action.targetDebug?.resolvedArmChain || null, terminalPunchPartId: action.targetDebug?.terminalPunchPartId || null, terminalPunchPointSource: action.targetDebug?.terminalPunchPointSource || null, punchSide: action.targetDebug?.punchSide || null, classificationBasis: action.targetDebug?.classificationBasis || null, separateRigPath: action.targetDebug?.separateRigPath === true, armOnlyFallback: action.targetDebug?.armOnlyFallback === true, handParentIsForearm: action.targetDebug?.handParentIsForearm === true, forearmParentIsUpperArm: action.targetDebug?.forearmParentIsUpperArm === true, elbowConnectionValid: action.targetDebug?.elbowConnectionValid === true, wristConnectionValid: action.targetDebug?.wristConnectionValid === true, chainParentingValid: action.targetDebug?.chainParentingValid === true, chainParentingWarning: action.targetDebug?.chainParentingWarning || null, chainWarnings: action.targetDebug?.chainWarnings || [], replacementLayerUsed: action.targetDebug?.separateRigPath === true ? false : replacement.replacementActive === true, wristOverlapHandled: action.targetDebug?.wristOverlapHandled === true, hiddenCompletionCandidate: action.targetDebug?.hiddenCompletionCandidate === true, selectedToEndpointText: action.targetDebug?.selectedToEndpointText || null };
     debug.diagnosticLayers = diagnosticLayers({ bridge, action, options, selectedId, debug, draw, target, regeneration });
     return debug;
   }
@@ -104,6 +108,8 @@
       debug.cutsceneDepthActive ? "깊이 보정" : null,
       debug.selectedToEndpointText,
       debug.separateRigPath ? "separate rig" : null,
+      debug.leadArmMode ? `leadArmMode=${debug.leadArmMode}` : null,
+      debug.proxyPartId ? `proxyPartId=${debug.proxyPartId}` : null,
       debug.chainParentingWarning ? `chain warning: ${debug.chainParentingWarning}` : null,
       debug.hiddenCompletionCandidate ? "보완 후보" : null,
       debug.hiddenCompletion?.status === "fail" ? "보완 커버리지 실패" : null,
@@ -131,6 +137,33 @@
     const write = actionFrame.writesToKeyframes ? "keyframes edit" : "view";
     const trajectory = actionFrame.trajectoryReadOnly ? "trajectory read-only" : null;
     return compact([`frame ${actionFrame.selectedLabel}@${actionFrame.selectedFrame}`, write, trajectory]).join(" / ");
+  }
+
+  function comboStatus(action = {}, frame = 1) {
+    const combo = action.comboTimeline || action.targetDebug?.comboTimeline || null;
+    if (!combo?.id || !Array.isArray(combo.steps)) return null;
+    const globalFrame = Math.max(1, Math.round(Number(frame) || 1));
+    const step = combo.steps.find((item) => globalFrame >= item.startFrame && globalFrame <= (item.holdEndFrame || item.endFrame))
+      || combo.steps.find((item) => globalFrame <= item.startFrame)
+      || combo.steps[combo.steps.length - 1];
+    if (!step) return null;
+    const actionFrames = Math.max(1, Math.round(Number(step.endFrame) || 1) - Math.round(Number(step.startFrame) || 1) + 1);
+    const localFrame = Math.min(actionFrames, Math.max(1, globalFrame - Math.round(Number(step.startFrame) || 1) + 1));
+    const impactFrame = Math.round(Number(step.impactFrame) || 0);
+    return {
+      id: combo.id,
+      currentActionIndex: Math.round(Number(step.index) || 0),
+      actionCount: combo.steps.length,
+      currentActionId: step.actionId || null,
+      localFrame,
+      globalFrame,
+      impact: impactFrame === globalFrame,
+    };
+  }
+
+  function comboText(combo = null) {
+    if (!combo) return null;
+    return `combo ${combo.id} action ${combo.currentActionIndex + 1}/${combo.actionCount} ${combo.currentActionId} local ${combo.localFrame} global ${combo.globalFrame} impact ${yesNo(combo.impact)}`;
   }
 
   function yesNo(value) { return value ? "yes" : "no"; }

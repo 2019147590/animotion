@@ -62,6 +62,30 @@
     const beats = templateBeats(plan.template, bridge).map((spec) => poseBeat(spec, base, active, target, direction, anchors, punchStyle));
     const trajectorySamples = Animotion.motionTargetState?.trajectorySamples?.(beats, active.end) || [];
     Object.assign(targetDebug, Animotion.characterRootMotion?.debugForPlan?.(parts, primary, beats, base, plan, targetDebug) || {});
+    const bindingProfile = Animotion.leadArmComposite?.bindingProfileFor?.(parts, primary, targetDebug) || null;
+    if (bindingProfile) {
+      targetDebug.leadArmComposite = bindingProfile.leadArm;
+      targetDebug.lockedPartIds = bindingProfile.lockedPartIds;
+      targetDebug.exclusiveOwnership = bindingProfile.exclusiveOwnership;
+    }
+    const motionDraft = Animotion.motionDrafts?.snapshot?.(plan.motionDraft) || plan.motionDraft;
+    const jointAction = {
+      source: `motion-planner-${plan.template}-anchors-v1`,
+      focusKey: active.end,
+      actionTimeline,
+      ...(bindingProfile ? { bindingProfile } : {}),
+      impactExaggeration: impactExaggerationFor(actionTimeline, parts, primary),
+      anchors,
+      beats,
+      targetDebug,
+      activeMotionTarget,
+      trajectoryPoints: trajectorySamples,
+      trajectorySamples,
+      motionHints: plan.motionHints,
+      motionDraft,
+    };
+    const effectTracks = Animotion.actionScopedEffects?.migratedEffectTracks?.(jointAction, { durationFrames: actionTimeline?.durationFrames });
+    if (effectTracks?.length) jointAction.effectTracks = effectTracks;
     return {
       target,
       motionScope: plan.motionScope,
@@ -71,21 +95,8 @@
       trajectorySamples,
       anchors,
       active,
-      jointAction: {
-        source: `motion-planner-${plan.template}-anchors-v1`,
-        focusKey: active.end,
-        actionTimeline,
-        impactExaggeration: impactExaggerationFor(actionTimeline, parts, primary),
-        anchors,
-        beats,
-        targetDebug,
-        activeMotionTarget,
-        trajectoryPoints: trajectorySamples,
-        trajectorySamples,
-        motionHints: plan.motionHints,
-        motionDraft: Animotion.motionDrafts?.snapshot?.(plan.motionDraft) || plan.motionDraft,
-      },
-      partTracks: Animotion.motionTrackBuilder.tracksForParts(parts, primary, beats, { base, active, bridge: { ...bridge, jointAction: { targetDebug } } }),
+      jointAction,
+      partTracks: Animotion.motionTrackBuilder.tracksForParts(parts, primary, beats, { base, active, bridge: { ...bridge, jointAction: { targetDebug, ...(bindingProfile ? { bindingProfile } : {}) } } }),
     };
   }
 

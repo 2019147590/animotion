@@ -2,8 +2,8 @@
   const global = typeof window !== "undefined" ? window : globalThis;
   const Animotion = global.Animotion || (global.Animotion = {});
 
-  function drawPartImage(ctx, part, frame, pathFromShape) {
-    const active = Animotion.partVisibilityMasks?.activeMasks?.(part, frame) || [];
+  function drawPartImage(ctx, part, frame, pathFromShape, options = {}) {
+    const active = Animotion.partVisibilityMasks?.activeMasks?.(part, frame, options) || [];
     if (!active.length) {
       ctx.drawImage(part.canvas, part.rect.x, part.rect.y, part.rect.w, part.rect.h);
       return null;
@@ -17,7 +17,7 @@
   }
 
   function apply(ctx, part, frame, pathFromShape, options = {}) {
-    const active = options.activeMasks || Animotion.partVisibilityMasks?.activeMasks?.(part, frame) || [];
+    const active = options.activeMasks || Animotion.partVisibilityMasks?.activeMasks?.(part, frame, options) || [];
     if (!active.length) return null;
     const previousAlpha = ctx.globalAlpha;
     const previousComposite = ctx.globalCompositeOperation;

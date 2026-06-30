@@ -71,6 +71,70 @@ test("upperArm direct ready patch renders once before foreground occluders", () 
   assert.equal(sequence.some((entry) => entry.pass === "depth-top-up" && entry.drawPath === "hidden-completion-symmetry"), false);
 });
 
+test("jab action skips legacy rearCross direct ready patch", () => {
+  const Animotion = loadPreview();
+  const { upper, counterpart } = installUpperArmScenario(Animotion);
+  Animotion.state.project.assets = [symmetryAsset("hidden-upper-direct", upper.id, counterpart.id)];
+  Animotion.state.cutsceneBridge.jointAction = {
+    ...Animotion.state.cutsceneBridge.jointAction,
+    targetDebug: { primaryPartId: upper.id, punchStyle: "jab" },
+    motionDraft: readyDraft(upper.id, "hidden-upper-direct"),
+  };
+  Animotion.preview.drawPreview(0, () => {}, () => {});
+  const sequence = Animotion.state.previewDrawSequenceDebug.sequence;
+  assert.equal(sequence.some((entry) => entry.drawPath === "hidden-completion-symmetry" && entry.hiddenCompletionPatchId === "hidden-upper-direct"), false);
+});
+
+test("combo scoped hidden patch only appears during rearCross local action", () => {
+  const Animotion = loadPreview();
+  const { upper, counterpart } = installUpperArmScenario(Animotion);
+  Animotion.state.project.assets = [symmetryAsset("hidden-upper-direct", upper.id, counterpart.id)];
+  Animotion.state.cutsceneBridge.jointAction = {
+    ...Animotion.state.cutsceneBridge.jointAction,
+    source: "combo-timeline-v1",
+    comboTimeline: {
+      id: "jab_jab_cross",
+      steps: [
+        { index: 0, actionId: "jab", startFrame: 1, endFrame: 18, holdEndFrame: 20 },
+        { index: 1, actionId: "jab", startFrame: 21, endFrame: 38, holdEndFrame: 41 },
+        { index: 2, actionId: "rearCross", startFrame: 42, endFrame: 59, holdEndFrame: 59 },
+      ],
+    },
+    motionDraft: readyDraft(upper.id, "hidden-upper-direct"),
+    effectTracks: [{ type: "hiddenCompletion", actionId: "rearCross", localFrame: 1, endLocalFrame: 18, partId: upper.id, assetId: "hidden-upper-direct" }],
+  };
+
+  Animotion.state.currentFrame = 15;
+  Animotion.preview.drawPreview(0, () => {}, () => {});
+  assert.equal(Animotion.state.previewDrawSequenceDebug.sequence.some((entry) => entry.hiddenCompletionPatchId === "hidden-upper-direct"), false);
+
+  Animotion.state.currentFrame = 45;
+  Animotion.preview.drawPreview(0, () => {}, () => {});
+  assert.equal(Animotion.state.previewDrawSequenceDebug.sequence.some((entry) => entry.hiddenCompletionPatchId === "hidden-upper-direct"), true);
+});
+
+test("whole-arm jab proxy draws instead of segmented lead chain members", () => {
+  const Animotion = loadPreview();
+  const { upper, fore, hand } = installUpperArmScenario(Animotion);
+  const proxy = { ...part("leadWholeArmJabProxy", "arm", 9, { x: 68, y: 36, w: 48, h: 72 }), usage: "leadWholeArmJabProxy" };
+  Animotion.state.parts.push(proxy);
+  Animotion.state.cutsceneBridge.jointAction = {
+    ...Animotion.state.cutsceneBridge.jointAction,
+    targetDebug: { primaryPartId: hand.id, punchStyle: "jab" },
+    bindingProfile: {
+      leadArm: { mode: "wholeArmProxy", proxyPartId: proxy.id, members: { leadUpperArm: upper.id, leadForearm: fore.id, leadHand: hand.id } },
+      lockedPartIds: [upper.id, fore.id, hand.id, proxy.id],
+    },
+  };
+
+  Animotion.preview.drawPreview(0, () => {}, () => {});
+  const sequence = Animotion.state.previewDrawSequenceDebug.sequence;
+  assert.equal(sequence.some((entry) => entry.partId === proxy.id && entry.drawPath === "normal-part"), true);
+  assert.equal(sequence.some((entry) => entry.partId === upper.id && entry.pass === "main-part"), false);
+  assert.equal(sequence.some((entry) => entry.partId === fore.id && entry.pass === "main-part"), false);
+  assert.equal(sequence.some((entry) => entry.partId === hand.id && entry.pass === "main-part"), false);
+});
+
 test("rear upperArm direct ready patch draws before earlier same-chain forearm and hand", () => {
   const Animotion = loadPreview();
   const { upper, fore, hand, counterpart } = installUpperArmScenario(Animotion);

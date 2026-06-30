@@ -59,8 +59,21 @@
     return 0;
   }
 
-  function activeMasks(part, frame) {
-    return normalizeList(part?.visibilityMasks).map((mask) => ({ mask, strength: evaluatedStrength(mask, frame) })).filter((item) => item.strength > 0.001);
+  function activeMasks(part, frame, options = {}) {
+    return normalizeList(part?.visibilityMasks)
+      .map((mask) => ({ mask, strength: evaluatedStrength(mask, frame) }))
+      .filter((item) => item.strength > 0.001 && maskAllowed(item.mask, part, frame, options));
+  }
+
+  function maskAllowed(mask, part, frame, options = {}) {
+    const action = options.action || null;
+    if (!action || !Animotion.actionScopedEffects?.frameContext) return true;
+    const context = Animotion.actionScopedEffects.frameContext(action, frame);
+    const owner = mask.ownerActionId || mask.sourceActionId || mask.actionId;
+    if (owner) return String(owner) === context.actionId;
+    const effects = Animotion.actionScopedEffects.effectsForFrame?.(action, frame, "visibilityMask") || [];
+    if (effects.length) return effects.some((effect) => (!effect.maskId || effect.maskId === mask.id) && (!effect.partId || effect.partId === part?.id));
+    return context.actionId !== "jab";
   }
 
   function normalizeKeyframes(values = []) {

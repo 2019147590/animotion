@@ -47,8 +47,10 @@ function previewScripts() {
   return [
     "scripts/hidden-completion-coverage-bounds.js", "scripts/hidden-completion-assets.js",
     "scripts/playback-speed.js", "scripts/motion-model.js", "scripts/timeline.js", "scripts/cutscene-action-selectors.js",
+    "scripts/action-scoped-effects.js",
     "scripts/rig-connection.js", "scripts/arm-chain-resolver.js", "scripts/render-layer-utils.js",
     "scripts/render-order-debug.js", "scripts/arm-extension-controls.js", "scripts/arm-extension.js",
+    "scripts/lead-arm-composite.js",
     "scripts/arm-extension-render.js", "scripts/motion-replacement-layer.js", "scripts/motion-replacement-render.js",
     "scripts/cutscene-depth.js", "scripts/hidden-completion-render.js", "scripts/hidden-completion-supplemental-coverage.js",
     "scripts/hidden-completion-supplemental-part.js", "scripts/hidden-completion-supplemental-warp.js",

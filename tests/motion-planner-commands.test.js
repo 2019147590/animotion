@@ -38,6 +38,7 @@ function loadAnimotion() {
     "scripts/timeline.js",
     "scripts/arm-extension-controls.js",
     "scripts/arm-extension.js",
+    "scripts/lead-arm-composite.js",
     "scripts/motion-track-builder.js",
     "scripts/boxing-step-locomotion.js",
     "scripts/motion-planner.js",
@@ -376,8 +377,11 @@ test("separate front chain uses terminal glove endpoint and jab path", () => {
   assert.equal(bridge.jointAction.targetDebug.terminalPunchPointSource, "handTip");
   assert.equal(bridge.jointAction.targetDebug.replacementLayerUsed, false);
   assert.equal(bridge.jointAction.targetDebug.selectedToEndpointText, "selected front_forearm -> punching endpoint front_glove");
-  assert.equal(poseMagnitude(keyPose(Animotion.state.parts, "front_glove", impact.at)) > poseMagnitude(keyPose(Animotion.state.parts, "front_forearm", impact.at)), true);
-  assert.equal(poseMagnitude(keyPose(Animotion.state.parts, "front_forearm", impact.at)) > poseMagnitude(keyPose(Animotion.state.parts, "front_upperArm", impact.at)), true);
+  assert.equal(bridge.jointAction.bindingProfile.leadArm.mode, "compositeRigid");
+  assert.equal(JSON.stringify(bridge.jointAction.bindingProfile.lockedPartIds), JSON.stringify(["front_upperArm", "front_forearm", "front_glove"]));
+  assert.equal(poseMagnitude(keyPose(Animotion.state.parts, "front_upperArm", impact.at)) > 0, true);
+  assert.deepEqual(keyPose(Animotion.state.parts, "front_forearm", impact.at), Animotion.motionModel.defaultCustomMotion());
+  assert.deepEqual(keyPose(Animotion.state.parts, "front_glove", impact.at), Animotion.motionModel.defaultCustomMotion());
 });
 
 test("separate rear chain uses terminal glove endpoint and rear-cross path", () => {

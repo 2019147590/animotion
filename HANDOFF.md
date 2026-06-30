@@ -41,6 +41,74 @@ The hardcoded demo genga cut remains available, but it should be treated as the 
 
 ## Current Implemented State
 
+### Latest 2026-07-01 Combo Timeline, Action-Scoped Effects, and Jab Whole-Arm Proxy Handoff
+
+This handoff captures the current boxer workflow: keep `animotion-project (17).json` as the base rig, let jab use a whole-arm lead proxy when present, keep rearCross on segmented rear-arm logic, and play `jab -> jab -> rearCross` through an action-id based combo timeline.
+
+Problem 1-pager:
+
+- Context: `(8).json` jab looked natural because the lead arm behaved as one whole piece, while `(17).json` has a segmented lead arm needed by newer rearCross work.
+- Problem: jab on `(17).json` split lead upper arm/forearm/hand motion unnaturally, and frame-number based hidden completion/occlusion effects could leak rearCross visuals into jab frames.
+- Goal: preserve `(17).json` as the base file, scope effects by action id/local frame, add a reusable `jab_jab_cross` combo timeline, and let a part marked `usage: "leadWholeArmJabProxy"` act as the runtime jab proxy.
+- Non-goals: no physical part merge, no new coordinate system, no runtime swapping between `(8).json` and `(17).json`, no broad save schema rewrite, and no overlap/blend solver for the first combo version.
+- Constraints: preserve `part.rect`, `pivotNormalized`, `jointNormalized`, `handTipNormalized` style data, keep rearCross segmented behavior, and keep legacy project load compatible.
+
+Options considered:
+
+- Drive jab by reusing the segmented lead arm chain with correction layers. Pro: no extra proxy metadata. Con/risk: continues to fight the `(17).json` rig shape and can double-apply lead arm corrections.
+- Add a runtime-only lead-arm composite/proxy ownership layer keyed by action binding profile. Pro: keeps real parts separate, keeps rearCross segmented, and gives jab a whole-arm path when a proxy part exists. Con/risk: renderer/effect visibility needs action-aware checks. Chosen.
+
+Implemented behavior:
+
+- Added `ComboSpec`/`ComboActionItem` style combo support and a `jab_jab_cross` default sequence: `jab` gap 2, `jab` gap 3, `rearCross` gap 0.
+- `buildComboTimeline()` appends existing action-generated frames into one global timeline and preserves source action id, action index, local frame, impact, events, patch schedules, mask schedules, and action-scoped effects with global offsets.
+- Added `scripts/lead-arm-composite.js`.
+  - Jab binding chooses `wholeArmProxy` when a part has `usage: "leadWholeArmJabProxy"`.
+  - Without a proxy, jab can still use `compositeRigid` ownership for `leadUpperArm`, `leadForearm`, and lead hand/glove.
+  - RearCross keeps segmented rear-arm behavior and hides the jab proxy while restoring segmented lead parts.
+- Added exclusive ownership/locked-part handling so lead-arm composite/proxy frames do not receive duplicate segmented chain, handTip, or elbow correction transforms.
+- Added `scripts/action-scoped-effects.js`.
+  - Effects are resolved by action id plus local frame, not only by global frame number.
+  - RearCross hidden completion, patch visibility, visibility masks, depth overrides, and related effects are skipped when the active action is jab.
+  - Combo playback maps global frame back to source action id/local frame before effect lookup.
+- Project save/load now preserves optional `part.usage`, including `leadWholeArmJabProxy`.
+- Inspector UI now exposes a `Usage` select so a selected part can be marked as `leadWholeArmJabProxy`; status text reports `leadArmMode=wholeArmProxy` and `proxyPartId=...` when active.
+- Preview render, hidden-fill, and scene paths consult runtime visibility so jab shows the proxy and hides lead segmented members, while rearCross hides the proxy and shows normal segmented members.
+- Action/combo preview controls can select single actions (`jab`, `rearCross`) or combo mode (`jab_jab_cross`) while keeping frame shape compatible with the existing editor/trajectory/preview renderer.
+
+Impact note:
+
+- `(17).json` is still the base rig; `(8).json` is only useful as a reference for whole-arm jab curves.
+- `usage: "leadWholeArmJabProxy"` is metadata, not a merge operation. It can be set from the inspector and round-trips through JSON.
+- Existing frame-based rearCross effect data is migrated/treated as rearCross-scoped so the same local frame number cannot trigger rearCross occlusion during jab.
+- The current combo implementation appends full actions with guard/recover assumptions and simple gap holds. Blend/overlap remains future work.
+
+Regression tests added or updated:
+
+- `tests/combo-timeline.test.js`
+- `tests/action-scoped-effects.test.js`
+- `tests/lead-arm-composite.test.js`
+- `tests/preview-render-order-hidden-fill.test.js`
+- `tests/ui-inspector.test.js`
+- Related selector/planner/render tests were updated for centralized action timeline access and proxy visibility.
+
+Verification for this work:
+
+- `node tests\combo-timeline.test.js`
+- `node tests\action-scoped-effects.test.js`
+- `node tests\lead-arm-composite.test.js`
+- `node tests\preview-render-order-hidden-fill.test.js`
+- `node tests\ui-inspector.test.js`
+- `node tests\part-commands.test.js`
+- `node tests\cutscene-action-selectors.test.js`
+- `node tests\motion-planner-commands.test.js`
+- `node tests\preview-render-order.test.js`
+- `node tests\cutscene-motion-status.test.js`
+- `node tests\hidden-completion-supplemental-part.test.js`
+- `node tests\action-frame-editor.test.js`
+- `node tests\hidden-completion-roundtrip.test.js`
+- `node tests\ai-rig-import.test.js`
+
 ### Latest 2026-06-18 Saved Cutscene Sequence Handoff
 
 This handoff captures the changed sequence approach: instead of uploading multiple JSON files directly into the sequence UI, the user loads one project JSON through the normal app flow, saves that loaded motion as `cutscene1`, `cutscene2`, and so on, clears only the loaded JSON project data, then loads the next JSON and builds a sequence from the saved cutscene clips.

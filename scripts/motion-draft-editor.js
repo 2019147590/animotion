@@ -1,6 +1,7 @@
 {
   const global = typeof window !== "undefined" ? window : globalThis;
   const Animotion = global.Animotion || (global.Animotion = {});
+  const PROVIDER_GENERATION_ENABLED = false;
 
   function installControls() {
     if (typeof document === "undefined") return;
@@ -58,6 +59,9 @@
       else if (result && assetId) markHiddenCompletionReady(assetId);
     }).catch((error) => updateHiddenCompletion({ assetStatus: "queued", requestId: error.message }));
     return requested;
+  }
+  function providerGenerationDisabled() {
+    return !PROVIDER_GENERATION_ENABLED;
   }
   function markHiddenCompletionReady(assetId = currentAssetId()) {
     if (!assetId) return null;
@@ -125,7 +129,7 @@
     setInputValue("#motionDraftHiddenStatus", context.draft.hiddenCompletion.status);
     setInputValue("#motionDraftAssetStatus", context.draft.hiddenCompletion.assetStatus);
     setInputValue("#motionDraftAssetId", context.draft.hiddenCompletion.assetId || "");
-    setButtonState("#requestHiddenCompletion", context.draft.hiddenCompletion.assetStatus === "requested");
+    setButtonState("#requestHiddenCompletion", providerGenerationDisabled() || context.draft.hiddenCompletion.assetStatus === "requested");
     setButtonState("#markHiddenCompletionReady", !currentAssetId());
     setButtonState("#removeHiddenCompletionAsset", context.draft.hiddenCompletion.assetStatus !== "ready");
   }
@@ -214,7 +218,10 @@
   function bindClick(selector, handler) {
     const element = document.querySelector(selector);
     if (element && !element.dataset.motionDraftBound) {
-      element.addEventListener("click", handler);
+      element.addEventListener("click", (event) => {
+        if (element.disabled) return;
+        handler(event);
+      });
       element.dataset.motionDraftBound = "true";
     }
   }

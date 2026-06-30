@@ -132,6 +132,7 @@
     els.editName.addEventListener("input", () => update({ name: els.editName.value }));
     els.editType.addEventListener("change", () => update({ type: els.editType.value }));
     els.editHumanRole?.addEventListener("change", () => update({ humanRole: els.editHumanRole.value || null }));
+    els.editUsage?.addEventListener("change", () => update({ usage: els.editUsage.value || null }));
     els.editParent.addEventListener("change", () => update({ parentId: els.editParent.value || null }));
     els.autoPlaceArmHandles?.addEventListener("click", autoPlaceArmHandles);
     els.pivotX.addEventListener("input", () => updatePoint("pivot", "x", Number(els.pivotX.value)));

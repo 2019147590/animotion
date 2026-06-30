@@ -72,6 +72,7 @@
       name: stringOrDefault(part.name, `part_${index + 1}`),
       type: PART_TYPES.has(part.type) ? part.type : "prop",
       humanRole: Animotion.humanRigSchema?.normalizeRole?.(part.humanRole) || null,
+      ...(part.usage ? { usage: String(part.usage) } : {}),
       ...(part.splitFromPartId ? { splitFromPartId: String(part.splitFromPartId) } : {}), ...(part.originalSourcePartId ? { originalSourcePartId: String(part.originalSourcePartId) } : {}), ...(part.splitMethod ? { splitMethod: String(part.splitMethod) } : {}), ...(part.sourceArmOnlyPartId ? { sourceArmOnlyPartId: String(part.sourceArmOnlyPartId) } : {}),
       assetId: stringOrDefault(part.assetId, `asset-${id}`),
       sourceAssetId: stringOrDefault(part.sourceAssetId, "source-image"),
@@ -262,13 +263,8 @@
     };
   }
 
-  function clampNumber(value, min, max, fallback) {
-    return Math.min(max, Math.max(min, numberOrDefault(value, fallback)));
-  }
-
-  function intOrDefault(value, fallback) {
-    return Math.round(numberOrDefault(value, fallback));
-  }
+  function clampNumber(value, min, max, fallback) { return Math.min(max, Math.max(min, numberOrDefault(value, fallback))); }
+  function intOrDefault(value, fallback) { return Math.round(numberOrDefault(value, fallback)); }
 
   function numberOrDefault(value, fallback) {
     const number = Number(value);

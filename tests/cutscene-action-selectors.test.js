@@ -82,7 +82,7 @@ function fakeElements() {
     "zoomReset", "separateCharacter", "partsList", "emptyInspector", "partInspector", "insertKeyframe",
     "deleteKeyframe", "autoAnticipation", "keyframeStatus", "impactExaggerationStatus", "impactExaggerationEnabled",
     "cutsceneMotionStatus", "editName", "editType", "pivotEditTarget", "pivotX", "pivotY", "jointX", "jointY",
-    "editHumanRole", "pivotXLabel", "pivotYLabel", "jointXLabel", "jointYLabel", "handTipXLabel", "handTipYLabel",
+    "editHumanRole", "editUsage", "pivotXLabel", "pivotYLabel", "jointXLabel", "jointYLabel", "handTipXLabel", "handTipYLabel",
     "autoPlaceArmHandles", "autoPlaceArmHandlesStatus", "handTipX", "handTipY", "editOrder", "editAlpha",
     "editHidden", "motionX", "motionY", "motionRotate", "motionScaleY", "motionJointX", "motionJointY",
     "motionPhase", "editParent", "motionTemplate", "selectionTool", "sourcePanelX", "sourcePanelY",

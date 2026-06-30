@@ -21,6 +21,8 @@
 
   function trackKeyframe(part, beat, context) {
     const pose = Animotion.motionModel.defaultCustomMotion();
+    const compositePose = Animotion.leadArmComposite?.poseForPart?.(part, beat, context);
+    if (compositePose) return { frame: beat.at, pose: compositePose };
     const parentId = parentIdFor(part);
     const chainFactor = separateChainMotionFactor(part, context.chain);
     if (part.id === context.primary.id) return primaryKeyframe(part, beat, context, chainFactor, pose);
@@ -132,7 +134,7 @@
   function trackContext(parts, primary, options) {
     const base = options.base || {}, active = options.active || activeKeys(primary, parts), bridge = options.bridge || {};
     const chain = Animotion.armChainResolver?.resolve?.(parts, primary?.id);
-    const context = { parts, primary, base, active, bridge, chain, leadRetreat: null };
+    const context = { parts, primary, base, active, bridge, chain, bindingProfile: bridge.jointAction?.bindingProfile || null, leadRetreat: null };
     context.leadRetreat = leadHandRetreatContext(context);
     return context;
   }

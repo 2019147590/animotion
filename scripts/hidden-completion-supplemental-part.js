@@ -238,7 +238,7 @@
 
   function actionIdentity(action = {}) {
     if (typeof action === "string") return action || null;
-    return action.id || action.actionId || action.source || null;
+    return Animotion.actionScopedEffects?.actionIdFor?.(action) || action.id || action.actionId || action.source || null;
   }
 
   function actionMatches(part, actionId) {

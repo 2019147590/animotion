@@ -30,9 +30,11 @@
     const draft = activeDraftForPart(part, context.state);
     const hidden = draft?.hiddenCompletion;
     if (!hidden?.assetId || hidden.assetStatus !== "ready") return null;
+    const action = Animotion.cutsceneActionSelectors?.getActiveJointAction?.(context.state)?.action;
+    const frame = context.frame || context.state?.currentFrame || 1;
+    if (Animotion.actionScopedEffects?.draftAllowed && !Animotion.actionScopedEffects.draftAllowed(draft, action, frame, part?.id)) return null;
     const asset = Animotion.hiddenCompletionAssets?.findById?.(context.state?.project?.assets, hidden.assetId);
     if (asset?.completionMethod !== "symmetry" || asset.sourcePartId !== part?.id) return null;
-    const action = Animotion.cutsceneActionSelectors?.getActiveJointAction?.(context.state)?.action;
     if (Animotion.hiddenCompletionSupplementalPart?.hasVisiblePartForPatch?.(context.state?.parts, asset.id, { action })) return null;
     return asset;
   }

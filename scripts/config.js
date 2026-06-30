@@ -55,6 +55,7 @@
     editName: "#editName",
     editType: "#editType",
     editHumanRole: "#editHumanRole",
+    editUsage: "#editUsage",
     editParent: "#editParent",
     pivotEditTarget: "#pivotEditTarget",
     autoPlaceArmHandles: "#autoPlaceArmHandles",

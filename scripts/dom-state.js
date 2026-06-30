@@ -42,6 +42,7 @@
     currentFrame: 1,
     cutsceneBridge: null,
     lookismPreset: null,
+    comboTimelineSelection: null,
     actionSequence: { steps: [] },
     actionSequenceClips: [],
     panelEditTarget: "source",

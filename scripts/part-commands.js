@@ -211,6 +211,7 @@
     if (hasOwn(next, "alpha")) next.alpha = geometry.clamp(Number(next.alpha) || 0, 0, 1);
     if (hasOwn(next, "hidden")) next.hidden = Boolean(next.hidden);
     if (hasOwn(next, "humanRole")) next.humanRole = Animotion.humanRigSchema?.normalizeRole?.(next.humanRole) || null;
+    if (hasOwn(next, "usage")) next.usage = next.usage ? String(next.usage) : null;
     if (hasOwn(next, "visibilityMasks")) next.visibilityMasks = Animotion.partVisibilityMasks?.normalizeList?.(next.visibilityMasks) || [];
     if (hasOwn(next, "customMotion")) next.customMotion = Animotion.motionModel.normalizeCustomMotion(next.customMotion);
     if (hasOwn(next, "supplementalMaskScale")) next.supplementalMaskScale = Math.min(1.5, Math.max(0.5, Number(next.supplementalMaskScale) || 1));

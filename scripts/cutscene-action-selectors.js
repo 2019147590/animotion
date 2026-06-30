@@ -87,6 +87,7 @@
       hoveredEditPoint: null,
       previewDrag: null,
       previewDrawSequenceDebug: null,
+      comboTimelineSelection: null,
       actionSequence: { steps: [] },
       actionSequenceClips: [],
       motionEvaluationDebug: null,

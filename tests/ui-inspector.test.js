@@ -64,7 +64,7 @@ function fakeElements() {
     "zoomReset", "separateCharacter", "partsList", "emptyInspector", "partInspector", "insertKeyframe",
     "deleteKeyframe", "autoAnticipation", "keyframeStatus", "impactExaggerationStatus", "impactExaggerationEnabled",
     "cutsceneMotionStatus", "editName", "editType", "pivotEditTarget", "pivotX", "pivotY", "jointX", "jointY",
-    "editHumanRole", "pivotXLabel", "pivotYLabel", "jointXLabel", "jointYLabel", "handTipXLabel", "handTipYLabel",
+    "editHumanRole", "editUsage", "pivotXLabel", "pivotYLabel", "jointXLabel", "jointYLabel", "handTipXLabel", "handTipYLabel",
     "autoPlaceArmHandles", "autoPlaceArmHandlesStatus",
     "handTipX", "handTipY", "editOrder", "editAlpha", "editHidden", "motionX", "motionY", "motionRotate", "motionScaleY", "motionJointX",
     "motionJointY", "motionPhase", "editParent", "motionTemplate", "selectionTool", "sourcePanelX", "sourcePanelY",
@@ -134,6 +134,7 @@ test("inspector parent select follows selected part parentPartId fallback", () =
   Animotion.ui.refreshUi();
   assert.equal(Animotion.dom.els.editName.value, "head");
   assert.equal(Animotion.dom.els.editHumanRole.value, "head");
+  assert.equal(Animotion.dom.els.editUsage.value, "");
   assert.equal(Animotion.dom.els.editParent.value, "torso");
 });
 
@@ -148,6 +149,20 @@ test("inspector exposes optional humanRole without replacing part type", () => {
 
   assert.equal(part.type, "head");
   assert.equal(part.humanRole, "hand");
+});
+
+test("inspector exposes optional usage for jab whole-arm proxy", () => {
+  const Animotion = loadAnimotion();
+  const part = Animotion.state.parts.find((item) => item.id === "head");
+  Animotion.partCommands = { updatePart: (target, patch) => Object.assign(target, patch) };
+  Animotion.ui.refreshUi();
+
+  Animotion.dom.els.editUsage.value = "leadWholeArmJabProxy";
+  Animotion.ui.updateSelectedPart({ usage: "leadWholeArmJabProxy" });
+
+  assert.equal(part.usage, "leadWholeArmJabProxy");
+  Animotion.ui.refreshUi();
+  assert.equal(Animotion.dom.els.editUsage.value, "leadWholeArmJabProxy");
 });
 
 test("inspector labels and disables arm handles by explicit humanRole", () => {

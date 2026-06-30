@@ -39,6 +39,7 @@ function loadAnimotion() {
     "scripts/timeline.js",
     "scripts/arm-extension-controls.js",
     "scripts/arm-extension.js",
+    "scripts/lead-arm-composite.js",
     "scripts/motion-track-builder.js",
     "scripts/boxing-step-locomotion.js",
     "scripts/motion-planner.js",

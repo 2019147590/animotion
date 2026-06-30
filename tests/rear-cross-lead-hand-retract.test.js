@@ -37,6 +37,7 @@ function loadAnimotion() {
     "scripts/joint-coordinates.js",
     "scripts/cutscene-model.js",
     "scripts/motion-anchors.js",
+    "scripts/lead-arm-composite.js",
     "scripts/motion-track-builder.js",
     "scripts/boxing-step-locomotion.js",
     "scripts/motion-planner.js",

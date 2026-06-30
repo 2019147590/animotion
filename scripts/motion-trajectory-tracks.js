@@ -11,9 +11,14 @@
 
   function trajectoryKeys(action) {
     const focusKey = action?.focusKey || "hip";
-    const keys = [focusKey];
+    const keys = [focusKey, ...comboFocusKeys(action)];
     if (focusKey !== "hip" && hasPoseKey(action, "hip")) keys.push("hip");
     return keys.filter((key, index) => key && keys.indexOf(key) === index && hasPoseKey(action, key));
+  }
+
+  function comboFocusKeys(action = {}) {
+    const steps = action.comboTimeline?.steps || action.targetDebug?.comboTimeline?.steps || [];
+    return (Array.isArray(steps) ? steps : []).map((step) => step.focusKey).filter(Boolean);
   }
 
   function trajectorySamples(action, key) {

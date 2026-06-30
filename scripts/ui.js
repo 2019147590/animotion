@@ -27,6 +27,7 @@
     els.separateCharacter.checked = state.separateCharacter;
     Animotion.panelEditor?.refreshControls?.();
     Animotion.motionPlanner?.refreshControls?.();
+    Animotion.comboTimelineControls?.refreshControls?.();
     Animotion.actionSequenceControls?.refreshControls?.();
     Animotion.armChainRebind?.refreshControls?.();
     Animotion.actionFrameEditor?.refreshControls?.();
@@ -125,6 +126,7 @@
     els.editName.value = part.name;
     els.editType.value = part.type;
     if (els.editHumanRole) els.editHumanRole.value = part.humanRole || "";
+    if (els.editUsage) els.editUsage.value = part.usage || "";
     els.pivotEditTarget.value = els.pivotEditTarget.value || "anchor";
     renderRigSemanticControls(part);
     renderArmHandleAutoPlace(part);

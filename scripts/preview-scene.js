@@ -65,7 +65,8 @@
     const crop = Animotion.panelEditor?.setupFor?.("source")?.crop || { x: 0, y: 0 };
     const ctx = plate.getContext("2d");
     ctx.globalCompositeOperation = "destination-out";
-    for (const part of state.parts) if (!part.hidden) ctx.fill(pathFromShape(geometry.absoluteShapeFromPart(part), -crop.x, -crop.y));
+    const action = state.cutsceneBridge?.jointAction || null;
+    for (const part of state.parts) if (!part.hidden && runtimeVisible(part, action)) ctx.fill(pathFromShape(geometry.absoluteShapeFromPart(part), -crop.x, -crop.y));
     ctx.globalCompositeOperation = "source-over";
   }
 
@@ -107,7 +108,7 @@
   function drawDepthTopUp(context) {
     const frame = state.running ? context.currentMotionFrame(Animotion.playbackSpeed.playbackSeconds(state, context.now)) : state.currentFrame;
     const part = Animotion.cutsceneDepth?.postPassLiftPart?.(state.parts, { bridge: context.cutscene?.bridge, frame, parts: state.parts, selectedPartId: state.selectedPartId });
-    if (!part || part.hidden) return;
+    if (!part || part.hidden || !runtimeVisible(part, context.cutscene?.bridge?.jointAction)) return;
     const t = Animotion.playbackSpeed.playbackSeconds(state, context.now);
     previewCtx.save();
     Animotion.previewTransform.applySourceFrame(previewCtx, context.view, state.previewSourceFrame, state.previewSourceTransform);
@@ -139,7 +140,8 @@
     return { x: values.impactX, y: values.impactY, scale: values.impactScale, rotation: values.impactRotation };
   }
 
-  function visiblePartIds() { return state.parts.filter((part) => !part.hidden).map((part) => part.id); }
+  function visiblePartIds() { const action = state.cutsceneBridge?.jointAction || null; return state.parts.filter((part) => !part.hidden && runtimeVisible(part, action)).map((part) => part.id); }
+  function runtimeVisible(part, action) { return Animotion.leadArmComposite?.runtimeVisible?.(part, { action }) !== false; }
   function impactPanelImage() { return Animotion.panelEditor?.createPanelCanvas("impact") || state.nextImage; }
   Animotion.previewScene = { drawBackground, drawCutsceneEffects, drawImpactLayers, cutsceneValues, sourceTransformFor, impactPanelImage };
 }
