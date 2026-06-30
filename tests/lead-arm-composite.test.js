@@ -127,6 +127,39 @@ test("17 jab uses lead whole-arm proxy when usage is present", () => {
   assert.equal(text.includes("segmentedLeadLocked=true"), true);
 });
 
+test("jab uses lead whole-arm proxy even when proxy itself is selected", () => {
+  const Animotion = loadAnimotion();
+  const parts = withLeadProxy(projectParts(Animotion, "animotion-project (17).json"));
+  const ids = frontChainIds();
+  const bridge = Animotion.cutsceneModel.normalizeBridge({ durationFrames: 18, impactFrame: 15, effectDirection: { x: 1, y: 0 } });
+  const plan = Animotion.motionPlanner.createPlan(parts, "leadWholeArmJabProxy", bridge, { template: "punch" });
+  const proxyTrack = trackFor(plan.partTracks, "leadWholeArmJabProxy");
+
+  assert.equal(plan.primaryPartId, "leadWholeArmJabProxy");
+  assert.equal(plan.jointAction.bindingProfile.leadArm.mode, "wholeArmProxy");
+  assert.equal(plan.jointAction.bindingProfile.leadArm.proxyPartId, "leadWholeArmJabProxy");
+  assert.equal(plan.jointAction.bindingProfile.leadArm.members.leadUpperArm, ids.upper);
+  assert.equal(plan.jointAction.bindingProfile.leadArm.members.leadForearm, ids.forearm);
+  assert.equal(plan.jointAction.bindingProfile.leadArm.members.leadHand, ids.hand);
+  assert.equal(JSON.stringify(plan.jointAction.bindingProfile.lockedPartIds), JSON.stringify([ids.upper, ids.forearm, ids.hand, "leadWholeArmJabProxy"]));
+  assert.equal(plan.jointAction.targetDebug.segmentedLeadLocked, true);
+  assert.equal(plan.jointAction.targetDebug.leadArmComposite.mode, "wholeArmProxy");
+  assert.equal(plan.jointAction.targetDebug.proxyPartId, "leadWholeArmJabProxy");
+  assert.equal(plan.jointAction.targetDebug.originalSelectedPartId, "leadWholeArmJabProxy");
+  assert.equal(plan.jointAction.targetDebug.originalSegmentedLeadHandId, ids.hand);
+  assert.equal(plan.jointAction.targetDebug.originalTerminalPunchPartId, ids.hand);
+  assert.equal(plan.jointAction.targetDebug.resolvedArmChain.handOrGloveId, ids.hand);
+  assert.equal(JSON.stringify(plan.jointAction.impactExaggeration.targetPartIds), JSON.stringify(["leadWholeArmJabProxy"]));
+  for (const frame of [8, 12, 15]) {
+    const pose = proxyTrack.keyframes.find((keyframe) => keyframe.frame === frame).pose;
+    assert.equal(Math.hypot(pose.jointX, pose.jointY) > 0, true);
+    assert.equal(Math.hypot(pose.x, pose.y) <= 0.001, true);
+  }
+  assert.equal(trackFor(plan.partTracks, ids.upper).keyframes.every((keyframe) => samePose(keyframe.pose, Animotion.motionModel.defaultCustomMotion())), true);
+  assert.equal(trackFor(plan.partTracks, ids.forearm).keyframes.every((keyframe) => samePose(keyframe.pose, Animotion.motionModel.defaultCustomMotion())), true);
+  assert.equal(trackFor(plan.partTracks, ids.hand).keyframes.every((keyframe) => samePose(keyframe.pose, Animotion.motionModel.defaultCustomMotion())), true);
+});
+
 test("17 rearCross keeps rear segmented chain behavior", () => {
   const Animotion = loadAnimotion();
   const parts = projectParts(Animotion, "animotion-project (17).json");

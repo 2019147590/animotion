@@ -5,9 +5,9 @@
 
   function bindingProfileFor(parts = [], primary = null, targetDebug = {}) {
     if (targetDebug.punchStyle !== "jab") return null;
+    const proxy = wholeArmProxy(parts, primary);
     const chain = chainFromDebug(parts, primary, targetDebug);
     if (!chain.upperArmId || !chain.forearmId || !chain.handOrGloveId) return null;
-    const proxy = wholeArmProxy(parts);
     const lockedPartIds = [chain.upperArmId, chain.forearmId, chain.handOrGloveId];
     if (proxy?.id) lockedPartIds.push(proxy.id);
     return {
@@ -51,6 +51,8 @@
 
   function proxyPrimaryPose(part, beat, context = {}, pose = null) {
     const next = pose || Animotion.motionModel?.defaultCustomMotion?.() || defaultPose();
+    const reference = referencePoseForFrame(context.bindingProfile?.leadArm?.referenceCurve || part.jabReferenceCurve, beat.at);
+    if (reference) return Object.assign(next, reference);
     const active = context.active || {};
     const base = context.base || {};
     const baseEnd = pointFromArray(base[active.end]);
@@ -94,6 +96,25 @@
     };
   }
 
+  function referencePoseForFrame(curve = null, frame = 1) {
+    const frames = Array.isArray(curve?.frames) ? curve.frames : [];
+    if (!frames.length) return null;
+    const current = Math.max(1, Math.round(Number(frame) || 1));
+    const exact = frames.find((item) => item.frame === current);
+    if (exact) return normalizePose(exact.pose);
+    const before = [...frames].reverse().find((item) => item.frame <= current) || frames[0];
+    const after = frames.find((item) => item.frame >= current) || frames[frames.length - 1];
+    if (!before || !after || before.frame === after.frame) return normalizePose(before?.pose || after?.pose);
+    const ratio = (current - before.frame) / (after.frame - before.frame);
+    const a = normalizePose(before.pose), b = normalizePose(after.pose);
+    return {
+      ...defaultPose(),
+      jointX: round(lerp(a.jointX, b.jointX, ratio)),
+      jointY: round(lerp(a.jointY, b.jointY, ratio)),
+      rotate: round(lerp(a.rotate, b.rotate, ratio)),
+    };
+  }
+
   function groupPose(beat = {}, context = {}, pose) {
     const active = context.active || {};
     const base = context.base || {};
@@ -123,15 +144,84 @@
       };
     }
     const resolved = Animotion.armChainResolver?.resolve?.(parts, primary?.id || primary);
-    return {
+    const chain = {
       upperArmId: resolved?.upperArmId || null,
       forearmId: resolved?.forearmId || null,
       handOrGloveId: resolved?.handOrGloveId || null,
     };
+    if (chain.upperArmId && chain.forearmId && chain.handOrGloveId) return chain;
+    const proxy = wholeArmProxy(parts, primary);
+    return proxy ? nearestLeadChain(parts, proxy) || chain : chain;
   }
 
-  function wholeArmProxy(parts = []) {
+  function wholeArmProxy(parts = [], preferred = null) {
+    if (preferred?.usage === "leadWholeArmJabProxy") return preferred;
     return parts.find((part) => part?.usage === "leadWholeArmJabProxy") || null;
+  }
+
+  function nearestLeadChain(parts = [], proxy = null) {
+    const chains = uniqueChains(parts).filter((chain) => chain.upperArmId && chain.forearmId && chain.handOrGloveId);
+    if (!chains.length) return null;
+    return chains.sort((a, b) => chainScore(a, proxy) - chainScore(b, proxy))[0] || null;
+  }
+
+  function uniqueChains(parts = []) {
+    const seen = new Set(), chains = [];
+    for (const part of parts) {
+      if (part?.usage === "leadWholeArmJabProxy") continue;
+      const resolved = Animotion.armChainResolver?.resolve?.(parts, part);
+      const handId = resolved?.handOrGloveId;
+      if (!handId || seen.has(handId)) continue;
+      seen.add(handId);
+      chains.push({
+        upperArmId: resolved.upperArmId || null,
+        forearmId: resolved.forearmId || null,
+        handOrGloveId: handId,
+        upperArm: resolved.upperArm || parts.find((item) => item.id === resolved.upperArmId) || null,
+        forearm: resolved.forearm || parts.find((item) => item.id === resolved.forearmId) || null,
+        handOrGlove: resolved.handOrGlove || parts.find((item) => item.id === handId) || null,
+      });
+    }
+    return chains;
+  }
+
+  function chainScore(chain, proxy) {
+    const proxyCenter = centerPoint(proxy);
+    const bounds = chainBounds(chain);
+    const chainCenter = centerPoint({ rect: bounds });
+    const distance = proxyCenter && chainCenter ? Math.hypot(proxyCenter.x - chainCenter.x, proxyCenter.y - chainCenter.y) : 9999;
+    const overlapBonus = proxy?.rect && bounds && rectsOverlap(proxy.rect, bounds) ? -120 : 0;
+    const leadBonus = /(^|[^a-z])(front|lead|rhand|right)([^a-z]|$)/i.test(chainText(chain)) ? -40 : 0;
+    return distance + overlapBonus + leadBonus;
+  }
+
+  function chainBounds(chain) {
+    const rects = [chain.upperArm, chain.forearm, chain.handOrGlove].map((part) => part?.rect).filter(Boolean);
+    if (!rects.length) return null;
+    const minX = Math.min(...rects.map((rect) => Number(rect.x) || 0));
+    const minY = Math.min(...rects.map((rect) => Number(rect.y) || 0));
+    const maxX = Math.max(...rects.map((rect) => Number(rect.x || 0) + Number(rect.w || 0)));
+    const maxY = Math.max(...rects.map((rect) => Number(rect.y || 0) + Number(rect.h || 0)));
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+  }
+
+  function centerPoint(part = {}) {
+    const rect = part?.rect || part;
+    if (!rect) return null;
+    return { x: Number(rect.x || 0) + Number(rect.w || 0) * 0.5, y: Number(rect.y || 0) + Number(rect.h || 0) * 0.5 };
+  }
+
+  function rectsOverlap(a = {}, b = {}) {
+    return Number(a.x || 0) < Number(b.x || 0) + Number(b.w || 0)
+      && Number(a.x || 0) + Number(a.w || 0) > Number(b.x || 0)
+      && Number(a.y || 0) < Number(b.y || 0) + Number(b.h || 0)
+      && Number(a.y || 0) + Number(a.h || 0) > Number(b.y || 0);
+  }
+
+  function chainText(chain = {}) {
+    return [chain.upperArm, chain.forearm, chain.handOrGlove]
+      .map((part) => `${part?.id || ""} ${part?.name || ""} ${part?.humanRole || ""}`)
+      .join(" ");
   }
 
   function parentRootDelta(base = {}, pose = {}) {
@@ -174,6 +264,10 @@
 
   function round(value) {
     return Math.round(value * 100) / 100;
+  }
+
+  function lerp(a, b, ratio) {
+    return Number(a || 0) + (Number(b || 0) - Number(a || 0)) * ratio;
   }
 
   function numberOrDefault(value, fallback) {

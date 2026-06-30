@@ -69,6 +69,11 @@
       targetDebug.leadArmComposite = bindingProfile.leadArm;
       targetDebug.lockedPartIds = bindingProfile.lockedPartIds;
       targetDebug.exclusiveOwnership = bindingProfile.exclusiveOwnership;
+      targetDebug.resolvedArmChain = {
+        upperArmId: bindingProfile.leadArm?.members?.leadUpperArm || null,
+        forearmId: bindingProfile.leadArm?.members?.leadForearm || null,
+        handOrGloveId: bindingProfile.leadArm?.members?.leadHand || null,
+      };
     }
     primary = Animotion.leadArmComposite?.effectivePrimaryFor?.(parts, requestedPrimary, targetDebug, bindingProfile) || requestedPrimary;
     applyEffectivePrimaryDebug(targetDebug, {
@@ -85,7 +90,7 @@
       focusKey: active.end,
       actionTimeline,
       ...(bindingProfile ? { bindingProfile } : {}),
-      impactExaggeration: impactExaggerationFor(actionTimeline, parts, primary),
+      impactExaggeration: impactExaggerationFor(actionTimeline, parts, primary, bindingProfile),
       anchors,
       beats,
       targetDebug,
@@ -240,22 +245,29 @@
   function motionTargetForPlan(plan, point) { return plan.activeMotionTarget ? { ...plan.activeMotionTarget, point } : Animotion.motionTargetState?.generatedTarget?.(point) || null; }
   function templateFor(template) { return TEMPLATES[template] || (Animotion.actionTimelineModel?.hasTemplate?.(template) ? Animotion.actionTimelineModel.timelineForTemplate(template) : null); }
   function actionTimelineFor(template, bridge) { return Animotion.actionTimelineModel?.hasTemplate?.(template) ? Animotion.actionTimelineModel.timelineForTemplate(template, bridge) : null; }
-  function impactExaggerationFor(actionTimeline, parts, primary) { return Animotion.impactExaggerationLayer?.createDefaultImpactExaggerationForActionTimeline?.(actionTimeline, { parts, primaryPartId: primary?.id }) || null; }
+  function impactExaggerationFor(actionTimeline, parts, primary, bindingProfile = null) {
+    const proxyId = bindingProfile?.leadArm?.mode === "wholeArmProxy" ? bindingProfile.leadArm.proxyPartId : null;
+    return Animotion.impactExaggerationLayer?.createDefaultImpactExaggerationForActionTimeline?.(actionTimeline, { parts, primaryPartId: primary?.id, ...(proxyId ? { targetPartIds: [proxyId] } : {}) }) || null;
+  }
   function applyEffectivePrimaryDebug(targetDebug, context) {
     const { primary, requestedPrimary, originalSelectedPartId, bindingProfile } = context;
-    if (!primary?.id || primary.id === requestedPrimary?.id) {
+    const proxyMode = bindingProfile?.leadArm?.mode === "wholeArmProxy";
+    if (!primary?.id) return;
+    if (!proxyMode && primary.id === requestedPrimary?.id) {
       targetDebug.primaryPartId = requestedPrimary?.id || null;
       targetDebug.effectivePrimaryPartId = requestedPrimary?.id || null;
       targetDebug.originalSelectedPartId = originalSelectedPartId || null;
       return;
     }
+    const segmentedHandId = bindingProfile?.leadArm?.members?.leadHand || null;
     targetDebug.originalSelectedPartId = originalSelectedPartId || null;
     targetDebug.originalPrimaryPartId = requestedPrimary?.id || null;
+    targetDebug.originalSegmentedLeadHandId = segmentedHandId;
     targetDebug.effectivePrimaryPartId = primary.id;
     targetDebug.primaryPartId = primary.id;
     targetDebug.proxyPartId = bindingProfile?.leadArm?.proxyPartId || null;
     targetDebug.proxyUsage = bindingProfile?.leadArm?.proxyUsage || null;
-    targetDebug.originalTerminalPunchPartId = targetDebug.terminalPunchPartId || null;
+    targetDebug.originalTerminalPunchPartId = segmentedHandId || targetDebug.terminalPunchPartId || null;
     targetDebug.terminalPunchPartId = primary.id;
     targetDebug.separateRigPath = false;
     targetDebug.segmentedLeadLocked = true;
