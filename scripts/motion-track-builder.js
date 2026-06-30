@@ -21,6 +21,9 @@
 
   function trackKeyframe(part, beat, context) {
     const pose = Animotion.motionModel.defaultCustomMotion();
+    if (Animotion.leadArmComposite?.isWholeArmProxyPrimary?.(part, context)) {
+      return { frame: beat.at, pose: Animotion.leadArmComposite.proxyPrimaryPose(part, beat, context, pose) };
+    }
     const compositePose = Animotion.leadArmComposite?.poseForPart?.(part, beat, context);
     if (compositePose) return { frame: beat.at, pose: compositePose };
     const parentId = parentIdFor(part);

@@ -165,6 +165,19 @@ function separateBoxerParts() {
   ];
 }
 
+function withLeadProxy(parts) {
+  return [
+    ...parts,
+    {
+      ...part("lead_proxy", "arm", { x: 94, y: 32, w: 62, h: 36 }),
+      humanRole: "upperArm",
+      usage: "leadWholeArmJabProxy",
+      pivot: { x: 0, y: 18 },
+      joint: { x: 62, y: 18 },
+    },
+  ];
+}
+
 function faceLeftArm02RearParts() {
   return [
     part("body", "body", { x: 90, y: 28, w: 20, h: 64 }),
@@ -380,6 +393,32 @@ test("separate front chain uses terminal glove endpoint and jab path", () => {
   assert.equal(bridge.jointAction.bindingProfile.leadArm.mode, "compositeRigid");
   assert.equal(JSON.stringify(bridge.jointAction.bindingProfile.lockedPartIds), JSON.stringify(["front_upperArm", "front_forearm", "front_glove"]));
   assert.equal(poseMagnitude(keyPose(Animotion.state.parts, "front_upperArm", impact.at)) > 0, true);
+  assert.deepEqual(keyPose(Animotion.state.parts, "front_forearm", impact.at), Animotion.motionModel.defaultCustomMotion());
+  assert.deepEqual(keyPose(Animotion.state.parts, "front_glove", impact.at), Animotion.motionModel.defaultCustomMotion());
+});
+
+test("front jab with whole-arm proxy stores proxy as effective primary", () => {
+  const Animotion = loadAnimotion();
+  Animotion.state.parts = withLeadProxy(separateBoxerParts());
+  Animotion.state.project.parts = Animotion.state.parts;
+  Animotion.state.selectedPartId = "front_forearm";
+  Animotion.state.motionPlan = { template: "punch", targetMode: false };
+
+  clickAuto(Animotion);
+
+  const bridge = Animotion.state.cutsceneBridge;
+  const impact = beatMap(bridge.jointAction).impact;
+  const proxy = Animotion.state.parts.find((part) => part.id === "lead_proxy");
+  assert.equal(bridge.primaryPartId, "lead_proxy");
+  assert.equal(bridge.jointAction.effectivePrimaryPartId, "lead_proxy");
+  assert.equal(bridge.jointAction.targetDebug.leadArmComposite.mode, "wholeArmProxy");
+  assert.equal(bridge.jointAction.targetDebug.effectivePrimaryPartId, "lead_proxy");
+  assert.equal(bridge.jointAction.targetDebug.originalSelectedPartId, "front_forearm");
+  assert.equal(bridge.jointAction.targetDebug.segmentedLeadLocked, true);
+  assert.equal(proxy.keyframes.length > 0, true);
+  assert.equal(JSON.stringify(proxy.keyframes.map((keyframe) => keyframe.frame)), JSON.stringify([1, 4, 8, 12, 15, 18]));
+  assert.equal(Math.hypot(keyPose(Animotion.state.parts, "lead_proxy", impact.at).jointX, keyPose(Animotion.state.parts, "lead_proxy", impact.at).jointY) > 0, true);
+  assert.deepEqual(keyPose(Animotion.state.parts, "front_upperArm", impact.at), Animotion.motionModel.defaultCustomMotion());
   assert.deepEqual(keyPose(Animotion.state.parts, "front_forearm", impact.at), Animotion.motionModel.defaultCustomMotion());
   assert.deepEqual(keyPose(Animotion.state.parts, "front_glove", impact.at), Animotion.motionModel.defaultCustomMotion());
 });

@@ -31,11 +31,41 @@
     if (!isLockedPart(profile, part?.id)) return null;
     const pose = Animotion.motionModel?.defaultCustomMotion?.() || defaultPose();
     if (profile.leadArm?.mode === "wholeArmProxy") {
-      return part.id === profile.leadArm.proxyPartId ? groupPose(beat, context, pose) : pose;
+      return part.id === profile.leadArm.proxyPartId ? null : pose;
     }
     const upperId = profile.leadArm?.members?.leadUpperArm;
     if (part.id !== upperId) return pose;
     return groupPose(beat, context, pose);
+  }
+
+  function effectivePrimaryFor(parts = [], primary = null, targetDebug = {}, bindingProfile = null) {
+    const proxyId = bindingProfile?.leadArm?.mode === "wholeArmProxy" ? bindingProfile.leadArm.proxyPartId : null;
+    if (!proxyId || targetDebug.punchStyle !== "jab") return primary;
+    return parts.find((part) => part.id === proxyId) || primary;
+  }
+
+  function isWholeArmProxyPrimary(part, context = {}) {
+    const profile = context.bindingProfile;
+    return Boolean(part?.id && profile?.leadArm?.mode === "wholeArmProxy" && part.id === profile.leadArm.proxyPartId);
+  }
+
+  function proxyPrimaryPose(part, beat, context = {}, pose = null) {
+    const next = pose || Animotion.motionModel?.defaultCustomMotion?.() || defaultPose();
+    const active = context.active || {};
+    const base = context.base || {};
+    const baseEnd = pointFromArray(base[active.end]);
+    const targetEnd = pointFromArray(beat.pose?.[active.end]);
+    if (!baseEnd || !targetEnd) return next;
+    next.jointX = round(targetEnd.x - baseEnd.x);
+    next.jointY = round(targetEnd.y - baseEnd.y);
+    const baseRoot = pointFromArray(base[active.root]);
+    const targetRoot = pointFromArray(beat.pose?.[active.root]);
+    if (baseRoot && targetRoot) {
+      const baseVector = { x: baseEnd.x - baseRoot.x, y: baseEnd.y - baseRoot.y };
+      const targetVector = { x: targetEnd.x - targetRoot.x, y: targetEnd.y - targetRoot.y };
+      next.rotate = round(clamp(angle(targetVector) - angle(baseVector), -18, 18));
+    }
+    return next;
   }
 
   function isLockedPart(profile = null, partId = null) {
@@ -151,6 +181,6 @@
     return Number.isFinite(number) ? number : fallback;
   }
 
-  Animotion.leadArmComposite = { OWNER_ID, bindingProfileFor, poseForPart, isLockedPart, runtimeVisible, referenceCurveFromPart };
+  Animotion.leadArmComposite = { OWNER_ID, bindingProfileFor, effectivePrimaryFor, poseForPart, isWholeArmProxyPrimary, proxyPrimaryPose, isLockedPart, runtimeVisible, referenceCurveFromPart };
   if (typeof module !== "undefined") module.exports = Animotion.leadArmComposite;
 }

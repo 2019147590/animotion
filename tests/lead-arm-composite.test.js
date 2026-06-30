@@ -87,21 +87,44 @@ test("17 jab uses lead whole-arm proxy when usage is present", () => {
   const bridge = Animotion.cutsceneModel.normalizeBridge({ durationFrames: 18, impactFrame: 15, effectDirection: { x: 1, y: 0 } });
   const plan = Animotion.motionPlanner.createPlan(parts, ids.hand, bridge, { template: "punch" });
   const impact = plan.jointAction.beats.find((beat) => beat.id === "impact").at;
+  const proxyTrack = trackFor(plan.partTracks, "leadWholeArmJabProxy");
 
+  assert.equal(plan.primaryPartId, "leadWholeArmJabProxy");
+  assert.equal(plan.effectivePrimaryPartId, "leadWholeArmJabProxy");
+  assert.equal(plan.originalPrimaryPartId, ids.hand);
+  assert.equal(plan.jointAction.effectivePrimaryPartId, "leadWholeArmJabProxy");
+  assert.equal(plan.jointAction.targetDebug.primaryPartId, "leadWholeArmJabProxy");
+  assert.equal(plan.jointAction.targetDebug.effectivePrimaryPartId, "leadWholeArmJabProxy");
+  assert.equal(plan.jointAction.targetDebug.originalSelectedPartId, ids.hand);
+  assert.equal(plan.jointAction.targetDebug.originalPrimaryPartId, ids.hand);
+  assert.equal(plan.jointAction.targetDebug.terminalPunchPartId, "leadWholeArmJabProxy");
+  assert.equal(plan.jointAction.targetDebug.originalTerminalPunchPartId, ids.hand);
+  assert.equal(plan.jointAction.targetDebug.separateRigPath, false);
+  assert.equal(plan.jointAction.targetDebug.segmentedLeadLocked, true);
   assert.equal(plan.jointAction.bindingProfile.leadArm.mode, "wholeArmProxy");
   assert.equal(plan.jointAction.bindingProfile.leadArm.proxyPartId, "leadWholeArmJabProxy");
   assert.equal(plan.jointAction.targetDebug.leadArmComposite.mode, "wholeArmProxy");
+  assert.equal(JSON.stringify(proxyTrack.keyframes.map((keyframe) => keyframe.frame)), JSON.stringify([1, 4, 8, 12, 15, 18]));
+  assert.equal(proxyTrack.keyframes.length > 0, true);
+  assert.equal(Math.hypot(poseAt(plan, "leadWholeArmJabProxy", impact).jointX, poseAt(plan, "leadWholeArmJabProxy", impact).jointY) > 0, true);
   assert.equal(poseMagnitude(poseAt(plan, "leadWholeArmJabProxy", impact)) > 0, true);
   assert.deepEqual(poseAt(plan, ids.upper, impact), Animotion.motionModel.defaultCustomMotion());
   assert.deepEqual(poseAt(plan, ids.forearm, impact), Animotion.motionModel.defaultCustomMotion());
   assert.deepEqual(poseAt(plan, ids.hand, impact), Animotion.motionModel.defaultCustomMotion());
+  assert.equal(trackFor(plan.partTracks, ids.upper).keyframes.every((keyframe) => samePose(keyframe.pose, Animotion.motionModel.defaultCustomMotion())), true);
+  assert.equal(trackFor(plan.partTracks, ids.forearm).keyframes.every((keyframe) => samePose(keyframe.pose, Animotion.motionModel.defaultCustomMotion())), true);
+  assert.equal(trackFor(plan.partTracks, ids.hand).keyframes.every((keyframe) => samePose(keyframe.pose, Animotion.motionModel.defaultCustomMotion())), true);
   assert.equal(Animotion.leadArmComposite.runtimeVisible(parts.find((part) => part.id === "leadWholeArmJabProxy"), { action: plan.jointAction }), true);
   assert.equal(Animotion.leadArmComposite.runtimeVisible(parts.find((part) => part.id === ids.upper), { action: plan.jointAction }), false);
 
-  const status = Animotion.cutsceneMotionStatus.statusForBridge({ ...bridge, jointAction: plan.jointAction }, { parts, currentFrame: impact });
+  const status = Animotion.cutsceneMotionStatus.statusForBridge({ ...bridge, primaryPartId: plan.primaryPartId, jointAction: plan.jointAction }, { parts, currentFrame: impact });
   const text = Animotion.cutsceneMotionStatus.statusText(status);
+  assert.equal(status.primaryPartId, "leadWholeArmJabProxy");
   assert.equal(text.includes("leadArmMode=wholeArmProxy"), true);
   assert.equal(text.includes("proxyPartId=leadWholeArmJabProxy"), true);
+  assert.equal(text.includes("effectivePrimaryPartId=leadWholeArmJabProxy"), true);
+  assert.equal(text.includes(`originalSelectedPartId=${ids.hand}`), true);
+  assert.equal(text.includes("segmentedLeadLocked=true"), true);
 });
 
 test("17 rearCross keeps rear segmented chain behavior", () => {
@@ -227,6 +250,14 @@ function poseAtTrack(tracks, partId, frame) {
   return tracks.find((track) => track.partId === partId).keyframes.find((keyframe) => keyframe.frame === frame).pose;
 }
 
+function trackFor(tracks, partId) {
+  return tracks.find((track) => track.partId === partId);
+}
+
 function poseMagnitude(pose = {}) {
   return Math.hypot(Number(pose.x) || 0, Number(pose.y) || 0, Number(pose.rotate) || 0, Number(pose.jointX) || 0, Number(pose.jointY) || 0);
+}
+
+function samePose(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
 }

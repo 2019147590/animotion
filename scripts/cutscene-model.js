@@ -167,6 +167,8 @@
     const effectTracks = Animotion.actionScopedEffects?.migratedEffectTracks?.(action, { durationFrames: options.durationFrames }) || [];
     return {
       source: String(action.source || "part-pivots-v1"),
+      ...(action.selectedPartId ? { selectedPartId: String(action.selectedPartId) } : {}),
+      ...(action.effectivePrimaryPartId ? { effectivePrimaryPartId: String(action.effectivePrimaryPartId) } : {}),
       focusKey: action.focusKey ? String(action.focusKey) : null,
       ...(timeline ? { actionTimeline: Animotion.actionTimelineModel?.normalizeTimeline?.(timeline, options) || clonePlain(timeline) } : {}),
       ...(action.bindingProfile ? { bindingProfile: clonePlain(action.bindingProfile) } : {}),

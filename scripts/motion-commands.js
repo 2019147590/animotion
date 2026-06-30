@@ -38,7 +38,8 @@
   }
 
   function applyMotionPlanResult(bridge, plan, result) {
-    setCutsceneBridge({ ...bridge, jointAction: result.jointAction });
+    const primaryPartId = result.primaryPartId || result.effectivePrimaryPartId || bridge.primaryPartId;
+    setCutsceneBridge({ ...bridge, primaryPartId, jointAction: result.jointAction });
     setMotionPlan({
       ...plan,
       target: result.target,

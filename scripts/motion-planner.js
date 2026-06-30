@@ -36,8 +36,9 @@
     parts = Animotion.armExtension?.partsWithInferredHandTips?.(parts, primaryId, punchLike ? "punch" : plan.template) || parts;
     if (plan.template === "boxingStep") return Animotion.boxingStepLocomotion.createPlan(parts, primaryId, bridge, plan);
     const base = Animotion.jointCoordinates.inferJointPose(parts);
-    const primary = parts.find((part) => part.id === primaryId) || parts[0];
-    const active = activeKeys(primary, parts);
+    const requestedPrimary = parts.find((part) => part.id === primaryId) || parts[0];
+    let primary = requestedPrimary;
+    const active = activeKeys(requestedPrimary, parts);
     const direction = bridge.effectDirection || Animotion.cutsceneModel.inferEffectDirection(parts, primaryId);
     const targetInfo = targetForPlan(plan, base, active, direction, primary);
     let target = leadTarget(plan, base[active.end], targetInfo.point);
@@ -55,7 +56,8 @@
       Animotion.motionAnchors?.classificationDebug?.({ ...anchorPlan, targetDebug }, parts, primary, base, active, direction, target, { selectedPartId: options.selectedPartId || primaryId, explicitActionOverride: Boolean(plan.targetDebug?.punchStyle || forcedPunchStyle) }) || null,
       forcedPunchStyle
     );
-    Object.assign(targetDebug, Animotion.armChainResolver?.targetDebug?.(parts, options.selectedPartId || primaryId, primary, targetDebug.roleDecision) || {});
+    const originalSelectedPartId = options.selectedPartId || primaryId;
+    Object.assign(targetDebug, Animotion.armChainResolver?.targetDebug?.(parts, originalSelectedPartId, requestedPrimary, targetDebug.roleDecision) || {});
     if (targetDebug.hiddenCompletionCandidate) targetDebug.hiddenCompletionReason = "wrist/forearm area may be exposed by separate glove motion";
     const anchors = Animotion.motionAnchors?.anchorsFromPlan?.({ ...anchorPlan, targetDebug }, parts, primary, base, active, direction, target) || [];
     const actionTimeline = actionTimelineFor(plan.template, bridge);
@@ -68,9 +70,18 @@
       targetDebug.lockedPartIds = bindingProfile.lockedPartIds;
       targetDebug.exclusiveOwnership = bindingProfile.exclusiveOwnership;
     }
+    primary = Animotion.leadArmComposite?.effectivePrimaryFor?.(parts, requestedPrimary, targetDebug, bindingProfile) || requestedPrimary;
+    applyEffectivePrimaryDebug(targetDebug, {
+      primary,
+      requestedPrimary,
+      originalSelectedPartId,
+      bindingProfile,
+    });
     const motionDraft = Animotion.motionDrafts?.snapshot?.(plan.motionDraft) || plan.motionDraft;
     const jointAction = {
       source: `motion-planner-${plan.template}-anchors-v1`,
+      selectedPartId: originalSelectedPartId,
+      effectivePrimaryPartId: primary?.id || null,
       focusKey: active.end,
       actionTimeline,
       ...(bindingProfile ? { bindingProfile } : {}),
@@ -97,6 +108,9 @@
       active,
       jointAction,
       partTracks: Animotion.motionTrackBuilder.tracksForParts(parts, primary, beats, { base, active, bridge: { ...bridge, jointAction: { targetDebug, ...(bindingProfile ? { bindingProfile } : {}) } } }),
+      primaryPartId: primary?.id || null,
+      originalPrimaryPartId: requestedPrimary?.id || null,
+      effectivePrimaryPartId: primary?.id || null,
     };
   }
 
@@ -227,6 +241,25 @@
   function templateFor(template) { return TEMPLATES[template] || (Animotion.actionTimelineModel?.hasTemplate?.(template) ? Animotion.actionTimelineModel.timelineForTemplate(template) : null); }
   function actionTimelineFor(template, bridge) { return Animotion.actionTimelineModel?.hasTemplate?.(template) ? Animotion.actionTimelineModel.timelineForTemplate(template, bridge) : null; }
   function impactExaggerationFor(actionTimeline, parts, primary) { return Animotion.impactExaggerationLayer?.createDefaultImpactExaggerationForActionTimeline?.(actionTimeline, { parts, primaryPartId: primary?.id }) || null; }
+  function applyEffectivePrimaryDebug(targetDebug, context) {
+    const { primary, requestedPrimary, originalSelectedPartId, bindingProfile } = context;
+    if (!primary?.id || primary.id === requestedPrimary?.id) {
+      targetDebug.primaryPartId = requestedPrimary?.id || null;
+      targetDebug.effectivePrimaryPartId = requestedPrimary?.id || null;
+      targetDebug.originalSelectedPartId = originalSelectedPartId || null;
+      return;
+    }
+    targetDebug.originalSelectedPartId = originalSelectedPartId || null;
+    targetDebug.originalPrimaryPartId = requestedPrimary?.id || null;
+    targetDebug.effectivePrimaryPartId = primary.id;
+    targetDebug.primaryPartId = primary.id;
+    targetDebug.proxyPartId = bindingProfile?.leadArm?.proxyPartId || null;
+    targetDebug.proxyUsage = bindingProfile?.leadArm?.proxyUsage || null;
+    targetDebug.originalTerminalPunchPartId = targetDebug.terminalPunchPartId || null;
+    targetDebug.terminalPunchPartId = primary.id;
+    targetDebug.separateRigPath = false;
+    targetDebug.segmentedLeadLocked = true;
+  }
   function partKind(part = {}) { if (["thigh", "shin", "foot"].includes(part.humanRole) || part.type === "leg") return "leg"; if (["upperArm", "forearm", "hand", "glove"].includes(part.humanRole) || ["arm", "glove"].includes(part.type)) return "arm"; if (["torso", "pelvis"].includes(part.humanRole) || part.type === "body" || part.type === "spine") return "body"; if (part.humanRole === "head" || part.type === "head") return "head"; return part.type || null; }
   function directionFrom(startPoint, endPoint, fallback) { const start = pointFromArray(startPoint), end = pointFromArray(endPoint), dx = end.x - start.x, dy = end.y - start.y, length = Math.hypot(dx, dy); return length > 0.001 ? { x: dx / length, y: dy / length } : fallback; }
   function bendNormal(baseRoot, baseMid, baseEnd, root, end) { const sign = Math.sign((baseMid.x - baseRoot.x) * (baseEnd.y - baseRoot.y) - (baseMid.y - baseRoot.y) * (baseEnd.x - baseRoot.x)) || 1; const dx = end.x - root.x, dy = end.y - root.y, length = Math.max(1, Math.hypot(dx, dy)); return { x: -dy / length * sign, y: dx / length * sign }; }

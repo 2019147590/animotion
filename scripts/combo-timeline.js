@@ -80,7 +80,7 @@
     const timeline = Animotion.cutsceneActionSelectors?.rawActionTimeline?.(generated.jointAction)
       || Animotion.actionTimelineModel?.timelineForTemplate?.(template, bridge) || {};
     const durationFrames = scaledFrame(maxFrame(generated.jointAction.beats), item.tempo);
-    return { ok: true, item, stepNumber, template, primaryPartId: primary.id, bridge, plan, generated, timeline, durationFrames, totalFrames: durationFrames + item.gapAfterFrames };
+    return { ok: true, item, stepNumber, template, primaryPartId: generated.primaryPartId || generated.effectivePrimaryPartId || primary.id, bridge, plan, generated, timeline, durationFrames, totalFrames: durationFrames + item.gapAfterFrames };
   }
 
   function comboResult(context, spec, merged, lastStep, totalFrames) {
