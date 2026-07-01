@@ -5,7 +5,7 @@
   const MAX_TOTAL_FRAMES = 120;
   const ACTION_ALIASES = Object.freeze({ jab: "punch", rearCross: "rearHandPunch01" });
   const ACTION_SOURCES = Object.freeze({
-    jab: { source: "generator", template: "punch" },
+    jab: { source: "currentProjectClip", clipId: "currentLeadWholeArmJabProxy", fallbackTemplate: "punch" },
     rearCross: { source: "legacyClip", clipId: "legacyRearCross17", fallbackTemplate: "rearHandPunch01" },
   });
   const DEFAULT_COMBOS = Object.freeze({
@@ -71,15 +71,16 @@
     ) || {};
     const plan = Animotion.motionPlanner?.normalizePlan?.(input.plan || Animotion.state?.motionPlan || {}) || {};
     const legacyClips = input.legacyClips === undefined ? Animotion.legacyActionClips : input.legacyClips;
-    return { ok: true, parts, selectedPartId, basePrimary, baseBridge, plan, legacyClips, actionFrameGenerator: input.actionFrameGenerator || defaultActionFrameGenerator };
+    const project = input.project || Animotion.state?.project || null;
+    return { ok: true, parts, selectedPartId, basePrimary, baseBridge, plan, legacyClips, project, actionFrameGenerator: input.actionFrameGenerator || defaultActionFrameGenerator };
   }
 
   function buildActionStep(context, item, stepNumber) {
-    if (item.actionId === "jab") {
-      const clip = currentProjectJabClip(context);
+    const source = actionSourceFor(item.actionId);
+    if (source?.source === "currentProjectClip") {
+      const clip = currentProjectJabClip(context, source.clipId);
       if (clip) return buildCurrentProjectClipStep(context, item, stepNumber, clip);
     }
-    const source = actionSourceFor(item.actionId);
     if (source?.source === "legacyClip") {
       const clip = legacyClipFor(context, item.actionId, source.clipId);
       if (clip) return buildLegacyClipStep(context, item, stepNumber, source, clip);
@@ -332,12 +333,13 @@
     };
   }
 
-  function currentProjectJabClip(context) {
-    const proxy = context.parts.find((part) => part?.usage === "leadWholeArmJabProxy" && Array.isArray(part.keyframes) && part.keyframes.length);
+  function currentProjectJabClip(context, clipId = "currentLeadWholeArmJabProxy") {
+    const proxy = context.parts.find((part) => part?.usage === "leadWholeArmJabProxy");
     if (!proxy) return null;
+    const keyframes = currentProjectKeyframes(context, proxy.id);
+    if (!keyframes.length) return null;
     const bridge = context.baseBridge || {};
     const action = bridge.jointAction || {};
-    const keyframes = clonePlain(proxy.keyframes);
     const durationFrames = Math.max(maxKeyframeFrame(keyframes), Math.round(Number(bridge.durationFrames) || 18));
     const impactFrame = Math.min(Math.round(Number(bridge.impactFrame) || 15), durationFrames);
     const beats = Array.isArray(action.beats) && action.beats.length ? clonePlain(action.beats) : beatsFromKeyframes(keyframes);
@@ -358,7 +360,7 @@
       ...clonePlain(action || {}),
       source: "currentProjectClip",
       actionId: "jab",
-      currentProjectClipId: "currentProjectJabClip",
+      currentProjectClipId: clipId,
       beats,
       bindingProfile,
       targetDebug,
@@ -374,7 +376,7 @@
       },
     };
     return {
-      id: "currentProjectJabClip",
+      id: clipId,
       source: "currentProjectClip",
       actionId: "jab",
       primaryPartId: proxy.id,
@@ -416,6 +418,16 @@
   function isArmPart(part = {}) { return ["upperArm", "forearm", "hand", "glove"].includes(part.humanRole) || ["arm", "hand", "glove"].includes(part.type); }
   function maxFrame(beats = []) { return beats.reduce((max, beat) => Math.max(max, Math.round(Number(beat.at) || 1)), 1); }
   function maxKeyframeFrame(keyframes = []) { return keyframes.reduce((max, keyframe) => Math.max(max, Math.round(Number(keyframe.frame) || 1)), 1); }
+  function currentProjectKeyframes(context, partId) {
+    const part = context.parts.find((item) => item.id === partId);
+    const partKeyframes = Array.isArray(part?.keyframes) ? part.keyframes : [];
+    if (partKeyframes.length) return clonePlain(partKeyframes);
+    const motion = (context.project?.motions || []).find((clip) => Array.isArray(clip.keyframes) && clip.keyframes.some((keyframe) => keyframe.targetId === partId));
+    return (motion?.keyframes || [])
+      .filter((keyframe) => keyframe.targetType === "part" && keyframe.property === "customMotion" && keyframe.targetId === partId)
+      .map((keyframe) => ({ frame: Math.round(Number(keyframe.frame) || 1), pose: Animotion.motionModel?.normalizeCustomMotion?.(keyframe.value) || keyframe.value }))
+      .sort((a, b) => a.frame - b.frame);
+  }
   function beatsFromKeyframes(keyframes = []) { return keyframes.map((keyframe, index) => ({ id: beatIdForIndex(index), at: Math.round(Number(keyframe.frame) || 1), pose: {} })); }
   function timelineBeatsFromKeyframes(keyframes = []) { return keyframes.map((keyframe, index) => ({ id: beatIdForIndex(index), at: Math.round(Number(keyframe.frame) || 1) })); }
   function beatIdForIndex(index) { return ["guard", "windup", "drive", "extension", "impact", "recover"][index] || `frame${index + 1}`; }

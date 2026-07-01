@@ -4,6 +4,10 @@
   const IDS = Object.freeze({
     body: "654fda4c-eaff-4f72-9b31-98652b76cdcb",
     head: "362ff4e1-bf0b-476f-8f6d-868f7bf1db62",
+    leg1: "b865c290-9823-4ec7-b913-3971fc4dc966",
+    leg2: "8c66d9f9-9958-416f-8c17-140b8f06b6d4",
+    rfoot: "e1c834c7-1b25-4f41-95fd-141bd7d74de4",
+    lfoot: "3fbbdb44-6abc-4588-9e74-018cc9882bb1",
     upper: "344d68b5-da9a-4a05-ae0c-aef075518a3d",
     forearm: "612d3ea0-7471-4649-8a61-7da9055cfc76",
     hand: "316845c3-0e83-4880-94d7-df6d83852448",
@@ -59,12 +63,16 @@
       },
     },
     partTracks: [
-      track(IDS.body, [[1, 0, 0, 0, 0], [4, 12, -1, 0, 0], [8, 76, -5, 0, 0], [12, 111, -7, 0, 0], [15, 123, -8, 0, 0], [18, 27, -2, 0, 0]]),
+      track(IDS.leg1, rootRows()),
+      track(IDS.leg2, rootRows()),
+      track(IDS.rfoot, inverseRootRows()),
+      track(IDS.lfoot, inverseRootRows()),
+      track(IDS.body, rootRows()),
       track(IDS.head, [[1, 0, 0, 0, 0], [4, 0, 0, 0, 0], [8, 0, 0, 0, 0], [12, 0, 0, 0, 0], [15, 0, 0, 0, 0], [18, 0, 0, 0, 0]]),
       track(IDS.hand, [[1, 0, 0, 0, 0], [4, -2, 0, -1.49, -0.04], [8, 31, -3, 22.11, 0.72], [12, 44, -4, 25.77, 0.72], [15, 53, -3, 28.86, 0.72], [18, 11, -1, 11.56, 0.27]]),
       track(IDS.upper, [[1, 0, 0, 1.2, 0], [4, -1.65, 0.45, -1.2, 0], [8, 33.15, -2.7, 1.2, 0], [12, 46.8, -4.2, 1.2, 0], [15, 56.55, -3.45, 1.2, 0], [18, 12, -0.75, 1.2, 0]]),
       track(IDS.forearm, [[1, 0, 0, 2.4, 0], [4, -3.3, 0.9, -2.4, 0], [8, 66.3, -5.4, 2.4, 0], [12, 93.6, -8.4, 2.4, 0], [15, 113.1, -6.9, 2.4, 0], [18, 24, -1.5, 2.4, 0]]),
-      track(IDS.bodyFill, [[1, 0, 0, 0, 0], [4, 12, -1, 0, 0], [8, 76, -5, 0, 0], [12, 111, -7, 0, 0], [15, 123, -8, 0, 0], [18, 27, -2, 0, 0]]),
+      track(IDS.bodyFill, rootRows()),
       track(IDS.upperFill, [[1, 0, 0, 0, 0], [4, 0, 0, 0, 0], [8, 0, 0, 0, 0], [12, 0, 0, 0, 0], [15, 0, 0, 0, 0], [18, 0, 0, 0, 0]]),
     ],
   });
@@ -91,6 +99,14 @@
 
   function track(partId, rows) {
     return { partId, keyframes: rows.map(([frame, x, y, rotate, scaleY]) => ({ frame, pose: pose(x, y, rotate, scaleY) })) };
+  }
+
+  function rootRows() {
+    return [[1, 0, 0, 0, 0], [4, 12, -1, 0, 0], [8, 76, -5, 0, 0], [12, 111, -7, 0, 0], [15, 123, -8, 0, 0], [18, 27, -2, 0, 0]];
+  }
+
+  function inverseRootRows() {
+    return rootRows().map(([frame, x, y, rotate, scaleY]) => [frame, -x, -y, rotate, scaleY]);
   }
 
   function pose(x = 0, y = 0, rotate = 0, scaleY = 0) {
