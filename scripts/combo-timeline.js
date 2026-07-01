@@ -5,7 +5,7 @@
   const MAX_TOTAL_FRAMES = 120;
   const ACTION_ALIASES = Object.freeze({ jab: "punch", rearCross: "rearHandPunch01" });
   const ACTION_SOURCES = Object.freeze({
-    jab: { source: "currentProjectClip", clipId: "currentLeadWholeArmJabProxy", fallbackTemplate: "punch" },
+    jab: { source: "currentProjectClip", clipKind: "leadWholeArmJabProxy", clipId: "currentLeadWholeArmJabProxy", fallbackTemplate: "punch" },
     rearCross: { source: "legacyClip", clipId: "legacyRearCross17", fallbackTemplate: "rearHandPunch01" },
   });
   const DEFAULT_COMBOS = Object.freeze({
@@ -78,7 +78,7 @@
   function buildActionStep(context, item, stepNumber) {
     const source = actionSourceFor(item.actionId);
     if (source?.source === "currentProjectClip") {
-      const clip = currentProjectJabClip(context, source.clipId);
+      const clip = currentProjectJabClip(context, source);
       if (clip) return buildCurrentProjectClipStep(context, item, stepNumber, clip);
     }
     if (source?.source === "legacyClip") {
@@ -333,8 +333,10 @@
     };
   }
 
-  function currentProjectJabClip(context, clipId = "currentLeadWholeArmJabProxy") {
-    const proxy = context.parts.find((part) => part?.usage === "leadWholeArmJabProxy");
+  function currentProjectJabClip(context, source = {}) {
+    const clipKind = source.clipKind || "leadWholeArmJabProxy";
+    const clipId = source.clipId || "currentLeadWholeArmJabProxy";
+    const proxy = context.parts.find((part) => part?.usage === clipKind);
     if (!proxy) return null;
     const keyframes = currentProjectKeyframes(context, proxy.id);
     if (!keyframes.length) return null;
@@ -359,6 +361,7 @@
     const jointAction = {
       ...clonePlain(action || {}),
       source: "currentProjectClip",
+      clipKind,
       actionId: "jab",
       currentProjectClipId: clipId,
       beats,
@@ -378,12 +381,13 @@
     return {
       id: clipId,
       source: "currentProjectClip",
+      clipKind,
       actionId: "jab",
       primaryPartId: proxy.id,
       durationFrames,
       impactFrame,
       bridge: { ...bridge, primaryPartId: proxy.id, durationFrames, impactFrame, jointAction },
-      partTracks: [{ partId: proxy.id, keyframes }],
+      partTracks: currentProjectJabTracks(proxy.id, keyframes, bindingProfile),
     };
   }
 
@@ -434,6 +438,15 @@
   function bindingProfileForProxy(parts, proxyId) {
     const proxy = parts.find((part) => part.id === proxyId) || null;
     return Animotion.leadArmComposite?.bindingProfileFor?.(parts, proxy, { punchStyle: "jab" }) || null;
+  }
+  function currentProjectJabTracks(proxyId, keyframes, bindingProfile) {
+    const frames = keyframes.map((keyframe) => Math.round(Number(keyframe.frame) || 1));
+    const tracks = [{ partId: proxyId, keyframes }];
+    for (const partId of bindingProfile?.lockedPartIds || []) {
+      if (!partId || partId === proxyId) continue;
+      tracks.push({ partId, keyframes: frames.map((frame) => ({ frame, pose: defaultPose() })) });
+    }
+    return tracks;
   }
   function defaultPose() { return Animotion.motionModel?.defaultCustomMotion?.() || { x: 0, y: 0, rotate: 0, scaleY: 0, jointX: 0, jointY: 0, phase: 0 }; }
   function baseId(id) { return String(id || "beat").split(":").pop(); }

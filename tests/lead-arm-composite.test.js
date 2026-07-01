@@ -256,10 +256,16 @@ test("jab_jab_cross applies proxy jab tracks and step visibility before rearCros
   const proxyFrame26 = evaluatedPose(Animotion, built.result.partTracks, "leadWholeArmJabProxy", 26);
 
   assert.equal(Animotion.comboTimeline.ACTION_SOURCES.jab.source, "currentProjectClip");
+  assert.equal(Animotion.comboTimeline.ACTION_SOURCES.jab.clipKind, "leadWholeArmJabProxy");
   assert.equal(generatorCalls, 0);
   assert.equal(built.bridge.jointAction.comboTimeline.steps[0].source, "currentProjectClip");
   assert.equal(built.bridge.jointAction.comboTimeline.steps[1].source, "currentProjectClip");
   assert.equal(built.bridge.jointAction.comboTimeline.steps[0].clipId, "currentLeadWholeArmJabProxy");
+  assert.equal(built.bridge.jointAction.comboTimeline.steps[0].bindingProfile.leadArm.mode, "wholeArmProxy");
+  assert.equal(built.bridge.jointAction.comboTimeline.steps[0].targetDebug.segmentedLeadLocked, true);
+  assert.deepEqual(evaluatedPose(Animotion, built.result.partTracks, front.upper, 8), Animotion.motionModel.defaultCustomMotion());
+  assert.deepEqual(evaluatedPose(Animotion, built.result.partTracks, front.forearm, 8), Animotion.motionModel.defaultCustomMotion());
+  assert.deepEqual(evaluatedPose(Animotion, built.result.partTracks, front.hand, 8), Animotion.motionModel.defaultCustomMotion());
   assert.deepEqual(proxyFrame8, evaluatedPose(Animotion, standalone.partTracks, "leadWholeArmJabProxy", 8));
   assert.deepEqual(proxyFrame26, evaluatedPose(Animotion, standalone.partTracks, "leadWholeArmJabProxy", 6));
   assert.deepEqual(evaluatedPose(Animotion, built.result.partTracks, "leadWholeArmJabProxy", 28), evaluatedPose(Animotion, standalone.partTracks, "leadWholeArmJabProxy", 8));
@@ -275,6 +281,44 @@ test("jab_jab_cross applies proxy jab tracks and step visibility before rearCros
     assert.deepEqual(evaluatedPose(Animotion, built.result.partTracks, partId, 8), Animotion.motionModel.defaultCustomMotion());
     assert.deepEqual(evaluatedPose(Animotion, built.result.partTracks, partId, 26), Animotion.motionModel.defaultCustomMotion());
   }
+});
+
+test("saved jab proxy combo clip ignores selected part", () => {
+  const Animotion = loadAnimotion();
+  const baseParts = withLeadProxy(projectParts(Animotion, "animotion-project (17).json"));
+  const front = frontChainIds(), ids = Animotion.legacyActionClips.IDS;
+  const bridge = Animotion.cutsceneModel.normalizeBridge({ durationFrames: 18, impactFrame: 15, effectDirection: { x: 1, y: 0 } });
+  const standalone = Animotion.motionPlanner.createPlan(baseParts, front.hand, bridge, { template: "punch" });
+  const proxyKeyframes = clonePlain(trackFor(standalone.partTracks, "leadWholeArmJabProxy").keyframes);
+  const poses = [];
+
+  for (const selectedPartId of ["leadWholeArmJabProxy", ids.body, front.forearm]) {
+    const parts = withLeadProxy(projectParts(Animotion, "animotion-project (17).json"));
+    parts.find((part) => part.id === "leadWholeArmJabProxy").keyframes = clonePlain(proxyKeyframes);
+    let generatorCalls = 0;
+    const built = Animotion.comboTimeline.buildComboTimeline(Animotion.comboTimeline.specFor("jab_jab_cross"), {
+      parts,
+      selectedPartId,
+      bridge: { ...bridge, primaryPartId: standalone.primaryPartId, jointAction: standalone.jointAction },
+      plan: { template: "punch", targetMode: false },
+      actionFrameGenerator(partsArg, primaryId, bridgeArg, planArg, item) {
+        generatorCalls += 1;
+        return Animotion.motionPlanner.createPlan(partsArg, primaryId, bridgeArg, planArg, item);
+      },
+    });
+
+    assert.equal(generatorCalls, 0);
+    assert.equal(built.bridge.jointAction.comboTimeline.steps[0].source, "currentProjectClip");
+    assert.equal(built.bridge.jointAction.comboTimeline.steps[1].source, "currentProjectClip");
+    poses.push(evaluatedPose(Animotion, built.result.partTracks, "leadWholeArmJabProxy", 8));
+    assert.deepEqual(evaluatedPose(Animotion, built.result.partTracks, "leadWholeArmJabProxy", 28), evaluatedPose(Animotion, standalone.partTracks, "leadWholeArmJabProxy", 8));
+    assert.deepEqual(evaluatedPose(Animotion, built.result.partTracks, front.upper, 8), Animotion.motionModel.defaultCustomMotion());
+    assert.deepEqual(evaluatedPose(Animotion, built.result.partTracks, front.forearm, 8), Animotion.motionModel.defaultCustomMotion());
+    assert.deepEqual(evaluatedPose(Animotion, built.result.partTracks, front.hand, 8), Animotion.motionModel.defaultCustomMotion());
+  }
+
+  assert.deepEqual(poses[0], poses[1]);
+  assert.deepEqual(poses[1], poses[2]);
 });
 
 test("jab_jab_cross uses legacy rearCross17 clip without calling rear generator", () => {
