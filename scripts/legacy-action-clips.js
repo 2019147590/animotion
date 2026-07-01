@@ -2,6 +2,8 @@
   const global = typeof window !== "undefined" ? window : globalThis;
   const Animotion = global.Animotion || (global.Animotion = {});
   const IDS = Object.freeze({
+    body: "654fda4c-eaff-4f72-9b31-98652b76cdcb",
+    head: "362ff4e1-bf0b-476f-8f6d-868f7bf1db62",
     upper: "344d68b5-da9a-4a05-ae0c-aef075518a3d",
     forearm: "612d3ea0-7471-4649-8a61-7da9055cfc76",
     hand: "316845c3-0e83-4880-94d7-df6d83852448",
@@ -14,10 +16,14 @@
     actionId: "rearCross",
     source: "legacyClip",
     primaryPartId: IDS.hand,
+    effectivePrimaryPartId: IDS.hand,
+    selectedPartId: IDS.hand,
+    terminalPunchPartId: IDS.hand,
     durationFrames: 18,
     impactFrame: 15,
     resolvedArmChain: { upperArmId: IDS.upper, forearmId: IDS.forearm, handOrGloveId: IDS.hand },
     hiddenFillPartIds: [IDS.bodyFill, IDS.upperFill],
+    revealFrameRange: { startFrame: 1, endFrame: 18 },
     bridge: {
       primaryPartId: IDS.hand,
       durationFrames: 18,
@@ -31,6 +37,10 @@
         source: "legacyClip",
         actionId: "rearCross",
         legacyClipId: "legacyRearCross17",
+        selectedPartId: IDS.hand,
+        effectivePrimaryPartId: IDS.hand,
+        terminalPunchPartId: IDS.hand,
+        resolvedArmChain: { upperArmId: IDS.upper, forearmId: IDS.forearm, handOrGloveId: IDS.hand },
         focusKey: "lHand",
         actionTimeline: { template: "punch", id: "punch", label: "legacyRearCross17", durationFrames: 18, impactFrame: 15, beats: timelineBeats() },
         beats: rearCrossBeats(),
@@ -49,11 +59,13 @@
       },
     },
     partTracks: [
+      track(IDS.body, [[1, 0, 0, 0, 0], [4, 12, -1, 0, 0], [8, 76, -5, 0, 0], [12, 111, -7, 0, 0], [15, 123, -8, 0, 0], [18, 27, -2, 0, 0]]),
+      track(IDS.head, [[1, 0, 0, 0, 0], [4, 0, 0, 0, 0], [8, 0, 0, 0, 0], [12, 0, 0, 0, 0], [15, 0, 0, 0, 0], [18, 0, 0, 0, 0]]),
       track(IDS.hand, [[1, 0, 0, 0, 0], [4, -2, 0, -1.49, -0.04], [8, 31, -3, 22.11, 0.72], [12, 44, -4, 25.77, 0.72], [15, 53, -3, 28.86, 0.72], [18, 11, -1, 11.56, 0.27]]),
       track(IDS.upper, [[1, 0, 0, 1.2, 0], [4, -1.65, 0.45, -1.2, 0], [8, 33.15, -2.7, 1.2, 0], [12, 46.8, -4.2, 1.2, 0], [15, 56.55, -3.45, 1.2, 0], [18, 12, -0.75, 1.2, 0]]),
       track(IDS.forearm, [[1, 0, 0, 2.4, 0], [4, -3.3, 0.9, -2.4, 0], [8, 66.3, -5.4, 2.4, 0], [12, 93.6, -8.4, 2.4, 0], [15, 113.1, -6.9, 2.4, 0], [18, 24, -1.5, 2.4, 0]]),
       track(IDS.bodyFill, [[1, 0, 0, 0, 0], [4, 12, -1, 0, 0], [8, 76, -5, 0, 0], [12, 111, -7, 0, 0], [15, 123, -8, 0, 0], [18, 27, -2, 0, 0]]),
-      { partId: IDS.upperFill, keyframes: [] },
+      track(IDS.upperFill, [[1, 0, 0, 0, 0], [4, 0, 0, 0, 0], [8, 0, 0, 0, 0], [12, 0, 0, 0, 0], [15, 0, 0, 0, 0], [18, 0, 0, 0, 0]]),
     ],
   });
 
@@ -72,6 +84,7 @@
       part.usage = part.usage || "rearCrossHiddenFill";
       part.createdForActionId = part.createdForActionId || "rearCross";
       part.ownerActionId = part.ownerActionId || "rearCross";
+      part.revealFrameRange = part.revealFrameRange || clone(clip.revealFrameRange || { startFrame: 1, endFrame: clip.durationFrames || 18 });
       for (const mask of part.visibilityMasks || []) mask.ownerActionId = mask.ownerActionId || "rearCross";
     }
   }

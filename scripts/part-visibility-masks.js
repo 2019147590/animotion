@@ -61,8 +61,9 @@
   }
 
   function activeMasks(part, frame, options = {}) {
+    const actionFrame = actionLocalFrame(options.action || null, frame);
     return normalizeList(part?.visibilityMasks)
-      .map((mask) => ({ mask, strength: evaluatedStrength(mask, frame) }))
+      .map((mask) => ({ mask, strength: evaluatedStrength(mask, actionFrame) }))
       .filter((item) => item.strength > 0.001 && maskAllowed(item.mask, part, frame, options));
   }
 
@@ -89,6 +90,11 @@
 
   function normalizeStrength(value) {
     return Math.min(1, Math.max(0, Number(value) || 0));
+  }
+
+  function actionLocalFrame(action, frame) {
+    if (!action || !Animotion.actionScopedEffects?.frameContext) return frame;
+    return Animotion.actionScopedEffects.frameContext(action, frame).localFrame || frame;
   }
 
   function ownerFields(mask = {}) {

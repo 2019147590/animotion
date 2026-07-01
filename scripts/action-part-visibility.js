@@ -8,7 +8,7 @@
     const action = actionAtFrame(context.action || null, context.frame);
     if (Animotion.leadArmComposite?.runtimeVisible?.(part, { ...context, action }) === false) return false;
     const actionId = currentActionId(context.action || null, context.frame);
-    if (String(part.usage || "") === REAR_CROSS_HIDDEN_FILL) return actionId === "rearCross";
+    if (String(part.usage || "") === REAR_CROSS_HIDDEN_FILL) return hiddenFillVisible(part, actionId, context.action || action, context.frame);
     const owners = [
       part.visibleForActionId,
       part.ownerActionId,
@@ -27,6 +27,17 @@
     return normalizeActionId(Animotion.actionScopedEffects?.actionIdFor?.(action) || action.actionId || action.id);
   }
 
+  function hiddenFillVisible(part, actionId, action, frame) {
+    if (actionId !== "rearCross") return false;
+    const range = part.revealFrameRange || part.visibleFrameRange || null;
+    if (!range) return true;
+    const context = Animotion.actionScopedEffects?.frameContext?.(action, frame) || { localFrame: frame };
+    const localFrame = Math.max(1, Math.round(Number(context.localFrame || frame) || 1));
+    const start = Math.max(1, Math.round(Number(range.startFrame || range.start || 1) || 1));
+    const end = Math.max(start, Math.round(Number(range.endFrame || range.end || 9999) || 9999));
+    return localFrame >= start && localFrame <= end;
+  }
+
   function actionAtFrame(action, frame) {
     const step = comboStep(action?.comboTimeline || action?.targetDebug?.comboTimeline, frame);
     if (!step) return action;
@@ -36,6 +47,7 @@
       bindingProfile: step.bindingProfile || action?.bindingProfile || null,
       targetDebug: { ...(action?.targetDebug || {}), ...(step.targetDebug || {}) },
       primaryPartId: step.primaryPartId || action?.primaryPartId || null,
+      effectivePrimaryPartId: step.effectivePrimaryPartId || step.targetDebug?.effectivePrimaryPartId || action?.effectivePrimaryPartId || null,
     };
   }
 

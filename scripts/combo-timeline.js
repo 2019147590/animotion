@@ -75,6 +75,10 @@
   }
 
   function buildActionStep(context, item, stepNumber) {
+    if (item.actionId === "jab") {
+      const clip = currentProjectJabClip(context);
+      if (clip) return buildCurrentProjectClipStep(context, item, stepNumber, clip);
+    }
     const source = actionSourceFor(item.actionId);
     if (source?.source === "legacyClip") {
       const clip = legacyClipFor(context, item.actionId, source.clipId);
@@ -93,19 +97,60 @@
     return { ok: true, item, stepNumber, source: "generator", template, primaryPartId: generated.primaryPartId || generated.effectivePrimaryPartId || primary.id, bridge, plan, generated, timeline, durationFrames, totalFrames: durationFrames + item.gapAfterFrames };
   }
 
+  function buildCurrentProjectClipStep(context, item, stepNumber, clip) {
+    const action = clip.bridge?.jointAction || {};
+    const generated = {
+      jointAction: { ...action, source: "currentProjectClip", actionId: "jab", currentProjectClipId: clip.id },
+      partTracks: clip.partTracks || [],
+      anchors: action.anchors || [],
+      target: action.activeMotionTarget?.point || null,
+      targetDebug: action.targetDebug || null,
+      activeMotionTarget: action.activeMotionTarget || null,
+      trajectoryPoints: action.trajectoryPoints || [],
+      primaryPartId: clip.primaryPartId,
+      effectivePrimaryPartId: clip.primaryPartId,
+    };
+    const timeline = Animotion.cutsceneActionSelectors?.rawActionTimeline?.(generated.jointAction) || generated.jointAction.actionTimeline || {};
+    const durationFrames = scaledFrame(clip.durationFrames || maxFrame(generated.jointAction.beats), item.tempo);
+    return {
+      ok: true,
+      item,
+      stepNumber,
+      source: "currentProjectClip",
+      clipId: clip.id,
+      template: "punch",
+      primaryPartId: clip.primaryPartId,
+      bridge: clip.bridge,
+      plan: { ...context.plan, template: "punch", source: "currentProjectClip", clipId: clip.id },
+      generated,
+      timeline,
+      durationFrames,
+      totalFrames: durationFrames + item.gapAfterFrames,
+    };
+  }
+
   function buildLegacyClipStep(context, item, stepNumber, source, clip) {
     Animotion.legacyActionClips?.applyPartMetadata?.(context.parts, clip);
     const bridge = clip.bridge || {};
+    const binding = legacyClipBinding(clip, bridge);
     const action = {
       ...(bridge.jointAction || {}),
       source: "legacyClip",
       actionId: item.actionId,
       legacyClipId: clip.id,
+      primaryPartId: binding.primaryPartId,
+      selectedPartId: binding.primaryPartId,
+      effectivePrimaryPartId: binding.primaryPartId,
+      terminalPunchPartId: binding.terminalPunchPartId,
+      resolvedArmChain: binding.resolvedArmChain,
       targetDebug: {
         ...(bridge.jointAction?.targetDebug || {}),
         punchStyle: "rear-cross",
-        primaryPartId: clip.primaryPartId || bridge.primaryPartId,
-        resolvedArmChain: clip.resolvedArmChain || bridge.jointAction?.targetDebug?.resolvedArmChain || null,
+        primaryPartId: binding.primaryPartId,
+        selectedPartId: binding.primaryPartId,
+        effectivePrimaryPartId: binding.primaryPartId,
+        terminalPunchPartId: binding.terminalPunchPartId,
+        resolvedArmChain: binding.resolvedArmChain,
         legacyClipId: clip.id,
       },
     };
@@ -116,8 +161,8 @@
       targetDebug: action.targetDebug,
       activeMotionTarget: action.activeMotionTarget || null,
       trajectoryPoints: action.trajectoryPoints || [],
-      primaryPartId: clip.primaryPartId || bridge.primaryPartId,
-      effectivePrimaryPartId: clip.primaryPartId || bridge.primaryPartId,
+      primaryPartId: binding.primaryPartId,
+      effectivePrimaryPartId: binding.primaryPartId,
     };
     const timeline = Animotion.cutsceneActionSelectors?.rawActionTimeline?.(action) || action.actionTimeline || {};
     const durationFrames = scaledFrame(clip.durationFrames || bridge.durationFrames || maxFrame(action.beats), item.tempo);
@@ -128,8 +173,8 @@
       source: "legacyClip",
       clipId: clip.id,
       template: source.fallbackTemplate || "rearHandPunch01",
-      primaryPartId: clip.primaryPartId || bridge.primaryPartId,
-      bridge,
+      primaryPartId: binding.primaryPartId,
+      bridge: { ...bridge, primaryPartId: binding.primaryPartId, jointAction: action },
       plan: { ...context.plan, template: source.fallbackTemplate || "rearHandPunch01", source: "legacyClip", clipId: clip.id },
       generated,
       timeline,
@@ -180,6 +225,7 @@
     const target = merged.trackMap.get(track.partId);
     if (!target) return;
     const shifted = (track.keyframes || []).map((keyframe) => shiftKeyframe(keyframe, offset, step.item.tempo));
+    if (offset > 0 && shifted.length && !target.keyframes.length) target.keyframes.push({ frame: offset, pose: defaultPose() });
     target.keyframes.push(...shifted);
     if (step.item.gapAfterFrames > 0 && shifted.length) {
       const last = shifted[shifted.length - 1];
@@ -209,7 +255,11 @@
   }
 
   function stepPlan(basePlan, template, primaryPartId, item) {
-    return { ...basePlan, ...(item.options?.plan || {}), template, selectedPartId: primaryPartId, target: null, targetNormalized: null, targetSource: null, activeMotionTarget: null, anchors: [], trajectoryPoints: [], selectedBeatId: null, targetDebug: null, motionDraft: null };
+    const next = { ...basePlan, ...(item.options?.plan || {}), template, selectedPartId: primaryPartId, selectedBeatId: null, motionDraft: null };
+    if (item.actionId !== "jab") {
+      Object.assign(next, { target: null, targetNormalized: null, targetSource: null, activeMotionTarget: null, anchors: [], trajectoryPoints: [], targetDebug: null });
+    }
+    return next;
   }
 
   function stepDebug(step, offset) {
@@ -221,6 +271,7 @@
       source: step.source || "generator",
       clipId: step.clipId || null,
       primaryPartId: step.primaryPartId,
+      effectivePrimaryPartId: step.generated.effectivePrimaryPartId || action.effectivePrimaryPartId || step.primaryPartId,
       focusKey: action.focusKey || null,
       startFrame: offset + 1,
       endFrame: offset + step.durationFrames,
@@ -238,11 +289,14 @@
   function stepTargetDebug(debug = {}) {
     return {
       punchStyle: debug.punchStyle || null,
+      delta: debug.delta || null,
       leadArmComposite: debug.leadArmComposite || null,
       segmentedLeadLocked: debug.segmentedLeadLocked === true,
       proxyPartId: debug.proxyPartId || null,
       effectivePrimaryPartId: debug.effectivePrimaryPartId || null,
       originalSelectedPartId: debug.originalSelectedPartId || null,
+      selectedPartId: debug.selectedPartId || null,
+      terminalPunchPartId: debug.terminalPunchPartId || null,
       resolvedArmChain: debug.resolvedArmChain || null,
       legacyClipId: debug.legacyClipId || null,
     };
@@ -264,6 +318,71 @@
 
   function defaultActionFrameGenerator(parts, primaryId, bridge, plan) {
     return Animotion.motionPlanner?.createPlan?.(parts, primaryId, bridge, plan);
+  }
+
+  function legacyClipBinding(clip = {}, bridge = {}) {
+    const action = bridge.jointAction || {};
+    const debug = action.targetDebug || {};
+    const primaryPartId = clip.primaryPartId || clip.effectivePrimaryPartId || action.effectivePrimaryPartId || debug.effectivePrimaryPartId || bridge.primaryPartId || debug.primaryPartId || null;
+    const terminalPunchPartId = clip.terminalPunchPartId || action.terminalPunchPartId || debug.terminalPunchPartId || primaryPartId;
+    return {
+      primaryPartId,
+      terminalPunchPartId,
+      resolvedArmChain: clip.resolvedArmChain || action.resolvedArmChain || debug.resolvedArmChain || null,
+    };
+  }
+
+  function currentProjectJabClip(context) {
+    const proxy = context.parts.find((part) => part?.usage === "leadWholeArmJabProxy" && Array.isArray(part.keyframes) && part.keyframes.length);
+    if (!proxy) return null;
+    const bridge = context.baseBridge || {};
+    const action = bridge.jointAction || {};
+    const keyframes = clonePlain(proxy.keyframes);
+    const durationFrames = Math.max(maxKeyframeFrame(keyframes), Math.round(Number(bridge.durationFrames) || 18));
+    const impactFrame = Math.min(Math.round(Number(bridge.impactFrame) || 15), durationFrames);
+    const beats = Array.isArray(action.beats) && action.beats.length ? clonePlain(action.beats) : beatsFromKeyframes(keyframes);
+    const timelineBeats = Array.isArray(action.actionTimeline?.beats) && action.actionTimeline.beats.length
+      ? clonePlain(action.actionTimeline.beats)
+      : timelineBeatsFromKeyframes(keyframes);
+    const bindingProfile = action.bindingProfile || bindingProfileForProxy(context.parts, proxy.id);
+    const targetDebug = {
+      ...(action.targetDebug || {}),
+      punchStyle: "jab",
+      primaryPartId: proxy.id,
+      effectivePrimaryPartId: proxy.id,
+      proxyPartId: proxy.id,
+      segmentedLeadLocked: bindingProfile?.leadArm?.mode === "wholeArmProxy" || action.targetDebug?.segmentedLeadLocked === true,
+      ...(bindingProfile?.leadArm ? { leadArmComposite: bindingProfile.leadArm } : {}),
+    };
+    const jointAction = {
+      ...clonePlain(action || {}),
+      source: "currentProjectClip",
+      actionId: "jab",
+      currentProjectClipId: "currentProjectJabClip",
+      beats,
+      bindingProfile,
+      targetDebug,
+      effectivePrimaryPartId: proxy.id,
+      actionTimeline: {
+        ...(action.actionTimeline || {}),
+        template: action.actionTimeline?.template || "punch",
+        id: action.actionTimeline?.id || "punch",
+        label: action.actionTimeline?.label || "currentProjectJabClip",
+        durationFrames,
+        impactFrame,
+        beats: timelineBeats,
+      },
+    };
+    return {
+      id: "currentProjectJabClip",
+      source: "currentProjectClip",
+      actionId: "jab",
+      primaryPartId: proxy.id,
+      durationFrames,
+      impactFrame,
+      bridge: { ...bridge, primaryPartId: proxy.id, durationFrames, impactFrame, jointAction },
+      partTracks: [{ partId: proxy.id, keyframes }],
+    };
   }
 
   function normalizeActionItem(item = {}) {
@@ -296,6 +415,15 @@
   function isPunchLike(template) { return Animotion.actionSpecs?.isPunchLike?.(template) || template === "punch"; }
   function isArmPart(part = {}) { return ["upperArm", "forearm", "hand", "glove"].includes(part.humanRole) || ["arm", "hand", "glove"].includes(part.type); }
   function maxFrame(beats = []) { return beats.reduce((max, beat) => Math.max(max, Math.round(Number(beat.at) || 1)), 1); }
+  function maxKeyframeFrame(keyframes = []) { return keyframes.reduce((max, keyframe) => Math.max(max, Math.round(Number(keyframe.frame) || 1)), 1); }
+  function beatsFromKeyframes(keyframes = []) { return keyframes.map((keyframe, index) => ({ id: beatIdForIndex(index), at: Math.round(Number(keyframe.frame) || 1), pose: {} })); }
+  function timelineBeatsFromKeyframes(keyframes = []) { return keyframes.map((keyframe, index) => ({ id: beatIdForIndex(index), at: Math.round(Number(keyframe.frame) || 1) })); }
+  function beatIdForIndex(index) { return ["guard", "windup", "drive", "extension", "impact", "recover"][index] || `frame${index + 1}`; }
+  function bindingProfileForProxy(parts, proxyId) {
+    const proxy = parts.find((part) => part.id === proxyId) || null;
+    return Animotion.leadArmComposite?.bindingProfileFor?.(parts, proxy, { punchStyle: "jab" }) || null;
+  }
+  function defaultPose() { return Animotion.motionModel?.defaultCustomMotion?.() || { x: 0, y: 0, rotate: 0, scaleY: 0, jointX: 0, jointY: 0, phase: 0 }; }
   function baseId(id) { return String(id || "beat").split(":").pop(); }
   function objectOrNull(value) { return value && typeof value === "object" && !Array.isArray(value) ? JSON.parse(JSON.stringify(value)) : null; }
   function clonePlain(value) { return JSON.parse(JSON.stringify(value)); }
